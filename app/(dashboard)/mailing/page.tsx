@@ -123,6 +123,37 @@ function etatEtude(p: Prospect): "etudie" | "lance" | "rien" {
  */
 type Compteurs = { prospects: number; kits: number; contactables: number; evenements: number };
 
+/**
+ * Palette des badges d'une ligne prospect.
+ *
+ * Une ligne en porte jusqu'à une douzaine : si deux signaux partagent la même
+ * teinte, l'œil ne distingue plus rien et la ligne devient une bouillie pastel.
+ * Règle tenue ici : **une teinte = un signal**, aucune réutilisation.
+ * Les signaux FORTS (à qui écrire, quoi écrire, doublon de groupe) portent en
+ * plus une bordure et un texte plus soutenu, pour ressortir du reste.
+ */
+const BADGE = {
+  base: "px-2 py-0.5 rounded-full text-[11px]",
+  effectifInsee: "bg-slate-100 text-slate-700",
+  effectifReel: "bg-cyan-50 text-cyan-700",
+  logiciel: "bg-purple-50 text-purple-700",
+  sansLogiciel: "bg-lime-50 text-lime-700",
+  adminDedie: "bg-indigo-100 text-indigo-800 font-medium border border-indigo-200",
+  enDev: "bg-emerald-100 text-emerald-700 font-medium",
+  siteARefaire: "bg-orange-100 text-orange-700 font-medium",
+  sansSite: "bg-sky-50 text-sky-700",
+  mailAdapte: "bg-violet-100 text-violet-800 font-medium border border-violet-200",
+  angle: "bg-blue-50 text-blue-700",
+  cessee: "bg-red-100 text-red-700",
+  etudie: "bg-fuchsia-100 text-fuchsia-700 font-medium",
+  promptLance: "bg-amber-100 text-amber-700",
+  dirigeant: "bg-pink-100 text-pink-800 font-medium border border-pink-200",
+  gerantJeune: "bg-green-100 text-green-700",
+  gerantSenior: "bg-stone-100 text-stone-600",
+  groupe: "bg-yellow-100 text-yellow-800 font-medium",
+  generique: "bg-gray-100 text-gray-500",
+} as const;
+
 const cleCompteurs = (uid: string) => `mailing:compteurs:${uid}`;
 
 /**
@@ -192,6 +223,7 @@ export default function MailingPage() {
   // « tous » ou l'identifiant d'un angle du catalogue (ANGLES)
   const [filtreAngle, setFiltreAngle] = useState<string>("tous");
   const [filtreLie, setFiltreLie] = useState(false);
+  const [filtreMailPerso, setFiltreMailPerso] = useState(false);
   const [filtreEtude, setFiltreEtude] = useState<"tous" | "etudie" | "lance" | "rien">("tous");
   const [filtreGerant, setFiltreGerant] = useState<"tous" | "jeune" | "senior">("tous");
   const [aSupprimer, setASupprimer] = useState<Prospect | null>(null);
@@ -345,6 +377,7 @@ export default function MailingPage() {
     (filtreSite !== "tous" ? 1 : 0) +
     (filtreAngle !== "tous" ? 1 : 0) +
     (filtreLie ? 1 : 0) +
+    (filtreMailPerso ? 1 : 0) +
     (filtreEtude !== "tous" ? 1 : 0) +
     (filtreGerant !== "tous" ? 1 : 0) +
     (rayon.rayon !== null ? 1 : 0) +
@@ -365,6 +398,7 @@ export default function MailingPage() {
     setFiltreSite("tous");
     setFiltreAngle("tous");
     setFiltreLie(false);
+    setFiltreMailPerso(false);
     setFiltreEtude("tous");
     setFiltreGerant("tous");
     setRecherche("");
@@ -429,6 +463,7 @@ export default function MailingPage() {
       if (filtreSite !== "tous" && p.siteEtat !== filtreSite) return false;
       if (filtreAngle !== "tous" && !anglesDe(p).includes(filtreAngle)) return false;
       if (filtreLie && !liensGroupe.has(p.id)) return false;
+      if (filtreMailPerso && !p.mailPerso) return false;
       if (filtreEtude !== "tous" && etatEtude(p) !== filtreEtude) return false;
       if (filtreGerant === "jeune" && p.dirigeantJeune !== true) return false;
       if (filtreGerant === "senior" && p.dirigeantJeune !== false) return false;
@@ -441,7 +476,7 @@ export default function MailingPage() {
     return rayon.rayon === null
       ? liste
       : [...liste].sort((a, b) => (rayon.distance(a) ?? 1e9) - (rayon.distance(b) ?? 1e9));
-  }, [prospects, filtreStatut, filtreMetier, filtreRegion, filtreDept, filtreEffectif, filtreEtat, filtrePriorite, filtreEmail, filtreLogiciel, filtreAdmin, filtreDev, filtreSite, filtreAngle, filtreLie, filtreEtude, filtreGerant, liensGroupe, recherche, rayon]);
+  }, [prospects, filtreStatut, filtreMetier, filtreRegion, filtreDept, filtreEffectif, filtreEtat, filtrePriorite, filtreEmail, filtreLogiciel, filtreAdmin, filtreDev, filtreSite, filtreAngle, filtreLie, filtreMailPerso, filtreEtude, filtreGerant, liensGroupe, recherche, rayon]);
 
   const basculerSelection = (id: string) => {
     setSelection((s) => {
@@ -1066,6 +1101,18 @@ export default function MailingPage() {
                     nombre={liensGroupe.size}
                     attenue={liensGroupe.size === 0}
                   />
+                  {(() => {
+                    const n = prospects.filter((p) => !!p.mailPerso).length;
+                    return (
+                      <Chip
+                        actif={filtreMailPerso}
+                        onClick={() => setFiltreMailPerso((v) => !v)}
+                        label="✍ Mail adapté"
+                        nombre={n}
+                        attenue={n === 0}
+                      />
+                    );
+                  })()}
                 </>
               );
             })()}
@@ -1319,7 +1366,7 @@ export default function MailingPage() {
                         </span>
                         {p.effectifCode && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-700"
+                            className={`${BADGE.base} ${BADGE.effectifInsee}`}
                             title={`Tranche INSEE${p.effectifAnnee ? ` (${p.effectifAnnee})` : ""}${
                               p.effectifDeLEntreprise ? " — au niveau de l'entreprise" : ""
                             }`}
@@ -1332,7 +1379,7 @@ export default function MailingPage() {
                           const sansLog = p.aLogiciel === false;
                           if (aLog) return (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[11px] bg-purple-50 text-purple-700"
+                              className={`${BADGE.base} ${BADGE.logiciel}`}
                               title={p.logicielActuel ? `Logiciel en place : ${p.logicielActuel}` : "A déjà un logiciel de gestion"}
                             >
                               🧩 {p.logicielActuel || "Logiciel"}
@@ -1340,7 +1387,7 @@ export default function MailingPage() {
                           );
                           if (sansLog) return (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[11px] bg-teal-50 text-teal-700"
+                              className={`${BADGE.base} ${BADGE.sansLogiciel}`}
                               title="Aucun logiciel de gestion — pas de concurrent en place"
                             >
                               sans logiciel
@@ -1350,7 +1397,7 @@ export default function MailingPage() {
                         })()}
                         {p.responsableAdmin === true && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-indigo-100 text-indigo-800 font-medium border border-indigo-200"
+                            className={`${BADGE.base} ${BADGE.adminDedie}`}
                             title="Une personne dédiée à l'administratif/gestion — signal fort"
                           >
                             💼 Resp Admin dédié
@@ -1358,7 +1405,7 @@ export default function MailingPage() {
                         )}
                         {p.enDeveloppement === true && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-700 font-medium"
+                            className={`${BADGE.base} ${BADGE.enDev}`}
                             title="En développement — recrutement, CA en hausse, rachat récent…"
                           >
                             📈 en dév.
@@ -1366,7 +1413,7 @@ export default function MailingPage() {
                         )}
                         {p.siteEtat === "bancal" && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-700 font-medium"
+                            className={`${BADGE.base} ${BADGE.siteARefaire}`}
                             title="Site bancal / à moitié fait / à l'abandon — opportunité de refonte"
                           >
                             🌐 site à refaire
@@ -1374,7 +1421,7 @@ export default function MailingPage() {
                         )}
                         {p.siteEtat === "aucun" && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-teal-50 text-teal-700"
+                            className={`${BADGE.base} ${BADGE.sansSite}`}
                             title="Pas de site web — opportunité"
                           >
                             🌐 sans site
@@ -1382,7 +1429,7 @@ export default function MailingPage() {
                         )}
                         {p.effectifReel && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-700"
+                            className={`${BADGE.base} ${BADGE.effectifReel}`}
                             title="Effectif réel trouvé par l'étude"
                           >
                             👷 {p.effectifReel}
@@ -1390,7 +1437,7 @@ export default function MailingPage() {
                         )}
                         {p.mailPerso && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-violet-50 text-violet-700"
+                            className={`${BADGE.base} ${BADGE.mailAdapte}`}
                             title="Le mail a été réécrit pour cette société : le kit métier ne sert plus pour elle"
                           >
                             ✍ mail adapté
@@ -1399,22 +1446,20 @@ export default function MailingPage() {
                         {anglesDe(p).map((a) => (
                           <span
                             key={a}
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-blue-50 text-blue-700"
+                            className={`${BADGE.base} ${BADGE.angle}`}
                             title="Angle d'accroche retenu par l'étude"
                           >
                             🎯 {angleLabel(a)}
                           </span>
                         ))}
                         {estCessee(p.etatEntreprise) && (
-                          <span className="px-2 py-0.5 rounded-full text-[11px] bg-red-100 text-red-700">
-                            société cessée
-                          </span>
+                          <span className={`${BADGE.base} ${BADGE.cessee}`}>société cessée</span>
                         )}
                         {(() => {
                           const etudie = !!(p.etudeAt || p.dirigeant || p.personnalisation || p.etudeResume);
                           if (etudie) return (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[11px] bg-violet-100 text-violet-700 font-medium"
+                              className={`${BADGE.base} ${BADGE.etudie}`}
                               title={`Entreprise étudiée${p.etudeAt ? ` le ${p.etudeAt.toDate().toLocaleDateString("fr-FR")}` : ""} — infos récupérées`}
                             >
                               ✨ étudié
@@ -1422,7 +1467,7 @@ export default function MailingPage() {
                           );
                           if (p.promptLanceAt) return (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-700"
+                              className={`${BADGE.base} ${BADGE.promptLance}`}
                               title={`Prompt lancé le ${p.promptLanceAt.toDate().toLocaleDateString("fr-FR")} — résultat pas encore collé`}
                             >
                               prompt lancé
@@ -1432,7 +1477,7 @@ export default function MailingPage() {
                         })()}
                         {p.dirigeant && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-fuchsia-50 text-fuchsia-700 font-medium"
+                            className={`${BADGE.base} ${BADGE.dirigeant}`}
                             title={`Dirigeant — à qui écrire${p.dirigeantAge ? ` (${p.dirigeantAge})` : ""}`}
                           >
                             👤 {p.dirigeant}
@@ -1440,7 +1485,7 @@ export default function MailingPage() {
                         )}
                         {p.dirigeantJeune === true && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-800 font-medium"
+                            className={`${BADGE.base} ${BADGE.gerantJeune}`}
                             title={`Dirigeant jeune${p.dirigeantAge ? ` (${p.dirigeantAge})` : ""} — a priori plus réceptif au numérique`}
                           >
                             🎂 Gérant jeune
@@ -1448,7 +1493,7 @@ export default function MailingPage() {
                         )}
                         {p.dirigeantJeune === false && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600"
+                            className={`${BADGE.base} ${BADGE.gerantSenior}`}
                             title={`Dirigeant senior${p.dirigeantAge ? ` (${p.dirigeantAge})` : ""} — souvent fin de carrière, moins outillé`}
                           >
                             🎂 Gérant senior
@@ -1460,7 +1505,7 @@ export default function MailingPage() {
                           const liste = [...lies.values()].map((o) => o.societe);
                           return (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[11px] bg-orange-100 text-orange-700 font-medium max-w-[16rem] truncate"
+                              className={`${BADGE.base} ${BADGE.groupe} max-w-[16rem] truncate`}
                               title={`Même groupe/dirigeant que : ${liste.join(", ")} — inutile de contacter les deux`}
                             >
                               👥 lié à {liste[0]}{liste.length > 1 ? ` +${liste.length - 1}` : ""}
@@ -1469,7 +1514,7 @@ export default function MailingPage() {
                         })()}
                         {isEmailGenerique(p.email) && (
                           <span
-                            className="px-2 py-0.5 rounded-full text-[11px] bg-gray-100 text-gray-500"
+                            className={`${BADGE.base} ${BADGE.generique}`}
                             title="Adresse générique : joignable, mais moins bien ciblée qu'une adresse nominative."
                           >
                             générique
