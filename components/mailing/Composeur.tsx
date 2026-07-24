@@ -180,7 +180,9 @@ export default function Composeur({
     ? { metier: metierRendu, prospect, personnalisation: perso, origin }
     : null;
 
-  const promptRecherche = prospect ? construirePromptRecherche(prospect) : "";
+  // Le kit de BASE (pas le kit adapté) : le prompt doit proposer une adaptation
+  // du mail type, pas une adaptation de l'adaptation précédente.
+  const promptRecherche = prospect ? construirePromptRecherche(prospect, metier) : "";
   const html = ctx ? renderMailHtml(ctx) : "";
   const texte = ctx ? renderMailTexte(ctx) : "";
   const sujet = prospect && metierRendu ? sujetMail(metierRendu, prospect) : "";

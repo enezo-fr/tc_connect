@@ -2201,6 +2201,7 @@ export default function MailingPage() {
       {aEtudier && (
         <EtudeModal
           prospect={aEtudier}
+          metier={metiers.find((m) => m.id === aEtudier.metierId) ?? null}
           onClose={() => setAEtudier(null)}
           onToast={notifier}
         />

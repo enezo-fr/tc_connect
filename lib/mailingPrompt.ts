@@ -12,9 +12,14 @@
 
 import { libelleEffectif } from '@/lib/sirene'
 import { ANGLES, ANGLE_IDS } from '@/lib/mailingModel'
-import type { Prospect } from '@/types'
+import type { MailingMetier, MailPerso, Prospect } from '@/types'
 
-export function construirePromptRecherche(p: Prospect): string {
+/**
+ * @param metier Kit du prospect, si connu : son mail type sert de base à la
+ *   proposition de mail demandée en fin de prompt. Sans lui, l'étude est
+ *   identique mais le mail proposé part de zéro.
+ */
+export function construirePromptRecherche(p: Prospect, metier?: MailingMetier | null): string {
   const connu: string[] = [`- Raison sociale : ${p.societe}`]
   if (p.ville || p.codePostal) {
     connu.push(`- Localisation : ${[p.codePostal, p.ville].filter(Boolean).join(' ')}`)
@@ -95,7 +100,60 @@ reseaux: <réseaux sociaux et plateformes d'avis, ou "aucun">
 certifications: <RGE, Qualibat, labels, agréments, ou "aucun">
 avis: <thèmes récurrents des avis clients (surtout délais / devis / communication), ou "aucun">
 resume: <2 ou 3 phrases factuelles résumant l'entreprise, sur une seule ligne>
-===FIN-FICHE===`
+===FIN-FICHE===
+${blocMail(metier)}`
+}
+
+/**
+ * Second bloc du prompt : la PROPOSITION DE MAIL.
+ *
+ * L'app ne rédige rien elle-même et n'appelle aucune IA — elle demande le texte
+ * dans un bloc délimité, puis le relit. Le mail type du kit est fourni comme
+ * point de départ : on veut une ADAPTATION de ce qui marche déjà, pas une
+ * invention repartant de zéro à chaque prospect.
+ *
+ * Format à part de la fiche : ces blocs font plusieurs paragraphes, alors que le
+ * récap impose une valeur par ligne.
+ */
+function blocMail(metier?: MailingMetier | null): string {
+  const base = metier && metier.mailScene?.trim() && metier.mailExemples?.trim() && metier.mailQuestion?.trim()
+    ? `
+VOICI MON MAIL TYPE POUR CE MÉTIER — c'est lui qu'il faut ADAPTER, pas remplacer :
+Objet : ${metier.objet ?? ''}
+--scene--
+${metier.mailScene}
+--exemples--
+${metier.mailExemples}
+--question--
+${metier.mailQuestion}
+`
+    : ''
+
+  return `
+PROPOSE-MOI ENSUITE LE MAIL
+${base}
+Écris-moi une version de ce mail adaptée à CETTE entreprise, en te servant de ce que tu viens d'établir sur elle (organisation, effectif réel, logiciel en place ou absence de logiciel, personne dédiée à l'administratif, croissance, état du site) et de l'angle que tu as retenu en premier.
+
+Règles d'écriture, elles comptent autant que le fond :
+- Environ 110 mots en tout, UN SEUL sujet. Un mail long ne se lit pas sur un téléphone, entre deux chantiers.
+- Écris « je », jamais « nous » : je suis un développeur indépendant, pas une agence. C'est un avantage, pas une faiblesse.
+- Une SCÈNE concrète que le lecteur reconnaît, pas une liste de fonctionnalités. Il doit faire lui-même le calcul de ce que ça lui coûte : ne chiffre JAMAIS un gain de temps ou d'argent, une promesse invisible est le marqueur du démarchage.
+- Termine par UNE question ouverte. Sans question, il n'a aucune raison de répondre.
+- Aucun émoji, aucun superlatif, aucune formule commerciale toute faite.
+- N'utilise QUE des faits que tu as sourcés plus haut. Si tu n'as rien de solide sur cette entreprise, reprends le mail type presque tel quel plutôt que d'inventer : un détail faux dans un premier mail est irrattrapable.
+- Ne mentionne ni le prix, ni la durée, ni la technique.
+
+Rends-le dans ce bloc, à la toute fin de ta réponse, après le bloc fiche. Respecte EXACTEMENT les délimiteurs :
+
+===ENEZO-MAIL===
+objet: <objet du mail, une seule ligne, sans point final>
+--scene--
+<la scène, 2 ou 3 phrases, paragraphes autorisés>
+--exemples--
+<ce que ça change concrètement pour lui, 2 ou 3 phrases>
+--question--
+<la question finale, une ou deux phrases>
+===FIN-MAIL===`
 }
 
 export type FicheEtude = {
@@ -109,6 +167,8 @@ export type FicheEtude = {
   angle?: 'surcharge' | 'circulation' | 'inconnu'
   /** Tous les angles qui collent, du plus au moins pertinent */
   angles?: string[]
+  /** Mail proposé par l'étude, prêt à devenir `Prospect.mailPerso` après validation */
+  mailPropose?: MailPerso
   logicielActuel?: string
   aLogiciel?: boolean
   responsableAdmin?: boolean
@@ -126,6 +186,33 @@ function estVide(v: string): boolean {
 }
 
 /**
+ * Extrait le mail proposé du bloc `===ENEZO-MAIL=== … ===FIN-MAIL===`.
+ * Les blocs font plusieurs paragraphes : on découpe sur les marqueurs
+ * `--scene--` / `--exemples--` / `--question--` plutôt que ligne à ligne.
+ * Renvoie undefined si le bloc est absent ou vide — l'étude reste valable sans.
+ */
+export function parserBlocMail(texte: string): MailPerso | undefined {
+  const bloc = texte.match(/===\s*ENEZO-MAIL\s*===([\s\S]*?)===\s*FIN-?MAIL\s*===/i)
+  if (!bloc) return undefined
+  const corps = bloc[1]
+
+  const part = (marqueur: RegExp): string => {
+    const m = corps.match(marqueur)
+    return m ? m[1].trim() : ''
+  }
+  const objetLigne = corps.match(/^\s*objet\s*:\s*(.+?)\s*$/im)
+
+  const perso: MailPerso = {
+    objet: objetLigne ? objetLigne[1].trim() : '',
+    scene: part(/--\s*scene\s*--([\s\S]*?)(?=--\s*exemples\s*--|--\s*question\s*--|$)/i),
+    exemples: part(/--\s*exemples\s*--([\s\S]*?)(?=--\s*question\s*--|$)/i),
+    question: part(/--\s*question\s*--([\s\S]*?)$/i),
+  }
+  // Un bloc présent mais vide ne doit pas écraser le kit par du blanc
+  return perso.scene || perso.exemples || perso.question || perso.objet ? perso : undefined
+}
+
+/**
  * Extrait la fiche du RÉCAPITULATIF collé (réponse complète de l'IA ou juste le
  * bloc). Tolérant : on isole le bloc `===ENEZO-FICHE=== … ===FIN-FICHE===` s'il
  * est là, sinon on parse le texte entier ligne à ligne. Renvoie null si rien
@@ -134,7 +221,10 @@ function estVide(v: string): boolean {
 export function parserFicheEtude(texte: string): FicheEtude | null {
   if (!texte?.trim()) return null
   const bloc = texte.match(/===\s*ENEZO-FICHE\s*===([\s\S]*?)===\s*FIN-?FICHE\s*===/i)
-  const corps = bloc ? bloc[1] : texte
+  // Le bloc mail est retiré du corps analysé : ses lignes « objet: … » seraient
+  // sinon relues comme des clés de la fiche.
+  const mailPropose = parserBlocMail(texte)
+  const corps = bloc ? bloc[1] : texte.replace(/===\s*ENEZO-MAIL\s*===[\s\S]*?===\s*FIN-?MAIL\s*===/i, '')
 
   const paires = new Map<string, string>()
   for (const ligne of corps.split(/\r?\n/)) {
@@ -143,7 +233,8 @@ export function parserFicheEtude(texte: string): FicheEtude | null {
     const cle = m[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
     if (!paires.has(cle)) paires.set(cle, m[2].trim())
   }
-  if (paires.size === 0) return null
+  // Un mail proposé sans fiche exploitable reste une réponse utile
+  if (paires.size === 0) return mailPropose ? { mailPropose } : null
 
   const val = (k: string) => {
     const v = paires.get(k)
@@ -151,6 +242,7 @@ export function parserFicheEtude(texte: string): FicheEtude | null {
   }
 
   const fiche: FicheEtude = {}
+  if (mailPropose) fiche.mailPropose = mailPropose
   const perso = val('personnalisation')
   if (perso) fiche.personnalisation = perso
 
@@ -250,7 +342,8 @@ export function parserFicheEtude(texte: string): FicheEtude | null {
     fiche.dirigeantJeune === undefined && !fiche.groupe && !fiche.angle && !fiche.angles?.length &&
     !fiche.logicielActuel && fiche.aLogiciel === undefined &&
     fiche.responsableAdmin === undefined && !fiche.effectifReel &&
-    fiche.enDeveloppement === undefined && !fiche.siteEtat && !fiche.etudeResume
+    fiche.enDeveloppement === undefined && !fiche.siteEtat && !fiche.etudeResume &&
+    !fiche.mailPropose
   ) {
     return null
   }

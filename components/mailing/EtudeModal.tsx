@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { construirePromptRecherche, parserFicheEtude } from "@/lib/mailingPrompt";
-import { enregistrerEtude, majInfosProspect, definirPromptLance } from "@/lib/mailingService";
+import { enregistrerEtude, majInfosProspect, definirPromptLance, definirMailPerso } from "@/lib/mailingService";
 import { ANGLES, anglesDe, angleLabel } from "@/lib/mailingModel";
-import type { Prospect } from "@/types";
+import type { MailingMetier, Prospect } from "@/types";
 
 /** Libellé lisible de l'état « a un logiciel ? » (true / false / inconnu). */
 function logicielTexte(aLogiciel: boolean | undefined, nom?: string): string | null {
@@ -38,10 +38,13 @@ const labelCls = "block text-xs font-medium text-gray-600 mb-1";
 //  3. saisir/corriger à la main (entreprise qu'on connaît déjà).
 export default function EtudeModal({
   prospect,
+  metier,
   onClose,
   onToast,
 }: {
   prospect: Prospect;
+  /** Kit du prospect : son mail type sert de base au mail proposé par l'étude */
+  metier?: MailingMetier | null;
   onClose: () => void;
   onToast: (m: string) => void;
 }) {
@@ -75,7 +78,9 @@ export default function EtudeModal({
   const [siteM, setSiteM] = useState<"" | "pro" | "bancal" | "aucun">(prospect.siteEtat ?? "");
   const [resumeM, setResumeM] = useState(prospect.etudeResume ?? "");
 
-  const prompt = construirePromptRecherche(prospect);
+  const prompt = construirePromptRecherche(prospect, metier);
+  // Le mail proposé est enregistré avec l'étude, sauf refus explicite.
+  const [garderMail, setGarderMail] = useState(true);
   const fiche = useMemo(() => parserFicheEtude(texte), [texte]);
   const dejaEtudie = !!(
     prospect.etudeAt || prospect.dirigeant || prospect.personnalisation ||
@@ -107,8 +112,16 @@ export default function EtudeModal({
     if (!fiche) return;
     setEnCours(true);
     try {
-      await enregistrerEtude(prospect, fiche);
-      onToast("Fiche mise à jour depuis l'étude.");
+      // Le mail proposé ne fait pas partie de la fiche : il va dans `mailPerso`,
+      // et seulement si Teddy le garde (case décochable).
+      const { mailPropose, ...champsFiche } = fiche;
+      await enregistrerEtude(prospect, champsFiche);
+      if (mailPropose && garderMail) await definirMailPerso(prospect.id, mailPropose);
+      onToast(
+        mailPropose && garderMail
+          ? "Fiche mise à jour, mail adapté enregistré."
+          : "Fiche mise à jour depuis l'étude.",
+      );
       onClose();
     } catch {
       onToast("Enregistrement impossible.");
@@ -311,6 +324,44 @@ export default function EtudeModal({
                     <span className="text-gray-400">Fiche :</span> {fiche.etudeResume}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Mail proposé par l'étude — pas encore enregistré, et toujours modifiable ensuite */}
+            {fiche?.mailPropose && (
+              <div className="border border-violet-200 bg-violet-50/60 rounded-lg p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs font-semibold text-violet-800">
+                    Mail proposé pour {prospect.societe}
+                  </p>
+                  <label className="flex items-center gap-1.5 text-[11px] text-violet-800 shrink-0 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={garderMail}
+                      onChange={(e) => setGarderMail(e.target.checked)}
+                      className="accent-violet-600"
+                    />
+                    L&apos;enregistrer
+                  </label>
+                </div>
+                <div className="bg-white border rounded-lg p-2.5 text-xs text-gray-700 space-y-2">
+                  {fiche.mailPropose.objet && (
+                    <div><span className="text-gray-400">Objet :</span> {fiche.mailPropose.objet}</div>
+                  )}
+                  {fiche.mailPropose.scene && (
+                    <div className="whitespace-pre-wrap">{fiche.mailPropose.scene}</div>
+                  )}
+                  {fiche.mailPropose.exemples && (
+                    <div className="whitespace-pre-wrap">{fiche.mailPropose.exemples}</div>
+                  )}
+                  {fiche.mailPropose.question && (
+                    <div className="whitespace-pre-wrap font-medium">{fiche.mailPropose.question}</div>
+                  )}
+                </div>
+                <p className="text-[11px] text-violet-700">
+                  Il remplacera le mail du kit pour cette société uniquement. Tu pourras le
+                  corriger ensuite avec le crayon « Adapter le mail », ou revenir au kit d&apos;un clic.
+                </p>
               </div>
             )}
 
