@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useNotifications } from '@/hooks/useNotifications'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
-import { BellIcon, CheckIcon, TrashIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline'
+import { BellIcon, CheckIcon, TrashIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
 import type { Notification } from '@/types'
 
 type FilterTab = 'all' | 'unread' | 'read'
@@ -229,10 +229,13 @@ export default function NotificationsPage() {
                       // se verrait sur tous les appareils.
                       <button
                         onClick={(e) => { e.stopPropagation(); setARelire(notif) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition"
                         title="Remettre en non lu"
                       >
-                        <ArrowUturnLeftIcon className="w-3.5 h-3.5" />
+                        {/* Enveloppe FERMÉE : la convention des messageries pour
+                            « non lu ». Le survol passe au bleu, couleur de l'état
+                            non lu dans cette liste. */}
+                        <EnvelopeIcon className="w-3.5 h-3.5" />
                       </button>
                     )}
                     <button
