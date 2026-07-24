@@ -1061,7 +1061,7 @@ export interface StoreSubscription {
   updatedAt?: Timestamp
 }
 
-// ─── App « À deux » : à voir, à faire, scores ────────────────────────────────
+// ─── App « Sarah & Ted » : à voir, à faire, scores ────────────────────────────────
 
 /** Champs communs aux trois listes : partage et traçabilité */
 interface DuoBase {

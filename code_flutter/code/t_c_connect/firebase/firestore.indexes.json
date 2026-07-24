@@ -61,36 +61,6 @@
       ]
     },
     {
-      "collectionGroup": "store_apps",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "ordre",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "store_subscriptions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "store_subscriptions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userUid",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "seances_equipe",
       "queryScope": "COLLECTION",
       "fields": [
@@ -419,6 +389,18 @@
         {
           "fieldPath": "date_declenchement",
           "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "degustations",
+      "fieldPath": "membersDeg",
+      "indexes": [
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION_GROUP"
         }
       ]
     }

@@ -349,10 +349,9 @@ service cloud.firestore {
         ) || isAdmin();
 
       match /degustations/{degId} {
-        // ⚠️ Les dégustations sont lues par `collectionGroup` : la règle ne peut donc
-        // PAS remonter au parent (le chemin n'est pas connu à l'évaluation d'une
-        // requête de groupe). D'où `membersDeg` recopié sur chaque dégustation,
-        // et la requête client filtrée dessus.
+        // Accès par le chemin direct (écriture depuis la fiche bière).
+        // ⚠️ La LECTURE en `collectionGroup` n'est PAS couverte ici : voir le
+        // bloc `/{chemin=**}/degustations/{degId}` plus bas.
         allow read: if isAdmin() || (request.auth != null
           && request.auth.uid in resource.data.membersDeg);
         allow create: if request.auth != null
@@ -360,6 +359,17 @@ service cloud.firestore {
         allow update, delete: if isAdmin() || (request.auth != null
           && request.auth.uid in resource.data.membersDeg);
       }
+    }
+
+    // ⚠️ INDISPENSABLE pour la requête `collectionGroup('degustations')` :
+    // une requête de groupe n'est rattachée à AUCUN chemin, donc une règle
+    // écrite sur `/bieres/{id}/degustations/{id}` ne s'y applique pas — seul un
+    // joker récursif la couvre. Sans ce bloc : permission-denied à l'affichage
+    // du catalogue, alors que les documents existent bel et bien.
+    // La sécurité tient à `membersDeg`, recopié sur chaque dégustation.
+    match /{chemin=**}/degustations/{degId} {
+      allow read: if isAdmin() || (request.auth != null
+        && request.auth.uid in resource.data.membersDeg);
     }
 
     match /babies/{babyId} {

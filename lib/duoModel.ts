@@ -1,4 +1,4 @@
-// App « À deux » — référentiels et calculs.
+// App « Sarah & Ted » — référentiels et calculs.
 //
 // Listes reprises de l'ancienne app AppSheet (feuille « Listes déroulantes ») :
 // Liste 4 (types d'activité), 9 (gamme de prix), 3 (priorité), 11 (film/série),

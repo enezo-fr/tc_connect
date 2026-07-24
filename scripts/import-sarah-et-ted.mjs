@@ -1,7 +1,7 @@
-// Import des listes « À deux » depuis l'export de l'ancienne app AppSheet.
+// Import des listes « Sarah & Ted » depuis l'export de l'ancienne app AppSheet.
 //
-//   node scripts/import-a-deux.mjs --email=teddy.blouet@gmail.com          (simulation)
-//   node scripts/import-a-deux.mjs --email=teddy.blouet@gmail.com --apply  (écriture)
+//   node scripts/import-sarah-et-ted.mjs --email=teddy.blouet@gmail.com          (simulation)
+//   node scripts/import-sarah-et-ted.mjs --email=teddy.blouet@gmail.com --apply  (écriture)
 //
 // Sources : docs/export-app-sarah-teddy/{FilmsSeries,Activites,Jeux}.csv
 // Les 18 lignes « Jeux » sont des TOURS : on les regroupe en parties, une partie

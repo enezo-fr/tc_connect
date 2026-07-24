@@ -8,7 +8,7 @@ import Modal from '@/components/ui/Modal'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X,
+  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X, ChevronLeft,
 } from 'lucide-react'
 import {
   TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
@@ -70,7 +70,12 @@ export default function ADeuxPage() {
   const activites = useDuoActivites(uid)
   const parties = useDuoParties(uid)
 
-  const [onglet, setOnglet] = useState<'films' | 'activites' | 'jeux'>('films')
+  /**
+   * `null` = accueil. On n'entre dans une section qu'en la choisissant :
+   * trois listes empilées derrière des onglets donnaient l'impression que tout
+   * était mélangé, alors que ce sont trois usages distincts.
+   */
+  const [section, setSection] = useState<'films' | 'activites' | 'jeux' | null>(null)
   const [recherche, setRecherche] = useState('')
 
   const base = uid ? { members: [uid], createdBy: uid } : null
@@ -213,7 +218,7 @@ export default function ADeuxPage() {
   const chargement = films.loading && activites.loading && parties.loading
   if (chargement) {
     return (
-      <StoreGate appRoute="/a-deux">
+      <StoreGate appRoute="/sarah-et-ted">
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -222,50 +227,91 @@ export default function ADeuxPage() {
   }
 
   return (
-    <StoreGate appRoute="/a-deux">
+    <StoreGate appRoute="/sarah-et-ted">
       <div className="space-y-5 max-w-full">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gray-900">À deux</h1>
-            <p className="text-sm text-gray-500">Ce qu&apos;on veut voir, ce qu&apos;on veut faire, et qui a gagné.</p>
-          </div>
-          <button
-            onClick={() => (onglet === 'films' ? ouvrirFilm() : onglet === 'activites' ? ouvrirActivite() : setPartieOuverte(true))}
-            className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
-            <Plus size={16} />Ajouter
-          </button>
-        </div>
+        {/* ══ ACCUEIL : une carte par section ══ */}
+        {section === null ? (
+          <>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Sarah &amp; Ted</h1>
+              <p className="text-sm text-gray-500">Choisis une section.</p>
+            </div>
 
-        {/* Onglets */}
-        <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
-          {([
-            { k: 'films', icon: Film, l: 'À voir', n: films.items.length },
-            { k: 'activites', icon: Compass, l: 'À faire', n: activites.items.length },
-            { k: 'jeux', icon: Dices, l: 'Scores', n: parties.items.length },
-          ] as const).map((o) => {
-            const Icon = o.icon
-            return (
-              <button key={o.k} onClick={() => setOnglet(o.k)}
-                className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg text-[11px] leading-none font-medium transition sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm ${
-                  onglet === o.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                }`}>
-                <Icon size={16} className="shrink-0 sm:w-[15px] sm:h-[15px]" />
-                {o.l}{o.n > 0 && <span className="opacity-50">{o.n}</span>}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {([
+                {
+                  k: 'films', icon: Film, titre: 'Films & séries',
+                  desc: 'Ce qu’on veut regarder', couleur: 'bg-indigo-100 text-indigo-600',
+                  total: (films.items as DuoFilm[]).length,
+                  reste: (films.items as DuoFilm[]).filter((f) => !f.vu).length,
+                  resteLabel: 'à voir',
+                },
+                {
+                  k: 'activites', icon: Compass, titre: 'Activités',
+                  desc: 'Les endroits et les sorties', couleur: 'bg-emerald-100 text-emerald-600',
+                  total: (activites.items as DuoActivite[]).length,
+                  reste: (activites.items as DuoActivite[]).filter((a) => !a.fait).length,
+                  resteLabel: 'à faire',
+                },
+                {
+                  k: 'jeux', icon: Dices, titre: 'Jeux',
+                  desc: 'Les scores des parties', couleur: 'bg-amber-100 text-amber-600',
+                  total: (parties.items as DuoPartie[]).length,
+                  reste: 0, resteLabel: '',
+                },
+              ] as const).map((s) => {
+                const Icon = s.icon
+                return (
+                  <button key={s.k} onClick={() => { setSection(s.k); setRecherche('') }}
+                    className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:shadow-md hover:border-rose-200 transition active:scale-[0.99]">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${s.couleur}`}>
+                      <Icon size={22} />
+                    </div>
+                    <p className="text-base font-semibold text-gray-900">{s.titre}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
+                    <p className="text-sm text-gray-700 mt-3">
+                      <strong>{s.total}</strong> {s.k === 'jeux' ? `partie${s.total > 1 ? 's' : ''}` : 'enregistré' + (s.total > 1 ? 's' : '')}
+                      {s.reste > 0 && (
+                        <span className="text-rose-600 font-medium"> · {s.reste} {s.resteLabel}</span>
+                      )}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* En-tête de section : retour visible, titre de la section ouverte */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <button onClick={() => setSection(null)}
+                  className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition mb-1">
+                  <ChevronLeft size={14} />Sarah &amp; Ted
+                </button>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {section === 'films' ? 'Films & séries' : section === 'activites' ? 'Activités' : 'Jeux'}
+                </h1>
+              </div>
+              <button
+                onClick={() => (section === 'films' ? ouvrirFilm() : section === 'activites' ? ouvrirActivite() : setPartieOuverte(true))}
+                className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
+                <Plus size={16} />Ajouter
               </button>
-            )
-          })}
-        </div>
+            </div>
 
-        {onglet !== 'jeux' && (
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-              placeholder="Rechercher…" className={`${champCls} pl-9`} />
-          </div>
+            {section !== 'jeux' && (
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+                  placeholder="Rechercher…" className={`${champCls} pl-9`} />
+              </div>
+            )}
+          </>
         )}
 
         {/* ══ À VOIR ══ */}
-        {onglet === 'films' && (
+        {section === 'films' && (
           <>
             <div className="flex flex-wrap gap-2">
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
@@ -318,7 +364,7 @@ export default function ADeuxPage() {
         )}
 
         {/* ══ À FAIRE ══ */}
-        {onglet === 'activites' && (
+        {section === 'activites' && (
           <>
             <div className="flex flex-wrap gap-2">
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
@@ -382,7 +428,7 @@ export default function ADeuxPage() {
         )}
 
         {/* ══ SCORES ══ */}
-        {onglet === 'jeux' && (
+        {section === 'jeux' && (
           <>
             {classementGeneral.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">

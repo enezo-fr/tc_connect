@@ -7,13 +7,15 @@ import { useBieres } from '@/hooks/useBieres'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import AutoTextarea from '@/components/ui/AutoTextarea'
-import { Timestamp } from 'firebase/firestore'
-import { Plus, Pencil, Trash2, Search, Star, BarChart3, ListFilter, MapPin } from 'lucide-react'
+import { Timestamp, deleteField } from 'firebase/firestore'
+import { Plus, Pencil, Trash2, Search, Star, BarChart3, ListFilter, MapPin, Camera } from 'lucide-react'
 import {
   SERVICES, TYPES_BIERE, TYPOLOGIES, CONTEXTES, METEOS, RESSENTIS, NOTES,
   classer, bilan, formatNote, moyenneDegustation, moyennePersonne,
+  topPersonne, lieuxFrequents, parAnnee, parSaison,
   type BiereCalculee,
 } from '@/lib/biereModel'
+import { uploadImage } from '@/lib/uploadImage'
 import type { Biere, Degustation } from '@/types'
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
@@ -88,7 +90,7 @@ export default function BieresPage() {
   const {
     bieres, degustations, loading,
     ajouterBiere, majBiere, supprimerBiere,
-    ajouterDegustation, supprimerDegustation,
+    ajouterDegustation, majDegustation, supprimerDegustation,
   } = useBieres(uid)
 
   const [onglet, setOnglet] = useState<'catalogue' | 'bilan'>('catalogue')
@@ -96,22 +98,59 @@ export default function BieresPage() {
   const [filtreType, setFiltreType] = useState('')
   const [filtreTypologie, setFiltreTypologie] = useState('')
   const [filtreService, setFiltreService] = useState('')
+  const [filtreAnnee, setFiltreAnnee] = useState('')
+  const [filtreOrigine, setFiltreOrigine] = useState('')
+  const [filtreNoteMin, setFiltreNoteMin] = useState('')
+  const [filtreMultiple, setFiltreMultiple] = useState(false)
+  const [filtreNonNotees, setFiltreNonNotees] = useState(false)
   const [filtresOuverts, setFiltresOuverts] = useState(false)
+  const [tri, setTri] = useState<'note' | 'recent' | 'nom' | 'degres' | 'fois'>('note')
 
   const liste = useMemo(() => classer(bieres, degustations), [bieres, degustations])
 
-  const listeFiltree = useMemo(() => liste.filter((b) => {
-    const q = recherche.trim().toLowerCase()
-    if (q && !`${b.biere.nom} ${b.biere.origine ?? ''}`.toLowerCase().includes(q)
-      && !b.degustations.some((d) => `${d.lieu ?? ''} ${d.analyse ?? ''}`.toLowerCase().includes(q))) return false
-    if (filtreType && b.biere.type !== filtreType) return false
-    if (filtreTypologie && b.biere.typologie !== filtreTypologie) return false
-    if (filtreService && b.biere.service !== filtreService) return false
-    return true
-  }), [liste, recherche, filtreType, filtreTypologie, filtreService])
+  /** Origines réellement présentes — inutile de proposer un filtre vide */
+  const origines = useMemo(
+    () => [...new Set(liste.map((b) => b.biere.origine?.trim()).filter((o): o is string => !!o))].sort(),
+    [liste],
+  )
+  const annees = useMemo(
+    () => [...new Set(liste.flatMap((b) => b.annees))].sort((a, b) => b - a),
+    [liste],
+  )
+
+  const listeFiltree = useMemo(() => {
+    const out = liste.filter((b) => {
+      const q = recherche.trim().toLowerCase()
+      if (q && !`${b.biere.nom} ${b.biere.origine ?? ''}`.toLowerCase().includes(q)
+        && !b.degustations.some((d) => `${d.lieu ?? ''} ${d.analyse ?? ''} ${d.evenement ?? ''}`.toLowerCase().includes(q))) return false
+      if (filtreType && b.biere.type !== filtreType) return false
+      if (filtreTypologie && b.biere.typologie !== filtreTypologie) return false
+      if (filtreService && b.biere.service !== filtreService) return false
+      if (filtreOrigine && b.biere.origine !== filtreOrigine) return false
+      if (filtreAnnee && !b.annees.includes(Number(filtreAnnee))) return false
+      if (filtreMultiple && b.nbDegustations < 2) return false
+      if (filtreNonNotees && b.moyenne !== null) return false
+      if (filtreNoteMin && (b.moyenne === null || b.moyenne < Number(filtreNoteMin))) return false
+      return true
+    })
+    // Le tri par défaut (note) vient déjà de `classer`
+    if (tri === 'nom') return [...out].sort((a, b) => a.biere.nom.localeCompare(b.biere.nom))
+    if (tri === 'degres') return [...out].sort((a, b) => (b.biere.degres ?? -1) - (a.biere.degres ?? -1))
+    if (tri === 'fois') return [...out].sort((a, b) => b.nbDegustations - a.nbDegustations)
+    if (tri === 'recent') {
+      return [...out].sort((a, b) => (b.derniere?.date?.seconds ?? 0) - (a.derniere?.date?.seconds ?? 0))
+    }
+    return out
+  }, [liste, recherche, filtreType, filtreTypologie, filtreService, filtreOrigine,
+      filtreAnnee, filtreMultiple, filtreNonNotees, filtreNoteMin, tri])
 
   const resume = useMemo(() => bilan(liste), [liste])
-  const nbFiltres = [filtreType, filtreTypologie, filtreService].filter(Boolean).length
+  const nbFiltres = [filtreType, filtreTypologie, filtreService, filtreOrigine, filtreAnnee, filtreNoteMin]
+    .filter(Boolean).length + (filtreMultiple ? 1 : 0) + (filtreNonNotees ? 1 : 0)
+  const reinitialiser = () => {
+    setFiltreType(''); setFiltreTypologie(''); setFiltreService(''); setFiltreOrigine('')
+    setFiltreAnnee(''); setFiltreNoteMin(''); setFiltreMultiple(false); setFiltreNonNotees(false)
+  }
 
   /** Prénom d'un membre, pour afficher « Sarah 4 · Teddy 3,5 » sans rien coder en dur */
   const prenom = (u: string) => {
@@ -163,19 +202,73 @@ export default function BieresPage() {
 
   // ── Dégustation ─────────────────────────────────────────────────────────────
   const [degPour, setDegPour] = useState<BiereCalculee | null>(null)
+  /** Dégustation en cours de MODIFICATION (null = on en crée une nouvelle) */
+  const [degEditee, setDegEditee] = useState<Degustation | null>(null)
   const [degForm, setDegForm] = useState({
-    date: '', note: null as number | null, analyse: '', lieu: '', gps: '',
+    date: '', analyse: '', lieu: '', gps: '',
     contexte: '', evenement: '', meteo: '', ressenti: '', temperature: '',
   })
+  /** Une note par personne — on note à deux, et modifier la sienne ne doit pas effacer l'autre */
+  const [degNotes, setDegNotes] = useState<Record<string, number | null>>({})
+
+  /**
+   * Personnes susceptibles de noter : moi, plus toutes celles déjà présentes
+   * dans le catalogue (dont « sarah », issue de l'import).
+   */
+  const membresNotes = useMemo(() => {
+    const autres = new Set<string>()
+    for (const b of liste) for (const d of b.degustations) {
+      for (const k of Object.keys(d.notes ?? {})) if (k !== uid) autres.add(k)
+    }
+    return [uid, ...autres].filter((x): x is string => !!x)
+  }, [liste, uid])
+  const [photos, setPhotos] = useState<string[]>([])
+  const [envoiPhoto, setEnvoiPhoto] = useState(false)
+
+  /** Upload immédiat : l'URL est connue avant l'enregistrement, donc l'aperçu est réel */
+  const envoyerPhoto = async (file: File) => {
+    if (!uid) return
+    setEnvoiPhoto(true)
+    try {
+      const url = await uploadImage(file, `users/${uid}/bieres/${Date.now()}_${file.name}`)
+      setPhotos((p) => [...p, url])
+    } catch {
+      // Chemin `users/{uid}/**` autorisé par les règles Storage — un échec ici
+      // vient d'un fichier trop lourd ou d'une coupure réseau.
+    } finally { setEnvoiPhoto(false) }
+  }
+
+  const dateInput = (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  }
 
   const ouvrirDegustation = (b: BiereCalculee) => {
-    const d = new Date()
-    const p = (n: number) => String(n).padStart(2, '0')
+    setDegEditee(null)
     setDegForm({
-      date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
-      note: null, analyse: '', lieu: '', gps: '', contexte: '', evenement: '',
-      meteo: '', ressenti: '', temperature: '',
+      date: dateInput(new Date()), analyse: '', lieu: '', gps: '', contexte: '',
+      evenement: '', meteo: '', ressenti: '', temperature: '',
     })
+    setDegNotes(Object.fromEntries(membresNotes.map((m) => [m, null])))
+    setPhotos([])
+    setDegPour(b)
+  }
+
+  const ouvrirEditionDegustation = (b: BiereCalculee, d: Degustation) => {
+    setDegEditee(d)
+    setDegForm({
+      date: d.date ? dateInput(d.date.toDate()) : '',
+      analyse: d.analyse ?? '', lieu: d.lieu ?? '', gps: d.gps ?? '',
+      contexte: d.contexte ?? '', evenement: d.evenement ?? '',
+      meteo: d.meteo ?? '', ressenti: d.ressenti ?? '',
+      temperature: d.temperature != null ? String(d.temperature) : '',
+    })
+    // Les notes déjà là priment ; les autres personnes connues apparaissent vides
+    setDegNotes({
+      ...Object.fromEntries(membresNotes.map((m) => [m, null])),
+      ...(d.notes ?? {}),
+    })
+    setPhotos(d.photos ?? [])
     setDegPour(b)
   }
 
@@ -184,10 +277,15 @@ export default function BieresPage() {
     setEnCours(true)
     try {
       const [y, m, j] = degForm.date.split('-').map(Number)
-      await ajouterDegustation(degPour.biere.id, {
-        createdBy: uid,
+      // Seules les notes réellement saisies sont écrites : une note laissée vide
+      // ne doit pas se transformer en 0, qui serait une très mauvaise note.
+      const notes = Object.fromEntries(
+        Object.entries(degNotes).filter(([, v]) => v !== null && v !== undefined),
+      ) as Record<string, number>
+
+      const champs = {
         date: degForm.date ? Timestamp.fromDate(new Date(y, m - 1, j, 12)) : undefined,
-        notes: degForm.note !== null ? { [uid]: degForm.note } : undefined,
+        notes: Object.keys(notes).length ? notes : undefined,
         analyse: degForm.analyse.trim() || undefined,
         lieu: degForm.lieu.trim() || undefined,
         gps: degForm.gps.trim() || undefined,
@@ -196,8 +294,24 @@ export default function BieresPage() {
         meteo: degForm.meteo || undefined,
         ressenti: degForm.ressenti || undefined,
         temperature: degForm.temperature ? Number(degForm.temperature.replace(',', '.')) : undefined,
-      } as Omit<Degustation, 'id' | 'createdAt'>, degPour.biere.members)
+        photos: photos.length ? photos : undefined,
+      }
+
+      if (degEditee) {
+        // `deleteField` sur les champs vidés : sans ça, effacer un lieu ou une
+        // note laisserait l'ancienne valeur en base.
+        const patch: Record<string, unknown> = {}
+        for (const [k, v] of Object.entries(champs)) patch[k] = v === undefined ? deleteField() : v
+        await majDegustation(degPour.biere.id, degEditee.id, patch as Partial<Degustation>)
+      } else {
+        await ajouterDegustation(
+          degPour.biere.id,
+          { createdBy: uid, ...champs } as Omit<Degustation, 'id' | 'createdAt'>,
+          degPour.biere.members,
+        )
+      }
       setDegPour(null)
+      setDegEditee(null)
     } finally { setEnCours(false) }
   }
 
@@ -261,11 +375,24 @@ export default function BieresPage() {
                   placeholder="Nom, bar, avis…"
                   className={`${champCls} pl-9`} />
               </div>
-              <button onClick={() => setFiltresOuverts((v) => !v)}
-                className="text-xs font-medium text-gray-500 hover:text-gray-700 transition">
-                {filtresOuverts ? 'Masquer les filtres' : 'Filtrer'}
-                {nbFiltres > 0 && ` · ${nbFiltres} actif${nbFiltres > 1 ? 's' : ''}`}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={() => setFiltresOuverts((v) => !v)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+                  {filtresOuverts ? 'Masquer les filtres' : 'Filtrer'}
+                  {nbFiltres > 0 && ` · ${nbFiltres} actif${nbFiltres > 1 ? 's' : ''}`}
+                </button>
+                <label className="flex items-center gap-1.5 text-xs text-gray-500">
+                  Trier par
+                  <select value={tri} onChange={(e) => setTri(e.target.value as typeof tri)}
+                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="note">Note</option>
+                    <option value="recent">Plus récentes</option>
+                    <option value="nom">Nom</option>
+                    <option value="degres">Degré</option>
+                    <option value="fois">Nombre de fois bue</option>
+                  </select>
+                </label>
+              </div>
               {filtresOuverts && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
                   <div>
@@ -280,9 +407,38 @@ export default function BieresPage() {
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Service</p>
                     <Chips options={SERVICES} valeur={filtreService} onChange={setFiltreService} />
                   </div>
+                  {origines.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Origine</p>
+                      <select value={filtreOrigine} onChange={(e) => setFiltreOrigine(e.target.value)} className={champCls}>
+                        <option value="">Toutes</option>
+                        {origines.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {annees.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Année</p>
+                      <Chips options={annees.map(String)} valeur={filtreAnnee} onChange={setFiltreAnnee} />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Note minimum</p>
+                    <Chips options={['2', '3', '3,5', '4', '4,5']} valeur={filtreNoteMin.replace('.', ',')}
+                      onChange={(v) => setFiltreNoteMin(v.replace(',', '.'))} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button type="button" onClick={() => setFiltreMultiple((v) => !v)}
+                      className={`px-3 py-1.5 rounded-xl text-sm border transition ${filtreMultiple ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                      Bues plusieurs fois
+                    </button>
+                    <button type="button" onClick={() => setFiltreNonNotees((v) => !v)}
+                      className={`px-3 py-1.5 rounded-xl text-sm border transition ${filtreNonNotees ? 'bg-amber-600 text-white border-amber-600' : 'border-gray-200 text-gray-700 hover:border-amber-300'}`}>
+                      Pas encore notées
+                    </button>
+                  </div>
                   {nbFiltres > 0 && (
-                    <button onClick={() => { setFiltreType(''); setFiltreTypologie(''); setFiltreService('') }}
-                      className="text-xs text-gray-500 hover:text-gray-700 underline">
+                    <button onClick={reinitialiser} className="text-xs text-gray-500 hover:text-gray-700 underline">
                       Réinitialiser
                     </button>
                   )}
@@ -311,6 +467,14 @@ export default function BieresPage() {
                         {!recherche && nbFiltres === 0 && b.moyenne !== null && (
                           <span className="text-xs font-bold text-gray-300 w-6 shrink-0">#{i + 1}</span>
                         )}
+                        {/* Vignette : une photo de la bière vaut mieux qu'un nom */}
+                        {(() => {
+                          const photo = b.degustations.flatMap((d) => d.photos ?? [])[0]
+                          return photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={photo} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                          ) : null
+                        })()}
                         <button onClick={() => setDeplie(ouvert ? null : b.biere.id)}
                           className="flex-1 min-w-0 text-left">
                           <p className="text-sm font-semibold text-gray-800 break-words">{b.biere.nom}</p>
@@ -319,11 +483,21 @@ export default function BieresPage() {
                               b.biere.degres != null ? `${formatNote(b.biere.degres)}°` : null,
                               b.biere.origine].filter(Boolean).map((t, k) => <span key={k}>{t}</span>)}
                           </p>
-                          {b.nbDegustations > 1 && (
-                            <p className="text-[11px] text-amber-700 mt-0.5">
-                              bue {b.nbDegustations} fois
+                          {/* L'avis est le cœur de l'ancienne base : visible sans déplier */}
+                          {b.derniere?.analyse && (
+                            <p className="text-xs text-gray-600 italic mt-0.5 line-clamp-2 break-words">
+                              {b.derniere.analyse}
                             </p>
                           )}
+                          <p className="text-[11px] text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+                            {b.derniere?.date && (
+                              <span>{b.derniere.date.toDate().toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>
+                            )}
+                            {b.derniere?.lieu && <span>{b.derniere.lieu}</span>}
+                            {b.nbDegustations > 1 && (
+                              <span className="text-amber-700 font-medium">bue {b.nbDegustations} fois</span>
+                            )}
+                          </p>
                         </button>
                         <Note valeur={b.moyenne} />
                       </div>
@@ -348,6 +522,14 @@ export default function BieresPage() {
                                         </p>
                                       )}
                                       {d.analyse && <p className="text-sm text-gray-700 mt-1 break-words">{d.analyse}</p>}
+                                      {(d.photos?.length ?? 0) > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                          {d.photos!.map((p) => (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img key={p} src={p} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                                          ))}
+                                        </div>
+                                      )}
                                       <p className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
                                         {[d.contexte, d.evenement, d.meteo, d.ressenti,
                                           d.temperature != null ? `${d.temperature} °C` : null].filter(Boolean).map((t, k) => <span key={k}>{t}</span>)}
@@ -362,7 +544,13 @@ export default function BieresPage() {
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
                                       <Note valeur={moyenneDegustation(d)} taille="sm" />
+                                      <button onClick={() => ouvrirEditionDegustation(b, d)}
+                                        title="Modifier cette dégustation"
+                                        className="p-1 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition">
+                                        <Pencil size={13} />
+                                      </button>
                                       <button onClick={() => supprimerDegustation(b.biere.id, d.id)}
+                                        title="Supprimer cette dégustation"
                                         className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition">
                                         <Trash2 size={13} />
                                       </button>
@@ -433,11 +621,44 @@ export default function BieresPage() {
               )
             })()}
 
+            {/* Les préférées de chacun : deux classements, pas une moyenne unique */}
+            {(() => {
+              const membres = [...new Set(liste.flatMap((b) => b.degustations).flatMap((d) => Object.keys(d.notes ?? {})))]
+              if (!membres.length) return null
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {membres.map((u) => {
+                    const top = topPersonne(liste, u, 5)
+                    if (!top.length) return null
+                    return (
+                      <div key={u} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                          Les préférées de {prenom(u)}
+                        </p>
+                        <div className="space-y-1.5">
+                          {top.map((t, i) => (
+                            <div key={t.biere.id} className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-300 w-4">{i + 1}</span>
+                              <span className="text-sm text-gray-700 flex-1 truncate">{t.biere.nom}</span>
+                              <Note valeur={t.note} taille="sm" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { titre: 'Par type', data: resume.parType },
                 { titre: 'Par typologie', data: resume.parTypologie },
                 { titre: 'Par service', data: resume.parService },
+                { titre: 'Par saison', data: parSaison(liste).map((s) => ({ label: s.saison, n: s.nb })) },
+                { titre: 'Par année', data: parAnnee(liste).map((a) => ({ label: String(a.annee), n: a.nb })) },
+                { titre: 'Où on boit le plus', data: lieuxFrequents(liste).map((l) => ({ label: l.lieu, n: l.nb })) },
               ].filter((s) => s.data.length > 0).map((s) => (
                 <div key={s.titre} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{s.titre}</p>
@@ -531,8 +752,8 @@ export default function BieresPage() {
       </Modal>
 
       {/* ── Modale dégustation ─────────────────────────────────────────────── */}
-      <Modal isOpen={!!degPour} onClose={() => setDegPour(null)}
-        title={degPour ? `Dégustation — ${degPour.biere.nom}` : ''} size="lg">
+      <Modal isOpen={!!degPour} onClose={() => { setDegPour(null); setDegEditee(null) }}
+        title={degPour ? `${degEditee ? 'Modifier la dégustation' : 'Dégustation'} — ${degPour.biere.nom}` : ''} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -548,8 +769,13 @@ export default function BieresPage() {
             </div>
           </div>
 
-          <ChoixNote libelle="Ma note" valeur={degForm.note}
-            onChange={(v) => setDegForm((f) => ({ ...f, note: v }))} />
+          {/* Une note par personne : corriger la sienne ne touche pas à celle de l'autre */}
+          <div className="space-y-3">
+            {membresNotes.map((m) => (
+              <ChoixNote key={m} libelle={`Note de ${prenom(m)}`} valeur={degNotes[m] ?? null}
+                onChange={(v) => setDegNotes((n) => ({ ...n, [m]: v }))} />
+            ))}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Avis</label>
@@ -592,14 +818,38 @@ export default function BieresPage() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Photos</label>
+            {photos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {photos.map((p) => (
+                  <div key={p} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                    <button type="button" onClick={() => setPhotos((l) => l.filter((x) => x !== p))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-red-600 text-xs shadow">
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition cursor-pointer">
+              <Camera size={15} />
+              {envoiPhoto ? 'Envoi…' : 'Ajouter une photo'}
+              <input type="file" accept="image/*" className="hidden" disabled={envoiPhoto}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) envoyerPhoto(f); e.target.value = '' }} />
+            </label>
+          </div>
+
           <div className="flex gap-3 pt-1">
-            <button onClick={() => setDegPour(null)}
+            <button onClick={() => { setDegPour(null); setDegEditee(null) }}
               className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
               Annuler
             </button>
             <button onClick={enregistrerDegustation} disabled={enCours}
               className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
-              {enCours ? '…' : 'Enregistrer'}
+              {enCours ? '…' : degEditee ? 'Enregistrer les modifications' : 'Enregistrer'}
             </button>
           </div>
         </div>

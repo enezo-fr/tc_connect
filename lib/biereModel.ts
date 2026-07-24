@@ -58,6 +58,15 @@ export function moyennePersonne(degs: Degustation[], uid: string): number | null
   return vals.reduce((s, v) => s + v, 0) / vals.length
 }
 
+/** Saison d'une date — reprise de la « Liste 25 » de l'ancienne app */
+export function saisonDe(d: Date): string {
+  const m = d.getMonth() // 0 = janvier
+  if (m <= 1 || m === 11) return '❄️ Hiver'
+  if (m <= 4) return '☀️ Printemps'
+  if (m <= 7) return '🌡️ Été'
+  return '🍁 Automne'
+}
+
 export interface BiereCalculee {
   biere: Biere
   degustations: Degustation[]
@@ -65,6 +74,12 @@ export interface BiereCalculee {
   nbDegustations: number
   /** Dégustation la plus récente (celles sans date passent en dernier) */
   derniere?: Degustation
+  /** Années où elle a été bue — alimente le filtre et le bilan */
+  annees: number[]
+  /** Lieux où elle a été bue, sans doublon */
+  lieux: string[]
+  /** Y a-t-il au moins une photo sur une de ses dégustations ? */
+  aPhoto: boolean
 }
 
 /**
@@ -88,6 +103,9 @@ export function classer(
         moyenne: moyenneBiere(degustations),
         nbDegustations: degustations.length,
         derniere: avecDate[0] ?? degustations[0],
+        annees: [...new Set(avecDate.map((d) => d.date!.toDate().getFullYear()))],
+        lieux: [...new Set(degustations.map((d) => d.lieu?.trim()).filter((l): l is string => !!l))],
+        aPhoto: degustations.some((d) => (d.photos?.length ?? 0) > 0),
       }
     })
     .sort((a, b) => {
@@ -96,6 +114,49 @@ export function classer(
       if (b.moyenne === null) return -1
       return b.moyenne - a.moyenne
     })
+}
+
+/** Top des bières selon UNE personne — « les préférées de Sarah » */
+export function topPersonne(liste: BiereCalculee[], uid: string, n = 5): { biere: Biere; note: number }[] {
+  return liste
+    .map((b) => ({ biere: b.biere, note: moyennePersonne(b.degustations, uid) }))
+    .filter((x): x is { biere: Biere; note: number } => x.note !== null)
+    .sort((a, b) => b.note - a.note)
+    .slice(0, n)
+}
+
+/** Là où on boit le plus — les dégustations portent le nom du bar */
+export function lieuxFrequents(liste: BiereCalculee[], n = 8): { lieu: string; nb: number }[] {
+  const m = new Map<string, number>()
+  for (const b of liste) {
+    for (const d of b.degustations) {
+      const l = d.lieu?.trim()
+      if (l) m.set(l, (m.get(l) ?? 0) + 1)
+    }
+  }
+  return [...m.entries()].map(([lieu, nb]) => ({ lieu, nb })).sort((a, b) => b.nb - a.nb).slice(0, n)
+}
+
+/** Répartition des dégustations par année, la plus récente d'abord */
+export function parAnnee(liste: BiereCalculee[]): { annee: number; nb: number }[] {
+  const m = new Map<number, number>()
+  for (const b of liste) {
+    for (const d of b.degustations) {
+      if (d.date) m.set(d.date.toDate().getFullYear(), (m.get(d.date.toDate().getFullYear()) ?? 0) + 1)
+    }
+  }
+  return [...m.entries()].map(([annee, nb]) => ({ annee, nb })).sort((a, b) => b.annee - a.annee)
+}
+
+/** Répartition par saison — on ne boit pas les mêmes bières en hiver */
+export function parSaison(liste: BiereCalculee[]): { saison: string; nb: number }[] {
+  const m = new Map<string, number>()
+  for (const b of liste) {
+    for (const d of b.degustations) {
+      if (d.date) { const s = saisonDe(d.date.toDate()); m.set(s, (m.get(s) ?? 0) + 1) }
+    }
+  }
+  return [...m.entries()].map(([saison, nb]) => ({ saison, nb })).sort((a, b) => b.nb - a.nb)
 }
 
 export interface BilanCatalogue {

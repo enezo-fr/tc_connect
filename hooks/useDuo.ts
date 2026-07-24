@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase'
 import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
 
 /**
- * Les trois listes de l'app « À deux ». Chacune est une collection à plat
+ * Les trois listes de l'app « Sarah & Ted ». Chacune est une collection à plat
  * filtrée sur `members` — pas de sous-collection, donc aucune requête de groupe
  * ni index à créer. Les tours d'une partie vivent dans son document.
  */
