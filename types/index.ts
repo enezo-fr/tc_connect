@@ -1137,6 +1137,50 @@ export interface DuoPartie extends DuoBase {
   termine?: boolean
 }
 
+// ─── Commandes au bar ─────────────────────────────────────────────────────────
+
+/**
+ * Une ligne de commande : une boisson, pour une personne.
+ *
+ * On garde UNE LIGNE PAR PERSONNE plutôt qu'une ligne « 4 × blonde » : c'est ce
+ * qui permet à la fois de dire au barman « 4 blondes » (en regroupant) ET de
+ * savoir qui doit combien (en additionnant par personne). L'inverse est
+ * impossible — un total agrégé ne se redécoupe pas.
+ */
+export interface LigneCommande {
+  id: string
+  boisson: string
+  /** Prix unitaire, facultatif : on ne connaît pas toujours la carte */
+  prix?: number
+  quantite: number
+  /** Prénom de la personne concernée ; vide = pour la table */
+  pour?: string
+  /** Déjà servie — utile quand le bar apporte en plusieurs fois */
+  servie?: boolean
+}
+
+/**
+ * Document Firestore : bar_commandes/{id}
+ * Une tournée au bar : qui boit quoi, ce qu'on dit au comptoir, et qui paie quoi.
+ */
+export interface Commande {
+  id: string
+  members: string[]
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt?: Timestamp
+
+  /** Nom du bar, ou intitulé de la soirée */
+  lieu?: string
+  date?: Timestamp
+  /** Personnes présentes — sert à saisir vite et à répartir l'addition */
+  participants: string[]
+  lignes: LigneCommande[]
+  /** Close = payée, on ne la modifie plus au quotidien */
+  terminee?: boolean
+  notes?: string
+}
+
 // ─── Catalogue de bières ──────────────────────────────────────────────────────
 
 /**

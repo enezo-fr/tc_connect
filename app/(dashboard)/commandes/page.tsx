@@ -1,0 +1,552 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { useCommandes } from '@/hooks/useDuo'
+import { StoreGate } from '@/components/ui/StoreGate'
+import Modal from '@/components/ui/Modal'
+import { Timestamp } from 'firebase/firestore'
+import {
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus,
+} from 'lucide-react'
+import {
+  BOISSONS_COURANTES, recapBar, additionParPersonne, totalCommande, totalPartiel,
+  nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents,
+} from '@/lib/commandeModel'
+import type { Commande, LigneCommande } from '@/types'
+
+const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500'
+
+const idLigne = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+const dateInput = (d: Date) => {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+export default function CommandesPage() {
+  const { currentUser } = useAuth()
+  const uid = currentUser?.uid
+  const { items, loading, ajouter, modifier, supprimer } = useCommandes(uid)
+  const commandes = items as Commande[]
+
+  const [ouverteId, setOuverteId] = useState<string | null>(null)
+  const ouverte = commandes.find((c) => c.id === ouverteId) ?? null
+
+  const listeTriee = useMemo(
+    () => [...commandes].sort((a, b) => (b.date?.seconds ?? 0) - (a.date?.seconds ?? 0)),
+    [commandes],
+  )
+  const boissonsConnues = useMemo(() => {
+    const vues = boissonsFrequentes(commandes)
+    // L'historique d'abord : ce qu'on commande vraiment prime sur une liste type
+    return [...vues, ...BOISSONS_COURANTES.filter((b) => !vues.some((v) => v.toLowerCase() === b.toLowerCase()))]
+  }, [commandes])
+  const gensConnus = useMemo(() => participantsFrequents(commandes), [commandes])
+
+  // ── Nouvelle commande ──────────────────────────────────────────────────────
+  const [nouvelleOuverte, setNouvelleOuverte] = useState(false)
+  const [form, setForm] = useState({ lieu: '', date: '', participants: [] as string[], saisie: '' })
+
+  const ouvrirNouvelle = () => {
+    setForm({ lieu: '', date: dateInput(new Date()), participants: [], saisie: '' })
+    setNouvelleOuverte(true)
+  }
+
+  const creer = async () => {
+    if (!uid) return
+    const [y, m, j] = form.date.split('-').map(Number)
+    const id = await ajouter({
+      members: [uid], createdBy: uid,
+      lieu: form.lieu.trim(),
+      date: form.date ? Timestamp.fromDate(new Date(y, m - 1, j, 20)) : Timestamp.now(),
+      participants: form.participants,
+      lignes: [], terminee: false,
+    })
+    setNouvelleOuverte(false)
+    setOuverteId(id)
+  }
+
+  const basculeParticipant = (p: string) =>
+    setForm((f) => ({
+      ...f,
+      participants: f.participants.includes(p)
+        ? f.participants.filter((x) => x !== p)
+        : [...f.participants, p],
+    }))
+
+  // ── Ajout d'une ligne ──────────────────────────────────────────────────────
+  const [ajoutPour, setAjoutPour] = useState<string | null>(null)
+  const [ligneForm, setLigneForm] = useState({ boisson: '', prix: '', quantite: 1 })
+
+  const ouvrirAjout = (pour: string) => {
+    setLigneForm({ boisson: '', prix: '', quantite: 1 })
+    setAjoutPour(pour)
+  }
+
+  /** Choisir une boisson pré-remplit son dernier prix connu : même bar, même carte */
+  const choisirBoisson = (b: string) => {
+    const p = prixConnus(commandes, b)
+    setLigneForm((f) => ({ ...f, boisson: b, prix: p != null ? String(p) : f.prix }))
+  }
+
+  const ajouterLigne = async () => {
+    if (!ouverte || !ligneForm.boisson.trim()) return
+    const ligne: LigneCommande = {
+      id: idLigne(),
+      boisson: ligneForm.boisson.trim(),
+      quantite: Math.max(1, ligneForm.quantite),
+      prix: ligneForm.prix ? Number(ligneForm.prix.replace(',', '.')) : undefined,
+      pour: ajoutPour && ajoutPour !== 'La table' ? ajoutPour : undefined,
+    }
+    // Firestore refuse `undefined` : on retire la clé plutôt que de l'envoyer
+    if (ligne.prix === undefined) delete ligne.prix
+    if (ligne.pour === undefined) delete ligne.pour
+    await modifier(ouverte.id, { lignes: [...(ouverte.lignes ?? []), ligne] })
+    setAjoutPour(null)
+  }
+
+  const majLigne = async (id: string, patch: Partial<LigneCommande>) => {
+    if (!ouverte) return
+    await modifier(ouverte.id, {
+      lignes: (ouverte.lignes ?? []).map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    })
+  }
+  const retirerLigne = async (id: string) => {
+    if (!ouverte) return
+    await modifier(ouverte.id, { lignes: (ouverte.lignes ?? []).filter((l) => l.id !== id) })
+  }
+
+  const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
+  const [aSupprimer, setASupprimer] = useState<Commande | null>(null)
+
+  if (loading) {
+    return (
+      <StoreGate appRoute="/commandes">
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </StoreGate>
+    )
+  }
+
+  // ═══ Liste des commandes ═══
+  if (!ouverte) {
+    return (
+      <StoreGate appRoute="/commandes">
+        <div className="space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Commandes</h1>
+              <p className="text-sm text-gray-500">Qui prend quoi, ce qu&apos;on dit au bar, et qui paie quoi.</p>
+            </div>
+            <button onClick={ouvrirNouvelle}
+              className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
+              <Plus size={16} />Nouvelle tournée
+            </button>
+          </div>
+
+          {listeTriee.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+              <ClipboardList size={28} className="text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">Aucune commande enregistrée.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {([
+                { titre: 'En cours', liste: listeTriee.filter((c) => !c.terminee) },
+                { titre: 'Terminées', liste: listeTriee.filter((c) => c.terminee) },
+              ]).filter((g) => g.liste.length > 0).map((g) => (
+                <div key={g.titre} className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {g.titre} · {g.liste.length}
+                  </p>
+                  {g.liste.map((c) => {
+                    const t = totalCommande(c)
+                    return (
+                      <button key={c.id} onClick={() => { setOuverteId(c.id); setVue('table') }}
+                        className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 text-left hover:shadow-md transition">
+                        <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
+                          <Beer size={18} className="text-sky-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {c.lieu || 'Tournée'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {c.date?.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {' · '}{nbVerres(c)} verre{nbVerres(c) > 1 ? 's' : ''}
+                            {c.participants.length > 0 && ` · ${c.participants.length} pers.`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-800 shrink-0">
+                          {t !== null ? euros(t) : '—'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Nouvelle tournée */}
+        <Modal isOpen={nouvelleOuverte} onClose={() => setNouvelleOuverte(false)} title="Nouvelle tournée">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bar / lieu</label>
+                <input value={form.lieu} onChange={(e) => setForm((f) => ({ ...f, lieu: e.target.value }))}
+                  placeholder="Le Baluchon" className={champCls} autoFocus />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className={champCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Qui est là ?</label>
+              {form.participants.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {form.participants.map((p) => (
+                    <span key={p} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-medium">
+                      {p}
+                      <button type="button" onClick={() => basculeParticipant(p)}
+                        className="text-sky-600 hover:text-red-600">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Les habitués en un clic : à une table de six, taper six prénoms
+                  au moment de commander, personne ne le fait. */}
+              {gensConnus.filter((p) => !form.participants.includes(p)).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {gensConnus.filter((p) => !form.participants.includes(p)).map((p) => (
+                    <button key={p} type="button" onClick={() => basculeParticipant(p)}
+                      className="px-2.5 py-1 rounded-full text-xs border border-gray-200 text-gray-600 hover:border-sky-300 hover:text-sky-700 transition">
+                      + {p}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input value={form.saisie} onChange={(e) => setForm((f) => ({ ...f, saisie: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && form.saisie.trim()) {
+                      e.preventDefault()
+                      basculeParticipant(form.saisie.trim())
+                      setForm((f) => ({ ...f, saisie: '' }))
+                    }
+                  }}
+                  placeholder="Prénom" className={champCls} />
+                <button type="button"
+                  onClick={() => { if (form.saisie.trim()) { basculeParticipant(form.saisie.trim()); setForm((f) => ({ ...f, saisie: '' })) } }}
+                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm hover:bg-gray-50 transition shrink-0">
+                  Ajouter
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setNouvelleOuverte(false)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                Annuler
+              </button>
+              <button onClick={creer}
+                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-2.5 rounded-xl text-sm font-medium transition">
+                Commencer
+              </button>
+            </div>
+          </div>
+        </Modal>
+      </StoreGate>
+    )
+  }
+
+  // ═══ Détail d'une commande ═══
+  const recap = recapBar(ouverte)
+  const addition = additionParPersonne(ouverte)
+  const total = totalCommande(ouverte)
+  const partiel = totalPartiel(ouverte)
+  const colonnes = ouverte.participants.length ? [...ouverte.participants, 'La table'] : ['La table']
+
+  return (
+    <StoreGate appRoute="/commandes">
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <button onClick={() => setOuverteId(null)}
+              className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition mb-1">
+              <ChevronLeft size={14} />Commandes
+            </button>
+            <h1 className="text-xl font-bold text-gray-900 truncate">{ouverte.lieu || 'Tournée'}</h1>
+            <p className="text-sm text-gray-500">
+              {ouverte.date?.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+              {' · '}{nbVerres(ouverte)} verre{nbVerres(ouverte) > 1 ? 's' : ''}
+              {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
+            </p>
+          </div>
+          <button onClick={() => modifier(ouverte.id, { terminee: !ouverte.terminee })}
+            className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition shrink-0">
+            {ouverte.terminee ? 'Rouvrir' : 'Terminer'}
+          </button>
+        </div>
+
+        {/* Trois lectures de la même commande */}
+        <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
+          {([
+            { k: 'table', icon: Users, l: 'La table' },
+            { k: 'bar', icon: ClipboardList, l: 'Au bar' },
+            { k: 'addition', icon: Wallet, l: 'Addition' },
+          ] as const).map((o) => {
+            const Icon = o.icon
+            return (
+              <button key={o.k} onClick={() => setVue(o.k)}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  vue === o.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                <Icon size={15} />{o.l}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Vue TABLE : on fait le tour, personne par personne ── */}
+        {vue === 'table' && (
+          <div className="space-y-3">
+            {colonnes.map((p) => {
+              const lignes = (ouverte.lignes ?? []).filter(
+                (l) => (l.pour?.trim() || 'La table') === p,
+              )
+              const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
+              return (
+                <div key={p} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-800">{p}</p>
+                    <span className="text-xs text-gray-500">
+                      {lignes.reduce((s, l) => s + l.quantite, 0)} verre(s)
+                      {sous > 0 && ` · ${euros(sous)}`}
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    {lignes.length === 0 && (
+                      <p className="text-xs text-gray-400 italic">Rien pour l&apos;instant.</p>
+                    )}
+                    {lignes.map((l) => (
+                      <div key={l.id} className="flex items-center gap-2">
+                        {/* Le pas +/- évite de rouvrir un formulaire pour une tournée de plus */}
+                        <button onClick={() => (l.quantite > 1 ? majLigne(l.id, { quantite: l.quantite - 1 }) : retirerLigne(l.id))}
+                          className="w-7 h-7 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center shrink-0">
+                          <Minus size={13} />
+                        </button>
+                        <span className="w-6 text-center text-sm font-semibold text-gray-800">{l.quantite}</span>
+                        <button onClick={() => majLigne(l.id, { quantite: l.quantite + 1 })}
+                          className="w-7 h-7 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center shrink-0">
+                          <Plus size={13} />
+                        </button>
+                        <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{l.boisson}</span>
+                        {l.prix != null && (
+                          <span className="text-xs text-gray-500 shrink-0">{euros(l.prix * l.quantite)}</span>
+                        )}
+                        <button onClick={() => retirerLigne(l.id)}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition shrink-0">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <button onClick={() => ouvrirAjout(p)}
+                      className="w-full flex items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-xl py-2 text-sm text-gray-400 hover:border-sky-300 hover:text-sky-600 transition">
+                      <Plus size={15} />Ajouter une boisson
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Vue BAR : ce qu'on annonce au comptoir ── */}
+        {vue === 'bar' && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">
+              Regroupé par boisson — à lire au barman. Coche au fur et à mesure du service.
+            </p>
+            {recap.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <p className="text-sm text-gray-400">Rien de commandé.</p>
+              </div>
+            ) : recap.map((r) => {
+              const lignes = (ouverte.lignes ?? []).filter(
+                (l) => l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
+              )
+              const toutesServies = lignes.every((l) => l.servie)
+              return (
+                <div key={r.boisson}
+                  className={`rounded-2xl border shadow-sm px-4 py-3 flex items-center gap-3 ${
+                    toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'
+                  }`}>
+                  <button
+                    onClick={() => modifier(ouverte.id, {
+                      lignes: (ouverte.lignes ?? []).map((l) =>
+                        l.boisson.trim().toLowerCase() === r.boisson.toLowerCase()
+                          ? { ...l, servie: !toutesServies } : l),
+                    })}
+                    className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition ${
+                      toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'
+                    }`}>
+                    <Check size={15} />
+                  </button>
+                  <span className="text-xl font-bold text-sky-700 w-8 shrink-0">{r.quantite}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                      {r.boisson}
+                    </p>
+                    {r.pour.length > 0 && (
+                      <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>
+                    )}
+                  </div>
+                  {r.total !== null && (
+                    <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>
+                  )}
+                </div>
+              )
+            })}
+            {total !== null && (
+              <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-sky-900">Total</span>
+                <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Vue ADDITION : qui doit combien ── */}
+        {vue === 'addition' && (
+          <div className="space-y-2">
+            {total === null && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                Des prix manquent : les montants ci-dessous ne comptent que les boissons dont le prix est renseigné.
+              </p>
+            )}
+            {addition.map((p) => (
+              <div key={p.personne} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-gray-800">{p.personne}</p>
+                  <span className="text-base font-bold text-gray-900">
+                    {p.total !== null
+                      ? euros(p.total)
+                      : euros(p.lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0))}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {p.lignes.map((l) => `${l.quantite}× ${l.boisson}`).join(' · ')}
+                </p>
+              </div>
+            ))}
+            <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-sky-900">Total de la table</span>
+              <span className="text-lg font-bold text-sky-900">
+                {total !== null ? euros(total) : euros(partiel)}
+              </span>
+            </div>
+            <button onClick={() => setASupprimer(ouverte)}
+              className="w-full text-xs text-gray-400 hover:text-red-600 py-2 transition">
+              Supprimer cette commande
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Ajout d'une boisson ────────────────────────────────────────────── */}
+      <Modal isOpen={!!ajoutPour} onClose={() => setAjoutPour(null)}
+        title={ajoutPour ? `Pour ${ajoutPour}` : ''}>
+        <div className="space-y-4">
+          {/* Les boissons déjà commandées d'abord : au bar, on répète les mêmes */}
+          <div className="flex flex-wrap gap-1.5">
+            {boissonsConnues.map((b) => (
+              <button key={b} type="button" onClick={() => choisirBoisson(b)}
+                className={`px-3 py-1.5 rounded-xl text-sm border transition ${
+                  ligneForm.boisson === b ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'
+                }`}>
+                {b}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Boisson</label>
+            <input value={ligneForm.boisson}
+              onChange={(e) => setLigneForm((f) => ({ ...f, boisson: e.target.value }))}
+              placeholder="Pinte blonde" className={champCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
+              <div className="flex items-center gap-2">
+                <button type="button"
+                  onClick={() => setLigneForm((f) => ({ ...f, quantite: Math.max(1, f.quantite - 1) }))}
+                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
+                  <Minus size={15} />
+                </button>
+                <span className="w-8 text-center text-base font-semibold">{ligneForm.quantite}</span>
+                <button type="button"
+                  onClick={() => setLigneForm((f) => ({ ...f, quantite: f.quantite + 1 }))}
+                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
+                  <Plus size={15} />
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Prix unitaire <span className="text-gray-400">(facultatif)</span>
+              </label>
+              <input type="text" inputMode="decimal" value={ligneForm.prix}
+                onChange={(e) => setLigneForm((f) => ({ ...f, prix: e.target.value.replace(/[^\d,.]/g, '') }))}
+                placeholder="6,50" className={champCls} />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={() => setAjoutPour(null)}
+              className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+              Annuler
+            </button>
+            <button onClick={ajouterLigne} disabled={!ligneForm.boisson.trim()}
+              className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
+              Ajouter
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!aSupprimer} onClose={() => setASupprimer(null)} title="Supprimer la commande" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Supprimer <strong>{aSupprimer?.lieu || 'cette tournée'}</strong> et ses{' '}
+            {aSupprimer ? nbVerres(aSupprimer) : 0} verre(s) ?
+          </p>
+          <div className="flex gap-3">
+            <button onClick={() => setASupprimer(null)}
+              className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+              Annuler
+            </button>
+            <button onClick={async () => {
+              if (aSupprimer) await supprimer(aSupprimer.id)
+              setASupprimer(null); setOuverteId(null)
+            }}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium transition">
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </StoreGate>
+  )
+}

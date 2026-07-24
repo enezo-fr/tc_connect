@@ -5,7 +5,7 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
+import type { Commande, DuoActivite, DuoFilm, DuoPartie } from '@/types'
 
 /**
  * Les trois listes de l'app « Sarah & Ted ». Chacune est une collection à plat
@@ -44,4 +44,9 @@ export function useDuoActivites(uid?: string) {
 }
 export function useDuoParties(uid?: string) {
   return useCollectionPartagee<DuoPartie>('duo_parties', uid)
+}
+
+/** Commandes au bar — app de la boutique à part entière, même mécanique de partage */
+export function useCommandes(uid?: string) {
+  return useCollectionPartagee<Commande>('bar_commandes', uid)
 }
