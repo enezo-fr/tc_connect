@@ -625,40 +625,8 @@ export default function AccueilPage() {
         </section>
       )}
 
-      {/* Boutique — espace client Enezo : accès direct aux apps depuis l'accueil */}
-      {isEnezoClient && boutiqueApps.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-700">Boutique</h2>
-            <button
-              onClick={() => router.push('/boutique')}
-              className="group flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              Tout voir
-              <ChevronRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {boutiqueApps.slice(0, 6).map(app => (
-              <button
-                key={app.id}
-                onClick={() => router.push('/boutique')}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md transition"
-              >
-                <div
-                  className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-xl"
-                  style={{ backgroundColor: app.couleur + '20' }}
-                >
-                  {app.iconUrl ? <img src={app.iconUrl} alt="" className="w-full h-full object-cover" /> : app.icon}
-                </div>
-                <span className="text-xs font-medium text-gray-700 text-center leading-tight">{app.nom}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Raccourcis boutique */}
+      {/* Raccourcis boutique — AVANT la boutique : ce sont les apps déjà
+          activées, donc le geste quotidien. Le catalogue vient après. */}
       {shortcutApps.length > 0 && (
         <section>
           <h2 className="text-base font-semibold text-gray-700 mb-3">Mes raccourcis</h2>
@@ -922,6 +890,41 @@ export default function AccueilPage() {
           </div>
         )}
       </section>
+
+      {/* Boutique — espace client Enezo : accès direct aux apps depuis l'accueil.
+          Placée APRÈS les raccourcis et « Aujourd'hui » : c'est un catalogue à
+          découvrir, pas quelque chose qu'on ouvre tous les jours. */}
+      {isEnezoClient && boutiqueApps.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-700">Boutique</h2>
+            <button
+              onClick={() => router.push('/boutique')}
+              className="group flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Tout voir
+              <ChevronRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {boutiqueApps.slice(0, 6).map(app => (
+              <button
+                key={app.id}
+                onClick={() => router.push('/boutique')}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md transition"
+              >
+                <div
+                  className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-xl"
+                  style={{ backgroundColor: app.couleur + '20' }}
+                >
+                  {app.iconUrl ? <img src={app.iconUrl} alt="" className="w-full h-full object-cover" /> : app.icon}
+                </div>
+                <span className="text-xs font-medium text-gray-700 text-center leading-tight">{app.nom}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Prochains RDV */}
       {prochainsRdv.length > 0 && (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   collection, query, where, orderBy,
-  onSnapshot, updateDoc, deleteDoc, doc
+  onSnapshot, updateDoc, deleteDoc, deleteField, doc
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
@@ -38,11 +38,23 @@ export function useNotifications() {
     await Promise.all(unread.map((n) => markAsRead(n.id)))
   }
 
+  /**
+   * Repasse une notification en « Non lu ».
+   * `date_lecture` est effacée : la garder donnerait une date de lecture sur une
+   * notification affichée comme non lue.
+   */
+  const markAsUnread = async (id: string) => {
+    await updateDoc(doc(db, 'Notifications', id), {
+      etat_notification: 'Non lu',
+      date_lecture: deleteField(),
+    })
+  }
+
   const deleteNotification = async (id: string) => {
     await deleteDoc(doc(db, 'Notifications', id))
   }
 
   const unreadCount = notifications.filter((n) => n.etat_notification !== 'Lu').length
 
-  return { notifications, loading, markAsRead, markAllAsRead, deleteNotification, unreadCount }
+  return { notifications, loading, markAsRead, markAsUnread, markAllAsRead, deleteNotification, unreadCount }
 }

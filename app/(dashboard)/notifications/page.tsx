@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useNotifications } from '@/hooks/useNotifications'
 import Badge from '@/components/ui/Badge'
-import { BellIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline'
+import Modal from '@/components/ui/Modal'
+import { BellIcon, CheckIcon, TrashIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline'
+import type { Notification } from '@/types'
 
 type FilterTab = 'all' | 'unread' | 'read'
 
@@ -21,8 +23,9 @@ export default function NotificationsPage() {
     }
   }, [userProfile, isAdmin, router])
 
-  const { notifications, loading, markAsRead, markAllAsRead, deleteNotification, unreadCount } =
+  const { notifications, loading, markAsRead, markAsUnread, markAllAsRead, deleteNotification, unreadCount } =
     useNotifications()
+  const [aRelire, setARelire] = useState<Notification | null>(null)
 
   const filtered = useMemo(() => {
     if (activeTab === 'unread') return notifications.filter((n) => n.etat_notification !== 'Lu')
@@ -212,13 +215,24 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {isUnread && (
+                    {isUnread ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); markAsRead(notif.id) }}
                         className="p-1.5 rounded-lg border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 transition"
                         title="Marquer comme lu"
                       >
                         <CheckIcon className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      // Confirmation demandée : la notification quitte l'onglet
+                      // « Lues » et fait remonter la pastille — un clic par erreur
+                      // se verrait sur tous les appareils.
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setARelire(notif) }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+                        title="Remettre en non lu"
+                      >
+                        <ArrowUturnLeftIcon className="w-3.5 h-3.5" />
                       </button>
                     )}
                     <button
@@ -235,6 +249,38 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      {/* Confirmation — remettre en non lu */}
+      <Modal isOpen={!!aRelire} onClose={() => setARelire(null)} title="Remettre en non lu" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Cette notification repassera en non lue : elle réapparaîtra dans l&apos;onglet
+            « Non lues » et sera de nouveau comptée dans la pastille.
+          </p>
+          {aRelire && (
+            <p className="text-sm text-gray-800 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+              {aRelire.notification}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setARelire(null)}
+              className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={async () => {
+                if (aRelire) await markAsUnread(aRelire.id)
+                setARelire(null)
+              }}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition"
+            >
+              Remettre en non lu
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
