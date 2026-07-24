@@ -20,8 +20,14 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: isEnezo ? '#377684' : '#2563eb',
+    // `-full` = logo complet (ENEZO + cible). Sans le suffixe : la cible seule.
+    // ⚠️ `purpose: 'maskable'` fait ROGNER l'icône par Android (jusqu'à ~20 % de
+    // marge) : un logo horizontal y perdrait ses extrémités. On déclare donc les
+    // deux usages, Android choisit la bonne selon le contexte.
     icons: isEnezo
       ? [
+          { src: '/enezo-app-manifest-full-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/enezo-app-manifest-full-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: '/enezo-app-manifest-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
           { src: '/enezo-app-manifest-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ]

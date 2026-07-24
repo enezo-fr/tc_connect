@@ -27,8 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host')
   const isEnezo = hostToBrand(host) === 'enezo'
   const nom = isEnezo ? 'Enezo' : 'TC Connect'
-  // Icônes (onglet + écran d'accueil iOS) dépendantes du domaine — Enezo garde la cible.
-  const appleTouch = isEnezo ? '/enezo-apple-touch-icon.png' : '/apple-touch-icon.png'
+  // Icônes (onglet + écran d'accueil iOS) dépendantes du domaine.
+  // Enezo : `-full` = logo complet (ENEZO + cible) ; retirer le suffixe rend la
+  // cible seule, qui reste bien plus lisible à 60 px sur un écran d'accueil.
+  const appleTouch = isEnezo ? '/enezo-apple-touch-icon-full.png' : '/apple-touch-icon.png'
   return {
     title: nom,
     description: 'Application de gestion pour coachs sportifs',
