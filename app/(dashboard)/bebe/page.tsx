@@ -10,6 +10,7 @@ import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Pla
 import { Milk, Pill, Baby } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
+import { BarChart } from '@/components/bebe/BarChart'
 import { predireProchainSommeil } from '@/lib/bebeSommeil'
 import { Timestamp } from 'firebase/firestore'
 import { uploadImage } from '@/lib/uploadImage'
@@ -110,6 +111,12 @@ const NOTE_PLACEHOLDERS: Record<BebeEventType, string> = {
 const COURBE_POIDS  = '#7c3aed' // violet-600
 const COURBE_TAILLE = '#0d9488' // teal-600
 const COURBE_PC     = '#d97706' // amber-600
+// Histogrammes de l'onglet Stats
+const COURBE_REPAS   = '#0284c7' // sky-600
+const COURBE_LAIT    = '#38bdf8' // sky-400
+const COURBE_COUCHES = '#0d9488' // teal-600
+const COURBE_NUIT    = '#4f46e5' // indigo-600
+const COURBE_SIESTE  = '#a5b4fc' // indigo-300
 
 // Listes partagées entre les modales de saisie ET le réglage des valeurs par défaut
 // Ce que le bébé REÇOIT. Le tire-lait n'est pas listé ici comme un acte : le lait
@@ -243,6 +250,10 @@ function tsToTimeStr(ts: Timestamp): string {
 }
 
 function dayKey(d: Date): string { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
+/** « 12/07 » — axe des histogrammes, où la place manque */
+function labelJourCourt(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 function dayLabel(d: Date): string {
   const today = new Date(); today.setHours(0,0,0,0)
   const yest  = new Date(today); yest.setDate(yest.getDate() - 1)
@@ -915,8 +926,33 @@ export default function BebePage() {
     const nuits = sommeils.filter(e => { const d = dateRattachement(e); return d && estNuit(d, journee) })
     const siestes = sommeils.filter(e => !nuits.includes(e))
 
+    // Série jour par jour pour les histogrammes. On part des jours RÉELLEMENT
+    // couverts (mêmes jours que les moyennes) plutôt que d'un calendrier plein :
+    // une colonne à zéro pour un jour non saisi ferait croire à un jour sans repas.
+    const parJour = new Map<string, { date: Date; repas: number; ml: number; couches: number; sieste: number; nuit: number }>()
+    for (const e of dans) {
+      const d = dateRattachement(e); if (!d) continue
+      const k = dayKey(d)
+      if (!parJour.has(k)) {
+        const jour = new Date(d); jour.setHours(0, 0, 0, 0)
+        parJour.set(k, { date: jour, repas: 0, ml: 0, couches: 0, sieste: 0, nuit: 0 })
+      }
+      const j = parJour.get(k)!
+      if (e.type === 'bottle') {
+        j.repas += 1
+        if (!estSein(e.data?.kind)) j.ml += (e.data?.amount as number) ?? 0
+      } else if (e.type === 'diaper') {
+        j.couches += 1
+      } else if (e.type === 'sleep') {
+        const min = (e.data?.durationMin as number) ?? 0
+        if (estNuit(d, journee)) j.nuit += min; else j.sieste += min
+      }
+    }
+    const serie = Array.from(parJour.values()).sort((a, b) => a.date.getTime() - b.date.getTime())
+
     return {
       jours,
+      serie,
       repas: repas.length,
       biberonMl: somme(biberons, 'amount'),
       teteeMin: somme(tetees, 'durationMin'),
@@ -1470,6 +1506,43 @@ export default function BebePage() {
                   quelque chose a été noté — pas sur la période entière, sinon les jours sans saisie
                   tireraient les moyennes vers le bas.
                 </p>
+
+                {/* Courbes du jour le jour — l'écart entre deux jours saute aux
+                    yeux là où une moyenne le lisse. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">Repas par jour</p>
+                    <BarChart
+                      points={stats.serie.map(j => ({ label: labelJourCourt(j.date), valeurs: [j.repas] }))}
+                      couleurs={[COURBE_REPAS]}
+                    />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">Couches par jour</p>
+                    <BarChart
+                      points={stats.serie.map(j => ({ label: labelJourCourt(j.date), valeurs: [j.couches] }))}
+                      couleurs={[COURBE_COUCHES]}
+                    />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">Sommeil par jour</p>
+                    <BarChart
+                      points={stats.serie.map(j => ({ label: labelJourCourt(j.date), valeurs: [j.nuit, j.sieste] }))}
+                      couleurs={[COURBE_NUIT, COURBE_SIESTE]}
+                      format={v => formatDuration(Math.round(v))}
+                      legendes={['Nuit', 'Siestes']}
+                    />
+                  </div>
+                  {stats.biberonMl > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">Lait au biberon par jour (ml)</p>
+                      <BarChart
+                        points={stats.serie.map(j => ({ label: labelJourCourt(j.date), valeurs: [j.ml] }))}
+                        couleurs={[COURBE_LAIT]}
+                      />
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <StatBloc icon={Milk} bg="bg-sky-100" tc="text-sky-600" titre="Repas"
