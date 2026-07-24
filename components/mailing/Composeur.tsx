@@ -7,6 +7,7 @@ import { enregistrerEnvoi } from "@/lib/mailingService";
 import {
   DELAI_RELANCE_JOURS, MIN_PERSONNALISATION, QUOTA_JOUR, STATUT_LABEL, STATUT_STYLE,
   doublonSociete, peutContacter, estPrioritaireManuel, estPrioritaireAuto, destinatairesProspect,
+  libelleContact,
 } from "@/lib/mailingModel";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import { SparklesIcon } from "@heroicons/react/24/outline";
@@ -591,11 +592,26 @@ export default function Composeur({
               </div>
               <div className="text-base font-semibold">{prospect?.societe}</div>
               <div className="text-xs text-gray-500">
-                {destinataires.join(", ") || prospect?.email}
+                {destinataires.length === 0 && prospect?.email}
+                {destinataires.map((d) => {
+                  // Qui est derrière l'adresse : principale, ou l'un des contacts en plus
+                  const sup = prospect?.contactsSupplementaires?.find(
+                    (c) => c.email.trim().toLowerCase() === d,
+                  );
+                  const qui = sup
+                    ? libelleContact(sup.nom, sup.role)
+                    : libelleContact(prospect?.emailNom, prospect?.emailRole);
+                  return (
+                    <div key={d}>
+                      {d}
+                      {qui && <span className="text-gray-400"> ({qui})</span>}
+                    </div>
+                  );
+                })}
                 {destinataires.length > 1 && (
-                  <span className="ml-1 text-gray-400">
-                    ({destinataires.length} destinataires, un seul message)
-                  </span>
+                  <div className="text-gray-400">
+                    {destinataires.length} destinataires — un seul message
+                  </div>
                 )}
               </div>
             </div>

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { createProspect, updateProspect } from "@/lib/mailingService";
-import { isEmailGenerique, isEmailValide, normalizeEmail } from "@/lib/mailingModel";
+import { isEmailGenerique, isEmailValide, normalizeEmail, ROLES_CONTACT } from "@/lib/mailingModel";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import {
   libelleEffectif, normaliserSiret, rechercherCandidats, rechercherParSiret, siretValide,
   type Candidats, type InfoEntreprise,
 } from "@/lib/sirene";
-import type { MailingMetier, Prospect, ProspectStatut } from "@/types";
+import type { MailingMetier, Prospect, ProspectContact, ProspectStatut } from "@/types";
 
 const inputCls = "w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 transition";
 const labelCls = "block text-xs font-medium text-gray-600 mb-1";
@@ -29,9 +30,14 @@ export default function ProspectModal({
 
   const [societe, setSociete] = useState(prospect?.societe ?? "");
   const [email, setEmail] = useState(prospect?.email ?? "");
-  // Adresses supplémentaires : le mail leur part EN COPIE, dans le même message
-  const [emailsSup, setEmailsSup] = useState<string[]>(prospect?.emailsSupplementaires ?? []);
-  const [nouvelEmail, setNouvelEmail] = useState("");
+  const [emailRole, setEmailRole] = useState(prospect?.emailRole ?? "");
+  const [emailNom, setEmailNom] = useState(prospect?.emailNom ?? "");
+  // Contacts supplémentaires : le mail leur part dans le MÊME message.
+  // Éditables en lignes (adresse / rôle / nom), pas en pastilles : on saisit et
+  // on corrige ces champs, une croix à côté du texte se cliquerait par erreur.
+  const [contactsSup, setContactsSup] = useState<ProspectContact[]>(
+    prospect?.contactsSupplementaires ?? [],
+  );
   const [metierId, setMetierId] = useState(prospect?.metierId ?? "");
   const [telephone, setTelephone] = useState(prospect?.telephone ?? "");
   const [codePostal, setCodePostal] = useState(prospect?.codePostal ?? "");
@@ -110,16 +116,16 @@ export default function ProspectModal({
 
   const emailOk = !!norm && isEmailValide(norm);
 
-  const normNouveau = normalizeEmail(nouvelEmail);
-  const nouvelEmailOk =
-    !!normNouveau && isEmailValide(normNouveau) && normNouveau !== norm && !emailsSup.includes(normNouveau);
-  const ajouterEmail = () => {
-    if (!nouvelEmailOk) return;
-    setEmailsSup((prev) => [...prev, normNouveau]);
-    setNouvelEmail("");
-  };
+  const majContact = (i: number, patch: Partial<ProspectContact>) =>
+    setContactsSup((prev) => prev.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+
+  // Une adresse supplémentaire vide n'est pas une erreur : la ligne vient d'être
+  // ajoutée. On ne signale que ce qui est saisi ET faux.
+  const contactsInvalides = contactsSup.some(
+    (c) => c.email.trim() && !isEmailValide(normalizeEmail(c.email)),
+  );
   // Signalé, mais non bloquant : l'adresse est simplement écartée à l'envoi.
-  const emailSupOppose = emailsSup.some((e) => optouts.has(e));
+  const contactOppose = contactsSup.some((c) => optouts.has(normalizeEmail(c.email)));
   const bloquant = oppose || doublonEmail || societeOpposee;
   const valide = societe.trim().length >= 2 && emailOk && !bloquant;
 
@@ -130,8 +136,17 @@ export default function ProspectModal({
       const champs = {
         societe: societe.trim(),
         email: norm,
-        // Jamais l'adresse principale en double, et rien d'invalide
-        emailsSupplementaires: emailsSup.filter((e) => e !== norm),
+        emailRole,
+        emailNom: emailNom.trim(),
+        // Lignes vides ignorées, adresses normalisées, et jamais l'adresse
+        // principale en double (elle est déjà destinataire).
+        contactsSupplementaires: contactsSup
+          .map((c) => ({
+            email: normalizeEmail(c.email),
+            role: c.role ?? "",
+            nom: (c.nom ?? "").trim(),
+          }))
+          .filter((c) => c.email && isEmailValide(c.email) && c.email !== norm),
         metierId,
         metier: metiers.find((m) => m.id === metierId)?.metier ?? "",
         telephone: telephone.trim(),
@@ -186,61 +201,96 @@ export default function ProspectModal({
           </div>
         </div>
 
-        {/* Adresses supplémentaires — un seul message part, avec tout le monde
+        {/* Qui est derrière l'adresse principale */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Rôle de ce contact</label>
+            <select value={emailRole} onChange={(e) => setEmailRole(e.target.value)} className={inputCls}>
+              <option value="">— Non précisé —</option>
+              {ROLES_CONTACT.map((r) => (
+                <option key={r.id} value={r.id}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Nom de la personne</label>
+            <input
+              value={emailNom}
+              onChange={(e) => setEmailNom(e.target.value)}
+              placeholder="Jean Dupont"
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        {/* Contacts supplémentaires — un seul message part, avec tout le monde
             en destinataire. Ce n'est donc pas un second contact. */}
         <div>
           <label className={labelCls}>
-            Autres adresses <span className="text-gray-400">(mises en destinataire du même message)</span>
+            Autres contacts{" "}
+            <span className="text-gray-400">(mis en destinataire du même message)</span>
           </label>
-          {emailsSup.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {emailsSup.map((e) => (
-                <span
-                  key={e}
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] bg-blue-50 text-blue-700"
-                >
-                  {e}
-                  <button
-                    type="button"
-                    onClick={() => setEmailsSup((prev) => prev.filter((x) => x !== e))}
-                    className="text-blue-400 hover:text-red-500 transition"
-                    title="Retirer cette adresse"
-                  >
-                    ✕
-                  </button>
-                </span>
+
+          {contactsSup.length > 0 && (
+            <div className="space-y-2 mb-2">
+              {contactsSup.map((c, i) => (
+                <div key={i} className="border rounded-lg p-2.5 bg-gray-50/60 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={c.email}
+                      onChange={(e) => majContact(i, { email: e.target.value })}
+                      placeholder="direction@exemple.fr"
+                      className={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setContactsSup((prev) => prev.filter((_, j) => j !== i))}
+                      className="px-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition shrink-0"
+                      title="Retirer ce contact"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <select
+                      value={c.role ?? ""}
+                      onChange={(e) => majContact(i, { role: e.target.value })}
+                      className={inputCls}
+                    >
+                      <option value="">— Rôle non précisé —</option>
+                      {ROLES_CONTACT.map((r) => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      value={c.nom ?? ""}
+                      onChange={(e) => majContact(i, { nom: e.target.value })}
+                      placeholder="Nom de la personne"
+                      className={inputCls}
+                    />
+                  </div>
+                  {!!c.email.trim() && !isEmailValide(normalizeEmail(c.email)) && (
+                    <p className="text-[11px] text-amber-700">Cette adresse n&apos;est pas valide.</p>
+                  )}
+                  {normalizeEmail(c.email) === norm && !!norm && (
+                    <p className="text-[11px] text-amber-700">
+                      C&apos;est déjà l&apos;adresse principale : elle ne sera pas ajoutée deux fois.
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           )}
-          <div className="flex gap-2">
-            <input
-              value={nouvelEmail}
-              onChange={(e) => setNouvelEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); ajouterEmail(); }
-              }}
-              placeholder="direction@exemple.fr"
-              className={inputCls}
-            />
-            <button
-              type="button"
-              onClick={ajouterEmail}
-              disabled={!nouvelEmailOk}
-              className="px-3 py-2 rounded-lg text-sm border hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-            >
-              Ajouter
-            </button>
-          </div>
-          {!!nouvelEmail.trim() && !nouvelEmailOk && (
-            <p className="text-[11px] text-amber-700 mt-1">
-              {normalizeEmail(nouvelEmail) === norm
-                ? "C'est déjà l'adresse principale."
-                : emailsSup.includes(normalizeEmail(nouvelEmail))
-                  ? "Cette adresse est déjà dans la liste."
-                  : "Cette adresse n'est pas valide."}
-            </p>
-          )}
-          {emailSupOppose && (
+
+          <button
+            type="button"
+            onClick={() => setContactsSup((prev) => [...prev, { email: "", role: "", nom: "" }])}
+            className="px-3 py-2 rounded-lg text-sm border hover:bg-gray-50 transition"
+          >
+            + Ajouter un contact
+          </button>
+
+          {contactOppose && (
             <p className="text-[11px] text-amber-700 mt-1">
               Une de ces adresses s&apos;est opposée à toute sollicitation : elle sera
               automatiquement retirée des destinataires au moment de l&apos;envoi.

@@ -1373,6 +1373,17 @@ export interface MailPerso {
   question?: string
 }
 
+/**
+ * Une adresse de contact chez le prospect : à qui elle appartient, et à quel
+ * titre. Savoir qu'on écrit au patron ou à l'accueil change ce qu'on écrit.
+ */
+export interface ProspectContact {
+  email: string
+  /** Identifiant d'un rôle du catalogue `ROLES_CONTACT` (lib/mailingModel) */
+  role?: string
+  nom?: string
+}
+
 export interface Prospect {
   id: string
   userId: string
@@ -1381,13 +1392,17 @@ export interface Prospect {
   societe: string
   email: string
   emailNormalise: string         // clé de dédup + de contrôle d'opposition
+  /** Rôle de la personne derrière l'adresse principale (id de ROLES_CONTACT) */
+  emailRole?: string
+  /** Nom de la personne derrière l'adresse principale */
+  emailNom?: string
   /**
-   * Adresses SUPPLÉMENTAIRES du même contact/de la même société (ex. l'adresse
-   * générique `contact@` en plus de celle du dirigeant). Le mail leur est envoyé
-   * en même temps, dans UN SEUL message — ce n'est donc pas un second envoi.
+   * Contacts SUPPLÉMENTAIRES de la même société (ex. le patron en plus de
+   * l'adresse générique). Le mail leur est envoyé en même temps, dans UN SEUL
+   * message — ce n'est donc pas un second envoi.
    * `email` reste l'adresse principale : c'est elle qui sert de clé de dédup.
    */
-  emailsSupplementaires?: string[]
+  contactsSupplementaires?: ProspectContact[]
   domaine?: string
   telephone?: string
   codePostal?: string

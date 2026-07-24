@@ -18,7 +18,7 @@ import AutoTextarea from "@/components/ui/AutoTextarea";
 import {
   QUOTA_JOUR, peutContacter, isEmailGenerique, STATUT_LABEL, STATUT_STYLE,
   aRepondu, contacteDepuis, estPrioritaireManuel, estPrioritaireAuto, evaluerPrioriteAuto,
-  ANGLES, anglesDe, angleLabel,
+  ANGLES, anglesDe, angleLabel, libelleContact,
 } from "@/lib/mailingModel";
 import Modal from "@/components/ui/Modal";
 import {
@@ -1436,13 +1436,13 @@ export default function MailingPage() {
                             👷 {p.effectifReel}
                           </span>
                         )}
-                        {(p.emailsSupplementaires?.length ?? 0) > 0 && (
+                        {(p.contactsSupplementaires?.length ?? 0) > 0 && (
                           <span
                             className={`${BADGE.base} ${BADGE.adressesMultiples}`}
-                            title={`Le message part aussi à : ${p.emailsSupplementaires!.join(", ")}`}
+                            title={`Le message part aussi à : ${p.contactsSupplementaires!.map((c) => c.email).join(", ")}`}
                           >
-                            +{p.emailsSupplementaires!.length} adresse
-                            {p.emailsSupplementaires!.length > 1 ? "s" : ""}
+                            +{p.contactsSupplementaires!.length} contact
+                            {p.contactsSupplementaires!.length > 1 ? "s" : ""}
                           </span>
                         )}
                         {p.mailPerso && (
@@ -1533,10 +1533,20 @@ export default function MailingPage() {
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {p.email}
+                        {libelleContact(p.emailNom, p.emailRole)
+                          ? ` (${libelleContact(p.emailNom, p.emailRole)})`
+                          : ""}
                         {p.metier ? ` · ${p.metier}` : ""}
                         {p.ville ? ` · ${p.ville}` : ""}
                         {(p.nbEnvois ?? 0) > 0 ? ` · ${p.nbEnvois} envoi${(p.nbEnvois ?? 0) > 1 ? "s" : ""}` : ""}
                       </div>
+                      {/* Les autres destinataires du même message, avec qui ils sont */}
+                      {(p.contactsSupplementaires ?? []).map((c, i) => (
+                        <div key={i} className="text-xs text-gray-400 truncate">
+                          + {c.email}
+                          {libelleContact(c.nom, c.role) ? ` (${libelleContact(c.nom, c.role)})` : ""}
+                        </div>
+                      ))}
                       {!blocage.ok && (
                         <div className="text-[11px] text-amber-700 mt-0.5">{blocage.raison}</div>
                       )}

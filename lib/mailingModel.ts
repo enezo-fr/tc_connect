@@ -200,6 +200,36 @@ export function contacteDepuis(p: Prospect, depuis: Date | null): boolean {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Rôles possibles derrière une adresse. Sert à savoir À QUI on parle : le même
+ * message n'a pas le même poids selon qu'il arrive chez le patron, chez la
+ * personne qui gère l'administratif ou sur l'accueil.
+ */
+export const ROLES_CONTACT: { id: string; label: string }[] = [
+  { id: 'patron',      label: 'Patron / dirigeant' },
+  { id: 'associe',     label: 'Associé / cogérant' },
+  { id: 'conjoint',    label: 'Conjoint(e) qui gère' },
+  { id: 'admin',       label: 'Administratif / gestion' },
+  { id: 'assistante',  label: 'Assistant(e) / secrétariat' },
+  { id: 'compta',      label: 'Comptabilité' },
+  { id: 'commercial',  label: 'Commercial' },
+  { id: 'conducteur',  label: 'Conducteur de travaux' },
+  { id: 'chef',        label: 'Chef de chantier' },
+  { id: 'bureau',      label: "Bureau d'études / technique" },
+  { id: 'rh',          label: 'Recrutement / RH' },
+  { id: 'accueil',     label: 'Accueil / standard' },
+  { id: 'generique',   label: 'Adresse générique' },
+  { id: 'autre',       label: 'Autre' },
+]
+
+export const roleContactLabel = (id?: string): string =>
+  ROLES_CONTACT.find((r) => r.id === id)?.label ?? ''
+
+/** « Jean Dupont — Patron / dirigeant », « Patron / dirigeant », ou '' */
+export function libelleContact(nom?: string, role?: string): string {
+  return [nom?.trim(), roleContactLabel(role)].filter(Boolean).join(' — ')
+}
+
+/**
  * Toutes les adresses à mettre en destinataire pour un prospect : l'adresse
  * principale puis les supplémentaires, normalisées, dédupliquées et **purgées
  * des adresses opposées**.
@@ -212,7 +242,7 @@ export function contacteDepuis(p: Prospect, depuis: Date | null): boolean {
  * `peutContacter`.)
  */
 export function destinatairesProspect(p: Prospect, optouts?: Set<string>): string[] {
-  const brut = [p.email, ...(p.emailsSupplementaires ?? [])]
+  const brut = [p.email, ...(p.contactsSupplementaires ?? []).map((c) => c.email)]
   const vus = new Set<string>()
   const out: string[] = []
   for (const e of brut) {
