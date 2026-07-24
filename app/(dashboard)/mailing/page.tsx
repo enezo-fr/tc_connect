@@ -152,6 +152,7 @@ const BADGE = {
   gerantSenior: "bg-stone-100 text-stone-600",
   groupe: "bg-yellow-100 text-yellow-800 font-medium",
   generique: "bg-gray-100 text-gray-500",
+  adressesMultiples: "bg-teal-50 text-teal-700",
 } as const;
 
 const cleCompteurs = (uid: string) => `mailing:compteurs:${uid}`;
@@ -1433,6 +1434,15 @@ export default function MailingPage() {
                             title="Effectif réel trouvé par l'étude"
                           >
                             👷 {p.effectifReel}
+                          </span>
+                        )}
+                        {(p.emailsSupplementaires?.length ?? 0) > 0 && (
+                          <span
+                            className={`${BADGE.base} ${BADGE.adressesMultiples}`}
+                            title={`Le message part aussi à : ${p.emailsSupplementaires!.join(", ")}`}
+                          >
+                            +{p.emailsSupplementaires!.length} adresse
+                            {p.emailsSupplementaires!.length > 1 ? "s" : ""}
                           </span>
                         )}
                         {p.mailPerso && (

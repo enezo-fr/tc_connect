@@ -6,7 +6,7 @@ import { copyText } from "@/lib/clipboard";
 import { enregistrerEnvoi } from "@/lib/mailingService";
 import {
   DELAI_RELANCE_JOURS, MIN_PERSONNALISATION, QUOTA_JOUR, STATUT_LABEL, STATUT_STYLE,
-  doublonSociete, peutContacter, estPrioritaireManuel, estPrioritaireAuto,
+  doublonSociete, peutContacter, estPrioritaireManuel, estPrioritaireAuto, destinatairesProspect,
 } from "@/lib/mailingModel";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import { SparklesIcon } from "@heroicons/react/24/outline";
@@ -182,6 +182,9 @@ export default function Composeur({
 
   // Le kit de BASE (pas le kit adapté) : le prompt doit proposer une adaptation
   // du mail type, pas une adaptation de l'adaptation précédente.
+  // Adresses réellement écrites : principale + supplémentaires, sans les opposées
+  const destinataires = prospect ? destinatairesProspect(prospect, optouts) : [];
+
   const promptRecherche = prospect ? construirePromptRecherche(prospect, metier) : "";
   const html = ctx ? renderMailHtml(ctx) : "";
   const texte = ctx ? renderMailTexte(ctx) : "";
@@ -238,8 +241,9 @@ export default function Composeur({
     setCopie(ok);
     // `assign()` plutôt qu'une affectation sur `location.href` : c'est équivalent,
     // mais la règle d'immutabilité du compilateur React interdit la seconde forme.
+    // Plusieurs destinataires = une virgule (RFC 6068) : UN SEUL message part.
     window.location.assign(
-      `mailto:${encodeURIComponent(prospect.email)}?subject=${encodeURIComponent(sujet)}`,
+      `mailto:${destinataires.map(encodeURIComponent).join(",")}?subject=${encodeURIComponent(sujet)}`,
     );
   };
 
@@ -263,6 +267,7 @@ export default function Composeur({
         type: (prospect.nbEnvois ?? 0) > 0 ? "relance" : "initial",
         objet: sujet,
         corpsHtml: html,          // figé : jamais recalculé depuis le kit
+        destinataires,            // figé aussi : à qui c'est VRAIMENT parti
         personnalisation: perso.trim(),
         canal: "brouillon",
       },
@@ -585,7 +590,14 @@ export default function Composeur({
                 Envoi {index + 1} sur {file.length}
               </div>
               <div className="text-base font-semibold">{prospect?.societe}</div>
-              <div className="text-xs text-gray-500">{prospect?.email}</div>
+              <div className="text-xs text-gray-500">
+                {destinataires.join(", ") || prospect?.email}
+                {destinataires.length > 1 && (
+                  <span className="ml-1 text-gray-400">
+                    ({destinataires.length} destinataires, un seul message)
+                  </span>
+                )}
+              </div>
             </div>
             <button
               onClick={() => { setFile([]); setIndex(0); }}

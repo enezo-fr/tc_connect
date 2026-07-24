@@ -146,6 +146,9 @@ export const updateProspect = async (id: string, data: Partial<Prospect>): Promi
   // en base. On réinjecte donc tout ce que l'appelant a explicitement fourni.
   for (const [cle, valeur] of Object.entries(data)) {
     if (valeur === '') payload[cle] = ''
+    // Même piège avec les listes : retirer la dernière adresse supplémentaire
+    // doit vider le champ, pas laisser l'ancienne liste en base.
+    if (Array.isArray(valeur) && valeur.length === 0) payload[cle] = []
   }
   if (data.email !== undefined) {
     payload.emailNormalise = normalizeEmail(data.email)

@@ -29,6 +29,9 @@ export default function ProspectModal({
 
   const [societe, setSociete] = useState(prospect?.societe ?? "");
   const [email, setEmail] = useState(prospect?.email ?? "");
+  // Adresses supplémentaires : le mail leur part EN COPIE, dans le même message
+  const [emailsSup, setEmailsSup] = useState<string[]>(prospect?.emailsSupplementaires ?? []);
+  const [nouvelEmail, setNouvelEmail] = useState("");
   const [metierId, setMetierId] = useState(prospect?.metierId ?? "");
   const [telephone, setTelephone] = useState(prospect?.telephone ?? "");
   const [codePostal, setCodePostal] = useState(prospect?.codePostal ?? "");
@@ -106,6 +109,17 @@ export default function ProspectModal({
   const doublonSociete = !!soc && autres.some((p) => (p.societe ?? "").trim().toLowerCase() === soc);
 
   const emailOk = !!norm && isEmailValide(norm);
+
+  const normNouveau = normalizeEmail(nouvelEmail);
+  const nouvelEmailOk =
+    !!normNouveau && isEmailValide(normNouveau) && normNouveau !== norm && !emailsSup.includes(normNouveau);
+  const ajouterEmail = () => {
+    if (!nouvelEmailOk) return;
+    setEmailsSup((prev) => [...prev, normNouveau]);
+    setNouvelEmail("");
+  };
+  // Signalé, mais non bloquant : l'adresse est simplement écartée à l'envoi.
+  const emailSupOppose = emailsSup.some((e) => optouts.has(e));
   const bloquant = oppose || doublonEmail || societeOpposee;
   const valide = societe.trim().length >= 2 && emailOk && !bloquant;
 
@@ -116,6 +130,8 @@ export default function ProspectModal({
       const champs = {
         societe: societe.trim(),
         email: norm,
+        // Jamais l'adresse principale en double, et rien d'invalide
+        emailsSupplementaires: emailsSup.filter((e) => e !== norm),
         metierId,
         metier: metiers.find((m) => m.id === metierId)?.metier ?? "",
         telephone: telephone.trim(),
@@ -168,6 +184,68 @@ export default function ProspectModal({
               className={inputCls}
             />
           </div>
+        </div>
+
+        {/* Adresses supplémentaires — un seul message part, avec tout le monde
+            en destinataire. Ce n'est donc pas un second contact. */}
+        <div>
+          <label className={labelCls}>
+            Autres adresses <span className="text-gray-400">(mises en destinataire du même message)</span>
+          </label>
+          {emailsSup.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {emailsSup.map((e) => (
+                <span
+                  key={e}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] bg-blue-50 text-blue-700"
+                >
+                  {e}
+                  <button
+                    type="button"
+                    onClick={() => setEmailsSup((prev) => prev.filter((x) => x !== e))}
+                    className="text-blue-400 hover:text-red-500 transition"
+                    title="Retirer cette adresse"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              value={nouvelEmail}
+              onChange={(e) => setNouvelEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); ajouterEmail(); }
+              }}
+              placeholder="direction@exemple.fr"
+              className={inputCls}
+            />
+            <button
+              type="button"
+              onClick={ajouterEmail}
+              disabled={!nouvelEmailOk}
+              className="px-3 py-2 rounded-lg text-sm border hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              Ajouter
+            </button>
+          </div>
+          {!!nouvelEmail.trim() && !nouvelEmailOk && (
+            <p className="text-[11px] text-amber-700 mt-1">
+              {normalizeEmail(nouvelEmail) === norm
+                ? "C'est déjà l'adresse principale."
+                : emailsSup.includes(normalizeEmail(nouvelEmail))
+                  ? "Cette adresse est déjà dans la liste."
+                  : "Cette adresse n'est pas valide."}
+            </p>
+          )}
+          {emailSupOppose && (
+            <p className="text-[11px] text-amber-700 mt-1">
+              Une de ces adresses s&apos;est opposée à toute sollicitation : elle sera
+              automatiquement retirée des destinataires au moment de l&apos;envoi.
+            </p>
+          )}
         </div>
 
         <div>

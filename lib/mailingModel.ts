@@ -196,6 +196,36 @@ export function contacteDepuis(p: Prospect, depuis: Date | null): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/* Destinataires                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Toutes les adresses à mettre en destinataire pour un prospect : l'adresse
+ * principale puis les supplémentaires, normalisées, dédupliquées et **purgées
+ * des adresses opposées**.
+ *
+ * ⚠️ Le registre d'opposition est GLOBAL et vaut par ADRESSE : si le dirigeant
+ * s'est désinscrit mais que `contact@` ne l'a pas fait, on n'écrit qu'à la
+ * seconde. Sans ce filtre, une adresse retirée continuerait de recevoir le mail
+ * en copie — exactement ce que le lien de désinscription promet d'empêcher.
+ * (Le blocage complet quand l'adresse PRINCIPALE est opposée reste, lui, dans
+ * `peutContacter`.)
+ */
+export function destinatairesProspect(p: Prospect, optouts?: Set<string>): string[] {
+  const brut = [p.email, ...(p.emailsSupplementaires ?? [])]
+  const vus = new Set<string>()
+  const out: string[] = []
+  for (const e of brut) {
+    const n = normalizeEmail(e ?? '')
+    if (!n || !isEmailValide(n) || vus.has(n)) continue
+    if (optouts?.has(n)) continue
+    vus.add(n)
+    out.push(n)
+  }
+  return out
+}
+
+/* ------------------------------------------------------------------ */
 /* Angles de discours                                                  */
 /* ------------------------------------------------------------------ */
 

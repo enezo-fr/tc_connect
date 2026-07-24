@@ -1381,6 +1381,13 @@ export interface Prospect {
   societe: string
   email: string
   emailNormalise: string         // clé de dédup + de contrôle d'opposition
+  /**
+   * Adresses SUPPLÉMENTAIRES du même contact/de la même société (ex. l'adresse
+   * générique `contact@` en plus de celle du dirigeant). Le mail leur est envoyé
+   * en même temps, dans UN SEUL message — ce n'est donc pas un second envoi.
+   * `email` reste l'adresse principale : c'est elle qui sert de clé de dédup.
+   */
+  emailsSupplementaires?: string[]
   domaine?: string
   telephone?: string
   codePostal?: string
@@ -1512,6 +1519,8 @@ export interface MailingEnvoi {
   type: 'initial' | 'relance'
   objet: string
   corpsHtml: string              // figé, jamais recalculé
+  /** Adresses réellement mises en destinataire (absent sur les envois d'avant le multi-adresses) */
+  destinataires?: string[]
   personnalisation: string
   canal: 'brouillon' | 'auto'
   envoyeAt: Timestamp
