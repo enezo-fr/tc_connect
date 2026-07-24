@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import {
   collection, collectionGroup, query, where, onSnapshot,
-  addDoc, updateDoc, deleteDoc, doc, getDocs, writeBatch, Timestamp,
+  addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, writeBatch, Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { deleteImage } from '@/lib/uploadImage'
 import type { Biere, Degustation } from '@/types'
 
 /**
@@ -57,9 +58,15 @@ export function useBieres(uid: string | undefined) {
   const majBiere = (id: string, data: Partial<Omit<Biere, 'id'>>) =>
     updateDoc(doc(db, 'bieres', id), { ...data, updatedAt: Timestamp.now() })
 
-  /** Supprime la bière ET ses dégustations (sinon elles restent orphelines) */
+  /**
+   * Supprime la bière, ses dégustations ET leurs photos dans Storage.
+   * Sans le ménage des images, chaque suppression laisserait des fichiers
+   * facturés que plus rien ne référence.
+   */
   const supprimerBiere = async (id: string) => {
     const snap = await getDocs(collection(db, 'bieres', id, 'degustations'))
+    const photos = snap.docs.flatMap((d) => (d.data().photos ?? []) as string[])
+    await Promise.allSettled(photos.map((url) => deleteImage(url)))
     if (snap.docs.length) {
       const batch = writeBatch(db)
       snap.docs.forEach((d) => batch.delete(d.ref))
@@ -82,8 +89,14 @@ export function useBieres(uid: string | undefined) {
   const majDegustation = (biereId: string, id: string, data: Partial<Omit<Degustation, 'id'>>) =>
     updateDoc(doc(db, 'bieres', biereId, 'degustations', id), data)
 
-  const supprimerDegustation = (biereId: string, id: string) =>
-    deleteDoc(doc(db, 'bieres', biereId, 'degustations', id))
+  /** Supprime la dégustation et les photos qu'elle portait */
+  const supprimerDegustation = async (biereId: string, id: string) => {
+    const ref = doc(db, 'bieres', biereId, 'degustations', id)
+    const snap = await getDoc(ref)
+    const photos = (snap.data()?.photos ?? []) as string[]
+    await Promise.allSettled(photos.map((url) => deleteImage(url)))
+    await deleteDoc(ref)
+  }
 
   return {
     bieres, degustations, loading,

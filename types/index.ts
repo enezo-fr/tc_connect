@@ -1194,8 +1194,14 @@ export interface Degustation {
   /** L'avis en toutes lettres — le champ le plus rempli de l'ancienne base */
   analyse?: string
 
-  /** Nom du bar / de la ville, tel qu'on l'écrit */
+  /**
+   * L'établissement seul (« De Garre », « Camping Le Cenic »).
+   * ⚠️ L'ancienne app entassait bar et ville dans un seul champ séparé par « / »
+   * pour pouvoir faire des statistiques ; ils sont désormais distincts.
+   */
   lieu?: string
+  /** La ville seule (« Bruges », « Pénestin ») — sert aux statistiques */
+  ville?: string
   /** Coordonnées « lat, lng » si relevées */
   gps?: string
   /** Terrasse / Intérieur */

@@ -125,16 +125,35 @@ export function topPersonne(liste: BiereCalculee[], uid: string, n = 5): { biere
     .slice(0, n)
 }
 
-/** Là où on boit le plus — les dégustations portent le nom du bar */
-export function lieuxFrequents(liste: BiereCalculee[], n = 8): { lieu: string; nb: number }[] {
+/** Là où on boit le plus — `cle` permet de compter par établissement ou par ville */
+export function lieuxFrequents(
+  liste: BiereCalculee[],
+  n = 8,
+  cle: 'lieu' | 'ville' = 'lieu',
+): { lieu: string; nb: number }[] {
   const m = new Map<string, number>()
   for (const b of liste) {
     for (const d of b.degustations) {
-      const l = d.lieu?.trim()
+      const l = d[cle]?.trim()
       if (l) m.set(l, (m.get(l) ?? 0) + 1)
     }
   }
   return [...m.entries()].map(([lieu, nb]) => ({ lieu, nb })).sort((a, b) => b.nb - a.nb).slice(0, n)
+}
+
+/**
+ * Sépare l'ancien champ « Bar / Ville » en deux.
+ * Utilisé par la migration et par la saisie, quand on colle encore une valeur
+ * au format d'avant. Sans séparateur, on ne devine pas : tout reste dans `lieu`.
+ */
+export function separerLieu(v?: string): { lieu: string; ville: string } {
+  const s = (v ?? '').trim()
+  if (!s) return { lieu: '', ville: '' }
+  const m = s.split(/\s*[/,]\s*/)
+  if (m.length >= 2) {
+    return { lieu: m.slice(0, -1).join(' / ').trim(), ville: m[m.length - 1].trim() }
+  }
+  return { lieu: s, ville: '' }
 }
 
 /** Répartition des dégustations par année, la plus récente d'abord */
