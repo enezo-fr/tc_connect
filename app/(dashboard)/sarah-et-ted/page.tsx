@@ -203,15 +203,45 @@ export default function ADeuxPage() {
     setPartieActive(id)
   }
 
-  const ajouterTour = async (p: DuoPartie) => {
-    const scores = p.joueurs.map((j) => ({ joueur: j, points: Number(tourForm[j] ?? 0) || 0 }))
-    await parties.modifier(p.id, { tours: [...(p.tours ?? []), { scores }] })
+  /** Joueurs déjà vus : on les propose en pastilles plutôt que de les retaper */
+  const joueursConnus = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const p of parties.items as DuoPartie[]) {
+      for (const j of p.joueurs) m.set(j, (m.get(j) ?? 0) + 1)
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([j]) => j)
+  }, [parties.items])
+
+  /** Partie et index du tour en cours de saisie (index null = nouveau tour) */
+  const [tourPour, setTourPour] = useState<{ partie: DuoPartie; index: number | null } | null>(null)
+
+  const ouvrirTour = (partie: DuoPartie, index: number | null) => {
+    const t = index !== null ? partie.tours?.[index] : null
+    setTourForm(Object.fromEntries(
+      partie.joueurs.map((j) => [j, String(t?.scores.find((s) => s.joueur === j)?.points ?? '')]),
+    ))
+    setTourPour({ partie, index })
+  }
+
+  const enregistrerTour = async () => {
+    if (!tourPour) return
+    const { partie, index } = tourPour
+    const scores = partie.joueurs.map((j) => ({ joueur: j, points: Number(tourForm[j] ?? 0) || 0 }))
+    const tours = [...(partie.tours ?? [])]
+    if (index === null) tours.push({ scores })
+    else tours[index] = { scores }
+    await parties.modifier(partie.id, { tours })
+    setTourPour(null)
     setTourForm({})
   }
 
   const retirerTour = async (p: DuoPartie, index: number) => {
     await parties.modifier(p.id, { tours: (p.tours ?? []).filter((_, i) => i !== index) })
   }
+
+  /** Total actuel d'un joueur, hors tour en cours d'édition */
+  const totalAvant = (p: DuoPartie, joueur: string, sauf: number | null) =>
+    (p.tours ?? []).reduce((s, t, i) => (i === sauf ? s : s + (t.scores.find((x) => x.joueur === joueur)?.points ?? 0)), 0)
 
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; go: () => Promise<void> } | null>(null)
 
@@ -454,8 +484,17 @@ export default function ADeuxPage() {
                 <p className="text-sm text-gray-400">Aucune partie enregistrée.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {listeParties.map((p) => {
+              <div className="space-y-4">
+                {/* En cours d'abord : c'est là qu'on saisit, le reste est de l'archive */}
+                {([
+                  { titre: 'Parties en cours', liste: listeParties.filter((p) => !p.termine) },
+                  { titre: 'Parties terminées', liste: listeParties.filter((p) => p.termine) },
+                ]).filter((g) => g.liste.length > 0).map((groupe) => (
+                  <div key={groupe.titre} className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      {groupe.titre} · {groupe.liste.length}
+                    </p>
+                    {groupe.liste.map((p) => {
                   const ouvert = partieActive === p.id
                   const cl = classementPartie(p)
                   const vainqueur = p.tours?.length ? cl[0] : null
@@ -480,11 +519,21 @@ export default function ADeuxPage() {
 
                       {ouvert && (
                         <div className="border-t border-gray-50 px-4 py-3 space-y-3">
+                          {/* Bouton principal : saisir un tour, sans avoir à viser un champ */}
+                          {!p.termine && (
+                            <button onClick={() => ouvrirTour(p, null)}
+                              className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium py-2.5 rounded-xl transition">
+                              <Plus size={16} />Ajouter un tour
+                            </button>
+                          )}
+
                           {/* Classement */}
                           <div className="space-y-1">
                             {cl.map((c) => (
                               <div key={c.joueur} className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-gray-300 w-5">{c.rang}</span>
+                                <span className={`text-xs font-bold w-5 ${c.rang === 1 && p.tours?.length ? 'text-amber-500' : 'text-gray-300'}`}>
+                                  {c.rang}
+                                </span>
                                 <span className="text-sm text-gray-700 flex-1 truncate">{c.joueur}</span>
                                 <span className="text-sm font-semibold text-gray-800">{c.total}</span>
                               </div>
@@ -494,15 +543,19 @@ export default function ADeuxPage() {
                             </p>
                           </div>
 
-                          {/* Tours joués */}
+                          {/* Tours joués — cliquer un tour le corrige */}
                           {(p.tours?.length ?? 0) > 0 && (
                             <div className="border-t border-dashed border-gray-200 pt-2 space-y-1">
                               {p.tours.map((t, i) => (
                                 <div key={i} className="flex items-center gap-2 text-xs">
-                                  <span className="text-gray-400 w-12 shrink-0">Tour {i + 1}</span>
-                                  <span className="flex-1 text-gray-600 truncate">
-                                    {t.scores.map((s) => `${s.joueur} ${s.points}`).join(' · ')}
-                                  </span>
+                                  <button onClick={() => ouvrirTour(p, i)}
+                                    className="flex-1 flex items-center gap-2 text-left hover:bg-gray-50 rounded-lg px-1 py-1 transition">
+                                    <span className="text-gray-400 w-12 shrink-0">Tour {i + 1}</span>
+                                    <span className="flex-1 text-gray-600 truncate">
+                                      {t.scores.map((s) => `${s.joueur} ${s.points}`).join(' · ')}
+                                    </span>
+                                    <Pencil size={11} className="text-gray-300 shrink-0" />
+                                  </button>
                                   <button onClick={() => retirerTour(p, i)}
                                     className="p-1 text-gray-300 hover:text-red-500 transition"><X size={12} /></button>
                                 </div>
@@ -510,24 +563,8 @@ export default function ADeuxPage() {
                             </div>
                           )}
 
-                          {/* Saisie d'un tour */}
                           <div className="border-t border-dashed border-gray-200 pt-3">
-                            <p className="text-xs font-medium text-gray-600 mb-2">Nouveau tour</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {p.joueurs.map((j) => (
-                                <div key={j}>
-                                  <label className="block text-[11px] text-gray-500 mb-0.5 truncate">{j}</label>
-                                  <input type="number" inputMode="numeric" value={tourForm[j] ?? ''}
-                                    onChange={(e) => setTourForm((f) => ({ ...f, [j]: e.target.value }))}
-                                    placeholder="0" className={champCls} />
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              <button onClick={() => ajouterTour(p)}
-                                className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3 py-2 rounded-xl transition">
-                                Enregistrer le tour
-                              </button>
+                            <div className="flex flex-wrap gap-2">
                               <button onClick={() => parties.modifier(p.id, { termine: !p.termine })}
                                 className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition">
                                 {p.termine ? 'Rouvrir la partie' : 'Terminer la partie'}
@@ -542,12 +579,56 @@ export default function ADeuxPage() {
                       )}
                     </div>
                   )
-                })}
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* ── Modale saisie d'un tour ────────────────────────────────────────── */}
+      <Modal isOpen={!!tourPour} onClose={() => setTourPour(null)}
+        title={tourPour ? (tourPour.index === null
+          ? `Tour ${(tourPour.partie.tours?.length ?? 0) + 1} — ${tourPour.partie.jeu}`
+          : `Corriger le tour ${tourPour.index + 1} — ${tourPour.partie.jeu}`) : ''}>
+        {tourPour && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {tourPour.partie.joueurs.map((j) => {
+                const avant = totalAvant(tourPour.partie, j, tourPour.index)
+                const saisi = Number(tourForm[j] ?? 0) || 0
+                return (
+                  <div key={j} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{j}</p>
+                      {/* Le total à jour évite de compter de tête entre deux manches */}
+                      <p className="text-[11px] text-gray-400">
+                        {avant} → <span className="text-gray-700 font-medium">{avant + saisi}</span>
+                      </p>
+                    </div>
+                    <input type="number" inputMode="numeric" value={tourForm[j] ?? ''}
+                      onChange={(e) => setTourForm((f) => ({ ...f, [j]: e.target.value }))}
+                      placeholder="0"
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-base text-right focus:outline-none focus:ring-2 focus:ring-rose-500" />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setTourPour(null)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                Annuler
+              </button>
+              <button onClick={enregistrerTour}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-sm font-medium transition">
+                {tourPour.index === null ? 'Ajouter le tour' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* ── Modale film / série ────────────────────────────────────────────── */}
       <Modal isOpen={filmOuvert} onClose={() => setFilmOuvert(false)} title={filmEdite ? 'Modifier' : 'Ajouter un film ou une série'}>
@@ -682,6 +763,32 @@ export default function ADeuxPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Joueurs</label>
+            {/* Les joueurs déjà vus se rajoutent d'un clic : on rejoue souvent
+                avec les mêmes, les retaper à chaque partie est le vrai irritant. */}
+            {joueursConnus.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {joueursConnus.map((j) => {
+                  const present = partieForm.joueurs.some((x) => x.trim() === j)
+                  return (
+                    <button key={j} type="button"
+                      onClick={() => setPartieForm((f) => ({
+                        ...f,
+                        joueurs: present
+                          ? f.joueurs.filter((x) => x.trim() !== j)
+                          // On remplace la première ligne vide plutôt que d'en empiler une
+                          : f.joueurs.some((x) => !x.trim())
+                            ? f.joueurs.map((x, i) => (i === f.joueurs.findIndex((y) => !y.trim()) ? j : x))
+                            : [...f.joueurs, j],
+                      }))}
+                      className={`px-3 py-1.5 rounded-xl text-sm border transition ${
+                        present ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-700 hover:border-rose-300'
+                      }`}>
+                      {j}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <div className="space-y-2">
               {partieForm.joueurs.map((j, i) => (
                 <div key={i} className="flex gap-2">
