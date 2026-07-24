@@ -11,6 +11,8 @@ import {
 } from "@/lib/mailingService";
 import PromotionModal from "@/components/mailing/PromotionModal";
 import EtudeModal from "@/components/mailing/EtudeModal";
+import AdapterMailModal from "@/components/mailing/AdapterMailModal";
+import { estMailCourt } from "@/lib/mailingRender";
 import FusionModal from "@/components/mailing/FusionModal";
 import AutoTextarea from "@/components/ui/AutoTextarea";
 import {
@@ -39,7 +41,7 @@ import type {
 } from "@/types";
 import {
   ArrowUpTrayIcon, PaperAirplaneIcon, RectangleStackIcon, UsersIcon, TrashIcon, PlusIcon,
-  PencilIcon, ClockIcon, ChartBarIcon, ChatBubbleLeftEllipsisIcon, BuildingOffice2Icon,
+  PencilIcon, PencilSquareIcon, ClockIcon, ChartBarIcon, ChatBubbleLeftEllipsisIcon, BuildingOffice2Icon,
   ArrowUturnLeftIcon, Square2StackIcon, StarIcon, SparklesIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
@@ -164,6 +166,7 @@ export default function MailingPage() {
   const [charge, setCharge] = useState(false);
   const [aEditer, setAEditer] = useState<Prospect | null>(null);
   const [aEtudier, setAEtudier] = useState<Prospect | null>(null);
+  const [aAdapter, setAAdapter] = useState<{ prospect: Prospect; metier: MailingMetier } | null>(null);
   const [aFusionner, setAFusionner] = useState<Prospect[] | null>(null);
   const [evenements, setEvenements] = useState<MailingEvenement[]>([]);
   const [logiciels, setLogiciels] = useState<MailingLogiciel[]>([]);
@@ -1385,6 +1388,14 @@ export default function MailingPage() {
                             👷 {p.effectifReel}
                           </span>
                         )}
+                        {p.mailPerso && (
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[11px] bg-violet-50 text-violet-700"
+                            title="Le mail a été réécrit pour cette société : le kit métier ne sert plus pour elle"
+                          >
+                            ✍ mail adapté
+                          </span>
+                        )}
                         {anglesDe(p).map((a) => (
                           <span
                             key={a}
@@ -1549,6 +1560,37 @@ export default function MailingPage() {
                           title={titre}
                         >
                           <SparklesIcon className="w-4 h-4" />
+                        </button>
+                      );
+                    })()}
+                    {/* Adapter le mail : le geste naturel juste après l'étude.
+                        Il existait déjà dans la file d'envoi, mais on n'y arrive
+                        qu'une fois les envois lancés — trop tard pour rédiger. */}
+                    {(() => {
+                      const kit = metiers.find((m) => m.id === p.metierId);
+                      const dispo = !!kit && estMailCourt(kit);
+                      return (
+                        <button
+                          onClick={() => dispo && setAAdapter({ prospect: p, metier: kit! })}
+                          disabled={!dispo}
+                          className={`p-1.5 rounded-lg transition ${
+                            p.mailPerso
+                              ? "text-violet-600 bg-violet-50 hover:bg-violet-100"
+                              : dispo
+                                ? "text-gray-400 hover:text-violet-600 hover:bg-violet-50"
+                                : "text-gray-200 cursor-not-allowed"
+                          }`}
+                          title={
+                            !kit
+                              ? "Aucun kit métier associé à ce prospect"
+                              : !dispo
+                                ? `Le kit « ${kit.metier} » n'est pas au format mail court`
+                                : p.mailPerso
+                                  ? "Mail adapté à cette société — modifier"
+                                  : "Adapter le mail à cette société"
+                          }
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
                         </button>
                       );
                     })()}
@@ -2109,6 +2151,15 @@ export default function MailingPage() {
         <DoublonsModal
           prospects={prospects}
           onClose={() => setDoublonsOuvert(false)}
+          onToast={notifier}
+        />
+      )}
+
+      {aAdapter && (
+        <AdapterMailModal
+          prospect={aAdapter.prospect}
+          metier={aAdapter.metier}
+          onClose={() => setAAdapter(null)}
           onToast={notifier}
         />
       )}
