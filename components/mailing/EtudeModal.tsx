@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { construirePromptRecherche, parserFicheEtude } from "@/lib/mailingPrompt";
 import { enregistrerEtude, majInfosProspect, definirPromptLance, definirMailPerso } from "@/lib/mailingService";
-import { ANGLES, anglesDe, angleLabel } from "@/lib/mailingModel";
+import { ANGLES, anglesDe, angleLabel, libelleContact, normalizeEmail } from "@/lib/mailingModel";
 import type { MailingMetier, Prospect } from "@/types";
 
 /** Libellé lisible de l'état « a un logiciel ? » (true / false / inconnu). */
@@ -277,10 +277,17 @@ export default function EtudeModal({
                 {fiche.email && (
                   <div>
                     <span className="text-gray-400">Email trouvé :</span> {fiche.email}
+                    {libelleContact(fiche.emailNom, fiche.emailRole) && (
+                      <span className="text-gray-500"> ({libelleContact(fiche.emailNom, fiche.emailRole)})</span>
+                    )}
                     {!prospect.email?.trim() ? (
-                      <span className="text-green-600 font-medium"> — sera ajouté à la fiche</span>
+                      <span className="text-green-600 font-medium"> — deviendra l&apos;adresse principale</span>
+                    ) : normalizeEmail(fiche.email) === normalizeEmail(prospect.email) ? (
+                      <span className="text-gray-400"> — déjà l&apos;adresse principale</span>
                     ) : (
-                      <span className="text-gray-400"> — l&apos;email existant est gardé, celui-ci ira en note</span>
+                      <span className="text-green-600 font-medium">
+                        {" "}— sera ajouté comme contact supplémentaire (destinataire du même message)
+                      </span>
                     )}
                   </div>
                 )}

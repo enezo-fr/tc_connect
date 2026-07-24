@@ -11,7 +11,7 @@
 // fausse est pire que pas de personnalisation du tout.
 
 import { libelleEffectif } from '@/lib/sirene'
-import { ANGLES, ANGLE_IDS } from '@/lib/mailingModel'
+import { ANGLES, ANGLE_IDS, ROLES_CONTACT } from '@/lib/mailingModel'
 import type { MailingMetier, MailPerso, Prospect } from '@/types'
 
 /**
@@ -79,6 +79,8 @@ ${ANGLES.map((a) => `  · ${a.id} — ${a.label} : ${a.quoi}. On le retient quan
 ===ENEZO-FICHE===
 dirigeant: <nom de la personne à qui écrire, ou "inconnu">
 email: <adresse email de contact TROUVÉE, idéalement nominative (prenom.nom@…), sinon "inconnu" — RECOPIE-la ici MÊME si tu l'as déjà citée plus haut, c'est ce champ qui l'enregistre>
+email_nom: <nom de la personne derrière cette adresse, si tu peux l'établir, sinon "inconnu">
+email_role: <son rôle dans l'entreprise, UN SEUL mot parmi : ${ROLES_CONTACT.map((r) => r.id).join(', ')} — "generique" pour une adresse type contact@/info@, "inconnu" si tu ne sais pas>
 dirigeant_age: <âge ou année de naissance du dirigeant si trouvé, ex "43 ans" ou "1981", sinon "inconnu">
 dirigeant_profil: <"jeune" si le dirigeant a moins de ~45 ans (a priori plus réceptif au numérique) ; "senior" s'il a plus de ~55 ans (souvent fin de carrière, moins outillé) ; "inconnu">
 groupe: <nom du groupe/holding si l'entreprise en fait partie (avec d'AUTRES sociétés), sinon "aucun">
@@ -159,6 +161,9 @@ objet: <objet du mail, une seule ligne, sans point final>
 export type FicheEtude = {
   personnalisation?: string
   email?: string
+  /** Qui est derrière l'email trouvé, et à quel titre */
+  emailNom?: string
+  emailRole?: string
   dirigeant?: string
   dirigeantAge?: string
   dirigeantJeune?: boolean
@@ -255,6 +260,13 @@ export function parserFicheEtude(texte: string): FicheEtude | null {
     const m = emailBrut.match(/[^\s<>()"]+@[^\s<>()"]+\.[^\s<>()"]+/)
     if (m) fiche.email = m[0]
   }
+
+  // Qui est derrière cette adresse. Le rôle est filtré sur le catalogue : une
+  // valeur inventée n'aurait aucun libellé dans l'app.
+  const emailNom = val('email_nom')
+  if (emailNom) fiche.emailNom = emailNom
+  const roleBrut = (paires.get('email_role') ?? '').trim().toLowerCase()
+  if (ROLES_CONTACT.some((r) => r.id === roleBrut)) fiche.emailRole = roleBrut
 
   const age = val('dirigeant_age')
   if (age) fiche.dirigeantAge = age

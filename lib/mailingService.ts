@@ -651,6 +651,8 @@ export const enregistrerEtude = async (
   fiche: {
     personnalisation?: string
     email?: string
+    emailNom?: string
+    emailRole?: string
     dirigeant?: string
     dirigeantAge?: string
     dirigeantJeune?: boolean
@@ -677,18 +679,45 @@ export const enregistrerEtude = async (
   }
   const notes: string[] = []
   const trouve = email?.trim() ? normalizeEmail(email) : ''
+  // `emailNom`/`emailRole` qualifient l'adresse TROUVÉE : ils ne doivent pas
+  // atterrir sur l'adresse principale quand ce sont deux personnes différentes.
+  const { emailNom, emailRole } = fiche
+  delete (data as Record<string, unknown>).emailNom
+  delete (data as Record<string, unknown>).emailRole
+
   if (trouve && isEmailValide(trouve)) {
-    if (!prospect.email?.trim()) {
+    const principale = prospect.email?.trim() ? normalizeEmail(prospect.email) : ''
+    const deja = new Set([
+      principale,
+      ...(prospect.contactsSupplementaires ?? []).map((c) => normalizeEmail(c.email)),
+    ].filter(Boolean))
+
+    if (!principale) {
+      // Première adresse de la fiche : elle devient l'adresse principale.
       data.email = trouve
       data.emailNormalise = trouve
       data.domaine = emailDomain(trouve)
+      if (emailNom) data.emailNom = emailNom
+      if (emailRole) data.emailRole = emailRole
       if (prospect.statut === 'email_manquant') {
         data.statut = (prospect.nbEnvois ?? 0) > 0 ? 'envoye' : 'a_contacter'
       }
       notes.push(`Email ajouté depuis l'étude : ${trouve}`)
-    } else if (trouve !== normalizeEmail(prospect.email)) {
-      // Email officiel conservé ; l'autre est noté pour ne pas le perdre.
-      notes.push(`Autre email trouvé par l'étude : ${trouve}`)
+    } else if (trouve === principale) {
+      // Même adresse : on ne fait que la qualifier si elle ne l'était pas.
+      if (emailNom && !prospect.emailNom) data.emailNom = emailNom
+      if (emailRole && !prospect.emailRole) data.emailRole = emailRole
+    } else if (!deja.has(trouve)) {
+      // Adresse DIFFÉRENTE : elle s'AJOUTE aux destinataires au lieu de finir
+      // dans une note. L'adresse principale n'est jamais écrasée.
+      data.contactsSupplementaires = [
+        ...(prospect.contactsSupplementaires ?? []),
+        { email: trouve, nom: emailNom ?? '', role: emailRole ?? '' },
+      ]
+      notes.push(
+        `Contact ajouté depuis l'étude : ${trouve}`
+        + (emailNom || emailRole ? ` (${[emailNom, emailRole].filter(Boolean).join(' — ')})` : ''),
+      )
     }
   }
   await updateDoc(doc(db, 'prospects', prospect.id), data)
