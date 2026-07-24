@@ -1,0 +1,30 @@
+Mois;Saison;Emoji saison;Saison réelle;Listes articles de courses;Liste articles recettes;Flatten articles
+1.0;❄️ Hiver;❄️;Hiver;Fromage;Lardons;Fromage
+2.0;❄️ Hiver;❄️;Hiver;Croquettes;Pates;Lardons
+3.0;☀️ Printemps;☀️;Printemps;Bières;Oignons;Croquettes
+4.0;☀️ Printemps;☀️;Printemps;Gateaux apéros;Crème fraiche;Pates
+5.0;☀️ Printemps;☀️;Printemps;Gouter / Petit dej;Pain de mie;Bières
+6.0;🌡️ Eté;🌡️;Eté;PQ;Jambon;Oignons
+7.0;🌡️ Eté;🌡️;Eté;Dentifrice;Fromage à croque monsieur;Gateaux apéros
+8.0;🌡️ Eté;🌡️;Eté;Glaces;;Crème fraiche
+9.0;🍁 Automne;🍁;Automne;Sopalin;;Gouter / Petit dej
+10.0;🍁 Automne;🍁;Automne;Paté;;Pain de mie
+11.0;🍁 Automne;🍁;Automne;Desserts;;PQ
+12.0;❄️ Hiver;❄️;Hiver;Jambon;;Jambon
+;;;;Pates;;Dentifrice
+;;;;Pain de mie;;Fromage à croque monsieur
+;;;;Fromage à croque monsieur;;Glaces
+;;;;Meuble salle de bain;;
+;;;;Placard entrée;;Sopalin
+;;;;Placard chambre;;Paté
+;;;;Placard buanderie;;Desserts
+;;;;Table à manger;;Meuble salle de bain
+;;;;Frigo;;Placard entrée
+;;;;Bureau;;Placard chambre
+;;;;Planche de bois WC;;Placard buanderie
+;;;;Rideaux cellier;;Table à manger
+;;;;Rideaux autres;;Frigo
+;;;;;;Bureau
+;;;;;;Planche de bois WC
+;;;;;;Rideaux cellier
+;;;;;;Rideaux autres

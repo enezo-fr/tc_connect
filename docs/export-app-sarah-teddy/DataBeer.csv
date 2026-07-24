@@ -1,0 +1,1000 @@
+#;Date;Service;Type de bière;Typologie;Nom;Degrés;Note;Note Sarah;Note Teddy;Analyse;Coordonnées GPS;Pays (ou Région);Bar / Ville;Contexte (terrasse, intérieur, ...);Evenement;Météo;Froid, très chaud ou bien;Température;Photo du moment;Photo de la bière;IBU/DI (proche de 1 = Amer);Année;Saison;Classement général et note;Nb de fois;Jour split;Mois split;Année split;Classement;Classement Sarah;Classement Teddy;Sarah🔹Teddy;Infos;Photos;Split typologie 1;Split typologie 2;Split typologie 3;Split typologie 4;IDDataBeer
+1;;Pression;Blonde;;Bière Du Moulin;4.0;0;0.0;0.0;Egal à la kronenbourg;;;;;;;;;;;;;;176🔹0;1;;;;176;172;176;172🔹0 ◾ 176🔹0;Blonde (172🔹0 ◾ 176🔹0);;;;;;k0l0c3l1
+2;;Pression;Blonde;;Licorne Blonde;4.8;0.5;0.5;0.5;Egal à une heineken;;;;;;;;;;;;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);;;;;;y7s3d2h2
+3;;Pression;Ambré;;Licorne Black;6.0;1;1.0;1.0;Pas de goût / Asseche la bouche;;;;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Ambré (122🔹1 ◾ 133🔹1);;;;;;p8f9j0n0
+4;;Pression;Blonde;;Duvel;8.5;1;1.0;1.0;Très amer;;;;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;l3s2c4c9
+5;;Pression;Blonde;;St Feuillien;7.5;1;1.0;1.0;Amer ++, Sarah aime pas, pas top;;;;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;x8e8s6p2
+6;;Pression;Blonde;;Singha (bière thaïlandaise);5.0;1;1.0;1.0;Douce, sans goût, fade;;;;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;b5a7q9i9
+7;;Pression;Blonde;;Hinano (bière de tahiti;5.0;1;1.0;1.0;Douce, fraîche, pas top du tout;;;;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;i2i3j6i0
+8;;Pression;Blonde;;Royal Beer;5.4;1.5;1.5;1.5;Pétillante, raffraichissante, registre de la 1664 (gout plus prononcé), assez banal;;;;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;d8r0m4n1
+9;;Pression;Blonde;;La corne du bois des Pendus;6.0;1.5;1.5;1.5;Amer et douce ;;;;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;k0q2t2o9
+10;;Pression;Blonde;;Estrella;5.4;1.5;1.5;1.5;Pas trop de goût, passable;;;;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;r9u1y1e4
+11;;Pression;Ambré;;Pietra ;6.0;1.5;1.5;1.5;Douce, pas rafraîchissante;;;;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Ambré (92🔹1,5 ◾ 99🔹1,5);;;;;;t0k1j9b1
+12;;Pression;Blanche;Bière de soif;Blanche des neiges;5.9;2;2.0;2.0;Très très douce + passe très bien + très raffraichissante;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;Bière de soif;;;;o0y4w7s1
+13;;Pression;Blonde;;Cap d'Ona (bière d’argeles);5.0;2;2.0;2.0;biere monotone, pas trop de gout, bière catalane;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;d2v1f0l0
+14;;Pression;Blonde;;La Dix;6.5;2;2.0;2.0;Ressemble à une blanche (fort arrière goût);;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;f7a3j9m0
+15;;Pression;Blonde;;Anosteké Blonde;7.5;2;2.0;2.0;Acre et légère;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;f7g1l1n0
+16;;Pression;Blonde;;Rince cochon blonde;8.5;2;2.0;2.0;Goût ambré (goût de café);;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;l5u1u9p7
+17;;Pression;Blonde;;Blonden Oz;6.0;2;2.0;2.0;Bière local de Bruges - arrière goût amer;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;f7m2l4t0
+18;;Pression;Blonde;;Brugse Zot;6.0;2;2.0;2.0;Légère;;Belgique;Bruges;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;k9g5n5w2
+19;;Pression;Blonde;;La Cervoise ;6.0;2;2.0;2.0;Douce ;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;o9t7z5y2
+20;;Pression;Blonde;;Mia;4.0;2;2.0;2.0;Rafraichissante, petit gout au debut très bon (biere des pays de la loire);;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;u0g7j5w9
+21;;Pression;Blanche;;La p’tite mamm (brasserie Surzur);4.0;2;2.0;2.0;Sent le chouchen et l’abricot, bulles (comme dans une badois), douce;;;CDC / Pénestin;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;q9r8b2i2
+22;;Pression;Blonde;;Brooklyn;5.2;2;2.0;2.0;Fruité, pas trop de goût, bonne sans plus;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;h0e5f2r0
+23;;Pression;Ambré;;Telenn Du;4.5;2;2.0;2.0;Douce pour une ambrée, pas réchauffante pour une ambrée ;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Ambré (61🔹2 ◾ 67🔹2);;;;;;c5f7t8v9
+24;;Pression;Ambré;;La Super Mamm;7.5;2;2.0;2.0;Rien de ouf mais bonne;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Ambré (61🔹2 ◾ 67🔹2);;;;;;c8v1r7c1
+25;;Pression;Blanche;;La Bête blanche;5.2;2;2.0;2.0;Fraîche mais très citron +++;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;r6g6k6j3
+26;;Pression;Blonde;;La Cabaude;4.8;2;2.0;2.0;On dirait une IPA (un peu amère), pas trop de goût, lourde comme la grim ;;;;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;q3g1u5f4
+27;;Pression;Blanche;;Baryl White;4.9;2.5;2.5;2.5;Legere amertume ;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blanche (39🔹2,5 ◾ 42🔹2,5);;;;;;e7f4i4b5
+28;;Pression;Blonde;;Castelan Grand Cru;8.5;2.5;2.5;2.5;Amer et douce ;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;s6e8z7x0
+29;;Pression;Blonde;;Straffe Hendrick Triple;9.0;2.5;2.5;2.5;Goût Acre mais avec du goût (original);;Belgique;Bruges;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;h8s0r5u1
+30;;Pression;Blonde;;Duchesse Anne triple ;6.9;2.5;2.5;2.5;Douce;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;m7s7s6d7
+31;;Pression;Rouge;;Bonnets Rouges;5.5;2.5;2.5;2.5;Fruité sans sucre / légère ;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Rouge (39🔹2,5 ◾ 42🔹2,5);;;;;;p3q8q8s0
+32;;Pression;Blonde;;Fada;5.5;2.5;2.5;2.5;Forte, pas trop de gout;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;t1h5o8o9
+33;;Pression;Blonde;;La Baudega;4.5;2.5;2.5;2.5;Simple, bonne sans plus, rafraîchissante ;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;z5n2y7s2
+34;;Pression;Blonde;IPA;GX bière de Groix;7.2;2.5;2.5;2.5;Bien IPA, fruité;;;CDC / Pénestin;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;IPA;;;;v0p3g0z4
+35;;Pression;Blonde;;Maredsous blonde;6.5;2.5;2.5;2.5;Pas très bonne, amer, bière simple;;;Le Baluchon / Camoel;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;r0s2v5i6
+36;;Pression;Ambré;;Chimay Bleue;9.0;3;3.0;3.0;Goût de coca (caféine);;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Ambré (24🔹3 ◾ 26🔹3);;;;;;v1s9n6u7
+37;;Pression;Ambré;;Kwak;8.4;3;3.0;3.0;Présentation +++ et douce ;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Ambré (24🔹3 ◾ 26🔹3);;;;;;q8g0a8o4
+38;;Pression;Blanche;;Hoegaarden blanche;4.9;3;3.0;3.0;Passe toute seule / raffraichissante;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blanche (24🔹3 ◾ 26🔹3);;;;;;z4j2p5i6
+39;;Pression;Blonde;;La Bête;9.0;3;3.0;3.0;Douce avec un arrière goût orangé;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;h5t9l6h7
+40;;Pression;Blonde;;Délirium Tremens;8.5;2;2.0;2.0;Touche fruité (à revoir), amer, ressemble à une IPA;;;Skull miroir bar / Bordeaux;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;j2e5z4p5
+41;;Pression;Blonde;;Queue de charrue triple;9.0;3;3.0;3.0;Arrière goût amer;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;x5g8s4v3
+42;;Pression;Blonde;;Affligem;6.7;3;3.0;3.0;Fruité, raffraichissante, bière commune;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;p6i4d4q9
+43;;Pression;Blonde;;San Miguel (biere espagnol);5.4;3;3.0;3.0;Raffraichissante, gout au depart qui s'attenue apres, tres bonne;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;g2s2q5r4
+44;;Pression;Blonde;;Arsouille;6.0;3;3.0;3.0;Douce, fraîche, très bonne en été ++;;;;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;a7f8n3x4
+45;;Pression;Blonde;;Ducasse Triple;9.0;3.5;3.5;3.5;Désaltérante et douce avec un goût fort en bouche;;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;s6p8f4q5
+46;;Pression;Blonde;;Tripel Le Fort;8.0;3.5;3.5;3.5;Légèrement fruité;;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;m4y5c8x1
+47;;Pression;Blonde;;Val Dieu;9.0;3.5;3.5;3.5;Sucré (goût de miel);;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;a9h8w4z7
+48;;Pression;Blonde;;De Garre;11.0;3.5;3.5;3.5;Bière trouvé que dans un bar (De Garre) - Original +++ (Forte);;Belgique;De Garre, Bruges;Interieur;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;h2m3t9q7
+49;;Pression;Blonde;;Bon secours;8.0;3.5;3.5;3.5;Pas trop de goût, forte niveau alcool mais pas forte niveau goût;;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;a1f7z7f2
+50;;Pression;Blonde;;Bloemendier;7.0;3.5;3.5;3.5;sucré +++ mais tres bonne;;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;e3o6b7d5
+51;;Pression;Rouge;;Délirium Red;8.0;3.5;3.5;3.5;Douce;;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Rouge (9🔹3,5 ◾ 10🔹3,5);;;;;;m8c2t5s2
+52;;Pression;Rouge;;Mort Subite;4.0;3.5;3.5;3.5;Cerise +++ (Sarah adore, pas Teddy);;;;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Rouge (9🔹3,5 ◾ 10🔹3,5);;;;;;q1w6l3w0
+53;;Pression;Blonde;;Nao Original;9.0;3.5;3.5;3.5;Passe toute seule, très bonne ;;;Le Baluchon / Camoel;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;t5b5o1w7
+54;;Pression;Blonde;;Ciney;7.0;3.5;3.5;3.5;Bonne, fruité, fraiche;;;Camping Le Cenic / Pénestin;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;h3g4h2i2
+55;;Pression;Ambré;;St Bernardeus Abt 12 (bière d'Abbaye Quadruple);10.0;4;4.0;4.0;Fort goût de café - Douce;;;;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Ambré (2🔹4 ◾ 2🔹4);;;;;;f9h4e6j4
+56;;Pression;Blonde;;Jarra (biere espagnol);5.2;4;4.0;4.0;Fruité, raffraichissante, super bonne, beaucoup de gout;;;;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Blonde (2🔹4 ◾ 2🔹4);;;;;;n5e6j6p1
+57;;Pression;Fruité;;Bûche pêche ;8.0;4;4.0;4.0;Bon goût de pêche / fruité / super bonne / sucré / rafraîchissante / Forte ++ ;;;Capsules et Bouchons / Guerande;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Fruité (2🔹4 ◾ 2🔹4);;;;;;c9a3x2v3
+58;;Pression;Brune;;Kasteel Brune Donker ;11.0;4;4.0;4.0;Goût fruit rouge;;;;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Brune (2🔹4 ◾ 2🔹4);;;;;;n8g0w6r0
+59;;Pression;Ambré;;Triple Karamelit;8.4;4;4.0;4.0;Petit goût caramel, passe forte au début puis s’estompe, très bonne ;;;;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Ambré (2🔹4 ◾ 2🔹4);;;;;;t5b0n1p6
+60;44372.0;Pression;Blonde;;B06 (bières d’Antibes);5.6;4;4.0;4.0;Douce, très bonne, pas forte, se boit comme de l’eau, bière locale;;;Antibes;;;;;;;;;2021;🌡️ Eté;2🔹4;1;25;6;2021;2;2;2;2🔹4 ◾ 2🔹4;Blonde (2🔹4 ◾ 2🔹4);;;;;;z1v2a0e0
+61;;Pression;Ambré;;Licorne Primeur;5.5;4;4.0;4.0;Fruité, rafraîchissante comme une bière blanche, douce;;;;;;;;;;;;;;2🔹4;1;;;;2;2;2;2🔹4 ◾ 2🔹4;Ambré (2🔹4 ◾ 2🔹4);;;;;;c9n2w2u0
+62;;Pression;Rousse;;Grimbergen d'automne (brassin d'automne);6.0;4.5;4.5;4.5;Fruité ;47.474616, -2.485036;;L'Endroit / Pénestin;;;;;;;;;;;1🔹4,5;1;;;;1;1;1;1🔹4,5 ◾ 1🔹4,5;Rousse (1🔹4,5 ◾ 1🔹4,5);;;;;;p7x8h0v9
+63;;Pression;Blonde;;Houthakker;7.0;1.5;1.5;1.5;Sarah aime pas, âcre,  arrière goût;;;La P'tite case / Pornichet;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;e7x7l6u7
+64;;Pression;Blanche;;Vedett Blanche;4.7;3.5;3.5;3.5;Rafraîchissante, fruité, bu un jour de grosse chaleur et passe très (trop) bien;;;Le p'tit rade / Pénestin;;;;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blanche (9🔹3,5 ◾ 10🔹3,5);;;;;;f8y1c6u0
+65;;Pression;Blonde;;Melisine gladiateur bio (bière du puy du fou) ;5.0;2.5;2.5;2.5;Ressemble à une brune, bière lourde (leffe), pas rafraîchissante ;;;Puy du Fou;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;h1u2v1n3
+66;;Pression;Blonde;Bière de soif;Loburg;4.7;1.5;1.5;1.5;Bière de soif, rafraîchissante, meilleure qu'une 1664;;;Bar du fronton / Bidart;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;Bière de soif;;;;s3z6f6p9
+67;;Pression;Blonde;Bière de soif;Odense (bière Danoise);5.2;1.5;1.5;1.5;Bière de soif, bon goût ;;;Sunset / Anglet;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;Bière de soif;;;;g8r2r4r6
+68;;Pression;Blonde;IPA;Eguzki (IPA);5.5;3;3.0;3.0;Bonne, pas trop IPA, lasse vite, bon goût;;;BoardRiders / Cap-Breton;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;IPA;;;;n3t0n6f2
+69;;Pression;Brune;;Ciney Brune;7.0;1;1.0;1.0;Fruité, brune, pas ouf, goût spécial;;;Le Tivoli / Vieux Boucau;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Brune (122🔹1 ◾ 133🔹1);;;;;;t9g2v8m1
+70;;Pression;Blonde;Bière de soif;The pass;4.5;3.5;3.5;3.5;Goût amer léger, bière de soif (forte), fine bulle, goût prononcé;;;Brasserie Rosny Beer / Seignosse;;;;;;;;0.5;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;Bière de soif;;;;w4z9o3y9
+71;;Pression;Blonde;;Nanu Nanu;5.5;2.5;2.5;2.5;Forte en goût, paraît forte en degrés, pas si amer que ça;;;Brasserie Rosny Beer / Seignosse;;;;;;;;0.7;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;h7e8a9i5
+72;;Pression;Blanche;;The Helter;4.5;2;2.0;2.0;Pas trop de goût, pas amer, pas rafraîchissante, plus blonde que blanche, goût fruité;;;Brasserie Rosny Beer / Seignosse;;;;;;;;0.6;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;q4y4n4t5
+73;;Pression;Blonde;;La Francette;5.0;3;3.0;3.0;Douce, très bon goût, passe pour tout occasion, rafraîchissante ;;;Beer's Brothers / Guerande;;;;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;l2a6o2e7
+74;;Pression;Blonde;;Filou;8.5;2.5;2.5;2.5;Bon goût, rafraîchissante mais forte;;;Beer's Brothers / Guerande;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;c0w6t9z4
+75;;Pression;Brune;;Monster 91;9.5;0.5;0.5;0.5;Goût chocolat/café ++, pas bonne du tout;;;Brasserie Rosny Beer / Seignosse;;;;;;;;0.5;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Brune (154🔹0,5 ◾ 160🔹0,5);;;;;;r9v5u4l8
+76;;Pression;Blonde;;Fancy Fuzz;5.5;3;3.0;3.0;;;;Brasserie Rosny Beer / Seignosse;;;;;;;;0.5;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;c0r0b7t0
+77;;Pression;Blanche;;Bière de Groix (blanche);5.0;1.5;1.5;1.5;Bonne blanche avec un arrière goût amère;;;CDC / Pénestin;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;n6w6e6f5
+78;;Pression;Blanche;;Blanche Hermine;4.0;1.5;1.5;1.5;;;;Relais de La Roche / La Roche Bernard;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;b5x0g8o9
+79;;Pression;Blonde;;Paranoïa;5.6;1.5;1.5;1.5;Amer, presque pareil qu'une hoegaarden;;;O Trinck Nard / Guerande;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;j5u3m2p9
+80;;Pression;Blonde;Bière de soif;Ginette;4.5;1.5;1.5;1.5;Bière de soif, meilleur que la 1664, sympa avant un resto mais pas trop de goût ;;;;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;Bière de soif;;;;u8m9p5v4
+81;;Pression;Blanche;;Hermine;4.0;1.5;1.5;1.5;Fraîche, blanche, pas fruité;;;Beer's Brothers / Guerande;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;j1g6q1e2
+82;;Pression;Blonde;;Tripick 8;8.5;1.5;1.5;1.5;Sarah la trouve amère mais pas moi, fruité ;;;Beer's Brothers / Guerande;;;;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;u4a2k5q4
+83;;Bock;Blonde;IPA;Coreff IPA;5.6;2.5;2.5;2.5;Bonne IPA, Bast la note à 3, pas très forte, passes très bien ;;;;;;;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;IPA;;;;b6z4l5e0
+84;;Pression;Blonde;;Éléphant;7.2;3;3.0;3.0;Fruité, amer pour pas une IPA (pour Sarah pas pour moi), très bonne;;;Wall Street / Bordeaux;;;☀️;;28.0;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;g9t0u2y2
+85;;Pression;Blonde;Bière de soif;Darwin;5.5;1;1.0;1.0;Un peu amer, fraîche, bière de soif;;;Darwin Éco Système / Bordeaux;;;☀️;;28.0;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;Bière de soif;;;;i1v9b8h8
+86;;Pression;Blonde;;Pêche mel bush;8.5;0.5;0.5;0.5;Trop sucré, pêche +++, plate, pas rafraîchissante, égal à un diabolo pêche alcoolisé;;;Wall Street / Bordeaux;;;☀️;;28.0;;;;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);;;;;;w9d9k3n4
+87;;Pression;Blonde;IPA;Lagunitas IPA;6.2;1;1.0;1.0;Bonne bière IPA, pas trop amer pour une IPA;;;L'ombrerie café / Bordeaux;;;☀️;;28.0;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;IPA;;;;x1u6f4h4
+88;;Pression;Blanche;;König Weiss Blanche;5.5;2;2.0;2.0;Rafraîchissante, bonne mais équivalente à une bière de soif, agréable à boire en terrasse quand il fait chaud, comme une hoeggarden blanche ;;;L'ombrerie café / Bordeaux;;;☀️;;28.0;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;l1b0z2e2
+89;;Pression;Blanche;;Paulaner Weissbier Blanche;5.5;0.5;0.5;0.5;Pas une bonne bière blanche, pas trop de goût, pas rafraîchissante pour une blanche, pas citronné;;;Skull miroir bar / Bordeaux;;;☀️;;28.0;;;;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blanche (154🔹0,5 ◾ 160🔹0,5);;;;;;e2x1q8n7
+90;;Pression;Blonde;Bière de soif;Azimut;5.3;1.5;1.5;1.5;Passe bien, bien fraîche, bonne bière de soif, légèrement amère;;;Skull miroir bar / Bordeaux;;;☀️;;28.0;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;Bière de soif;;;;t9t4q1r3
+91;;Pression;Blonde;;Chouffe;8.0;3;3.0;3.0;Forte, bonne, une chouffe quoi;;;Skull miroir bar / Bordeaux;;;☀️;;28.0;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blonde (24🔹3 ◾ 26🔹3);;;;;;j4v6r1w8
+92;;Pression;Blanche;;Azimut blanche;4.5;2;2.0;2.0;Un peu amer, pas rafraîchissante, pas degueulasse ;;;Wall Street / Bordeaux;;;☀️;;28.0;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;o3d4i2c4
+93;;Pression;Blonde;IPA;Zwickl distingue;5.2;1.5;1.5;1.5;Ne fais pas IPA, fraîche, pas degueu et ressemble plus à une bière de soif;;;Grand bar Castan / Bordeaux;;;☀️;;28.0;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;IPA;;;;m4m3h5w2
+94;;Pression;Blanche;;Felsgold blanche;5.5;1;1.0;1.0;Douce, très légère, pas trop de goût, une blanche qui se boit bien;;;CDC / Pénestin;;;;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blanche (122🔹1 ◾ 133🔹1);;;;;;d1b6f2m2
+95;;Bock;Blanche;;744 blanche (bière de Savoie);5.5;2;2.0;2.0;Pas très rafraîchissante pour une blanche, à du goût et elle est bonne;;Bière bouteille de Savoie (Pied du Môle);;;;;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blanche (61🔹2 ◾ 67🔹2);;;;;;k3q8q5f7
+96;;Bock;Blonde;IPA;744 IPA (bière de Savoie);5.5;0.5;0.5;0.5;Très IPA ++, très amer, Sarah la trouve degueulasse;;Bière bouteille de Savoie (Pied du Môle);;;;;;;;;;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);;IPA;;;;m7x0n6i6
+97;;Bock;Blonde;IPA;Trompe souris;7.0;1;1.0;1.0;Amer, Sarah pas fan, pas ouf comme IPA;;Bière bouteille de Leila;;;;🌩️;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;IPA;;;;m3d2k2f0
+98;;Bock;Blanche;;Grisette bio;5.5;1.5;1.5;1.5;Goût citronné, Sarah aime bien, Teddy pas fan (bu pas très fraîche);;Bière bouteille de Leila;;;;🌩️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;c7z7t3m3
+99;;Pression;Blonde;Bière de soif;Boxer Old;5.0;2;2.0;2.0;Fraîche, bière de soif ;;Suisse;Refuge Buvette de Jaman / Dent de Jaman (Lausanne);;;☀️;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;Bière de soif;;;;r8g6z9u0
+100;;Pression;Blonde;;Nébuleuse Zepp;4.7;1.5;1.5;1.5;;;Suisse;Resto Le Coucou / Caux;;;☀️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;w6q3v2h6
+101;;Pression;Blanche;;Nébuleuse Moonshine Blanche;5.0;1.5;1.5;1.5;;;Suisse;Resto Le Coucou / Caux;;;☀️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;z4r7r3s0
+102;;Pression;Blonde;IPA;Pornstar IPA;6.1;1.5;1.5;1.5;Entre deux entre IPA et bière de soif, se boit bien pour quelqu'un qui n'aime pas l'IPA, pas très IPA;;Suisse;La Générale / Lauzanne;;;☀️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;IPA;;;;y7s6k7q5
+103;;Pression;Blonde;IPA;Cosmos IPA;6.5;2;2.0;2.0;Bonne IPA avec beaucoup de goût, se boit bien;;Suisse;La Générale / Lauzanne;;;☀️;;;;;;;;63🔹2;1;;;;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;IPA;;;;n5o0j8z6
+104;;Pression;Blanche;;Cardinal Blanche;4.8;1;1.0;1.0;Bière de base, sans plus pour une blanche ;;Suisse;Café St Pierre / Lauzanne;;;☀️;;;;;;;;135🔹1;1;;;;135;122;133;122🔹1 ◾ 133🔹1;Blanche (122🔹1 ◾ 133🔹1);;;;;;f8u3d6f8
+105;;Pression;Blonde;;Dramm Hud;7.5;2.5;2.5;2.5;Forte, fruité, Sarah la sent Amer mais pas IPA;;;Chez Lili / Pénestin (Tréhiguier);;;☁️;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;;;;;t0m4k8j4
+106;;Pression;Blonde;IPA;Brewdog Punk IPA (Ecosse);6.0;2.5;2.5;2.5;Pas trop amer pour une IPA, Sarah pourrait la boire, bonne;;;Offside Bay / Brest;;;☁️;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);;IPA;;;;o6g4e7h5
+107;;Pression;Blanche;;O taquet (blanche de Crozon);5.0;3;3.0;3.0;Rafraîchissante, goût agréable;;;L'entourage / Chateaulin;;;☀️;;;;;;;;23🔹3;1;;;;23;24;26;24🔹3 ◾ 26🔹3;Blanche (24🔹3 ◾ 26🔹3);;;;;;k5a1x7n5
+108;;Bock;Blonde;;Ciney;7.0;1;1.0;1.0;Bar des sports Dineault (bière périmé), caramelisé;;;Bar des sports / Dineault;;;☀️;;;;;;;;135🔹1;2;;;;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;n3o7m2j5
+109;;Pression;Blonde;;Plijadur (bière de Douarnenez);5.0;3.5;3.5;3.5;Bonne, fruité, légère, bien ajustée;;;Le Minuscule / Dineault;;;🌧️;;;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;v3p8d7y4
+110;;Pression;Blanche;IPA;Nao White IPA;5.9;2.5;2.5;2.5;Rafraîchissante, pas amer pour une IPA, bonne;;;Breizh Coquillage / Pénestin (pte du Bile);;;☀️;;;;;;;;41🔹2,5;1;;;;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blanche (39🔹2,5 ◾ 42🔹2,5);;IPA;;;;b7n6m0p1
+111;;Pression;Blanche;;Tête haute blanche;4.5;1.5;1.5;1.5;Pas très rafraîchissante, du goût pour une blanche;;;La Gamelle / Pont-Château;;;☀️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;o3s8o8t5
+112;;Pression;Blonde;IPA;Tête haute IPA;7.0;0.5;0.5;0.5;Très IPA, pic juste pas vraiment de goût à part amer, pas fou pour une IPA;;;La Gamelle / Pont-Château;;;☀️;;;;;;;;159🔹0,5;1;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);;IPA;;;;r9a2n0r0
+113;;Pression;Blanche;;Blanche de Bruxelles rosée;4.5;1.5;1.5;1.5;Sucré ++, goût de bonbon;;;Bowl Dog / Pont-Château;;;☀️;;;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blanche (92🔹1,5 ◾ 99🔹1,5);;;;;;n1s7a2w2
+114;;Pression;Blonde;IPA;Brooklyn;5.2;0.5;0.5;0.5;Très IPA, bonne quand même mais pas ouf, Sarah aime pas;;;Wall Street / Bordeaux;;;☀️;;28.0;;;;;;159🔹0,5;2;;;;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);;IPA;;;;n4j1u6f5
+115;;Pression;Blonde;;L’extraball;4.0;3.5;3.5;3.5;Passe super bien, douce, fruité, florale;;;Bateau livre / Pénestin (Haut-Pénestin);;;☁️;;13.0;;;;;;9🔹3,5;1;;;;9;9;10;9🔹3,5 ◾ 10🔹3,5;Blonde (9🔹3,5 ◾ 10🔹3,5);;;;;;t7p9d6m1
+116;;Pression;Blonde;Bière de soif;Nao Blonde;4.5;1.5;1.5;1.5;Rafraîchissante, goût léger amer;;;Bateau livre / Pénestin (Haut-Pénestin);;;☁️;;13.0;;;;;;100🔹1,5;1;;;;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;Bière de soif;;;;t8m2r3m6
+117;45275.0;Bock;Blonde;;Le Porc Niché;8.5;1;1.0;1.0;Pas très bonne, un peu ambré;48.751663, -3.282376;Apéro maison Week-end Langoat;Maison parent de Charlene Langoat;;;🌙;;12.0;;;;2023;❄️ Hiver;135🔹1;1;15;12;2023;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;g2o9e9w5
+118;45275.0;Pression;Blanche;;La Brigantine;5.0;2;2.0;1.5;Fruité, pas très rafraîchissante;48.751663, -3.282376;Apéro maison Week-end Langoat;Langoat;;;🌙;;12.0;;;;2023;❄️ Hiver;63🔹2;1;15;12;2023;63;61;99;61🔹2 ◾ 99🔹2;Blanche (61🔹2 ◾ 99🔹2);;;;;;d4e0x3c4
+119;45275.0;Pression;Blonde;IPA;Damraz;6.0;1;1.0;1.0;Oui très IPA pour moi, Sarah ne la trouvais pas très IPA mais n'aimais pas;48.751663, -3.282376;Apéro maison Week-end Langoat;Langoat;;;🌙;;12.0;;;;2023;❄️ Hiver;135🔹1;1;15;12;2023;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;IPA;;;;p7v1f3z0
+120;45276.0;Bock;Blanche;;Philomen Blanche;5.6;3;3.5;2.5;Bière blanche sans trop de goût;48.787340, -3.230378;;Café La Place / Treiguier (Langoat);;;🌙;;7.0;;;;2023;❄️ Hiver;23🔹3;1;16;12;2023;23;9;42;9🔹3 ◾ 42🔹3,5;Blanche (9🔹3 ◾ 42🔹3,5);;;;;;w3y2d7m3
+121;45276.0;Pression;Brune;;Grimbergen de Noël;6.5;1;1.0;1.0;Sarah aime pas, bière avec beaucoup (trop ?) de goût prononcé;48.787339, -3.230090;;Café La Place / Treiguier (Langoat);;;🌙;;7.0;;;;2023;❄️ Hiver;135🔹1;1;16;12;2023;135;122;133;122🔹1 ◾ 133🔹1;Brune (122🔹1 ◾ 133🔹1);;;;;;u3p8q3d2
+122;45276.0;Pression;Blonde;;Philomen;5.6;2;2.0;2.0;Plate, Sarah aime bien;48.787267, -3.230096;;Café La Place / Treiguier (Langoat);;;🌙;;7.0;;;;2023;❄️ Hiver;63🔹2;1;16;12;2023;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;m7i5b3u9
+123;45283.0;Bock;Rousse;;La Bonne Humeur;7.0;1;0.5;1.5;Sarah aime pas, bonne pour une rousse, un peu amer;47.483565, -2.444570;;;;;🌙;;11.0;;;;2023;❄️ Hiver;135🔹1;1;23;12;2023;135;154;99;154🔹1 ◾ 99🔹0,5;Rousse (154🔹1 ◾ 99🔹0,5);;;;;;t0u0u4z9
+124;45283.0;Bock;Blanche;;Bière de Bréhat (l’indomptable);5.3;1.5;1.5;1.0;Bonne bière blanche, légère;47.483565, -2.444570;;;;;🌙;;11.0;;;;2023;❄️ Hiver;100🔹1,5;1;23;12;2023;100;92;133;92🔹1,5 ◾ 133🔹1,5;Blanche (92🔹1,5 ◾ 133🔹1,5);;;;;;x9z4i5d8
+125;45284.0;Bock;Blonde;;Arsouille;6.0;2;2.0;2.0;Bonne blonde;47.489628, -2.485345;;Bateau livre / Pénestin (Haut-Pénestin);;;☁️;;13.0;;;;2023;❄️ Hiver;63🔹2;2;24;12;2023;63;61;67;61🔹2 ◾ 67🔹2;Blonde (61🔹2 ◾ 67🔹2);;;;;;y2u1b1r7
+126;45284.0;Pression;Ambré;;Nao Ambré;5.0;2.5;2.5;2.0;Bière réchauffante, fruité;47.489625, -2.485336;;Bateau livre / Pénestin (Haut-Pénestin);;;☁️;;13.0;;;;2023;❄️ Hiver;41🔹2,5;1;24;12;2023;41;39;67;39🔹2,5 ◾ 67🔹2,5;Ambré (39🔹2,5 ◾ 67🔹2,5);;;;;;a2j3o5s3
+127;45287.0;Pression;Blonde;IPA;Lagunistas IPA;6.2;1.5;1.0;2.0;Bu une autre fois au 1930 Conleau le 30/01/2025 et même note (voir photo);47.286081, -2.395237;;16art / La Baule;;;🌙;;13.0;DataBeer_Images/128.Photo du moment.181955.jpg;;;2023;❄️ Hiver;100🔹1,5;1;27;12;2023;100;122;67;122🔹1,5 ◾ 67🔹1;Blonde (122🔹1,5 ◾ 67🔹1);DataBeer_Images/128.Photo du moment.181955.jpg;IPA;;;;t8w3m6j3
+128;45288.0;Pression;Blanche;;Blanche de Namur;4.6;2.5;2.5;2.0;Ressemble à la Hoogarden blanche, bonne, rafraîchissante;47.449273, -2.312895;;Cabane à Mousse / Herbignac;;;☀️;;12.0;;;;2023;❄️ Hiver;41🔹2,5;1;28;12;2023;41;39;67;39🔹2,5 ◾ 67🔹2,5;Blanche (39🔹2,5 ◾ 67🔹2,5);;;;;;a7v8p3a0
+129;45398.0;Bock;Blonde;;Paulette (bière du paysage Nantais);8.0;1.5;1.5;1.5;Fruité, bière forte (triple), pas beaucoup de goût;47.483564, -2.444588;;;;;☀️;;13.0;;;;2024;☀️ Printemps;100🔹1,5;1;16;4;2024;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;c6t6f2x9
+130;45400.0;Pression;Blonde;IPA;Camden IPA;4.0;1.5;1.0;1.5;Pas trop de goût pour une IPA, Sarah trouve amer;51.486275, -0.202646;Angleterre;Bar de l’hôtel / Londres;;;🌧️;;8.0;;;;2024;☀️ Printemps;100🔹1,5;1;18;4;2024;100;122;99;122🔹1,5 ◾ 99🔹1;Blonde (122🔹1,5 ◾ 99🔹1);;IPA;;;;d8z7n1w3
+131;45400.0;Pression;Blonde;;Camden Blonde;4.6;1.5;1.5;1.5;Bon goût, bonne blonde, très leger;51.486272, -0.202692;Angleterre;Bar de l’hôtel / Londres;;;🌧️;;8.0;;;;2024;☀️ Printemps;100🔹1,5;1;18;4;2024;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;;;;;s1u4u6t1
+132;45401.0;;Blonde;;Hepcat;;3;2.5;3.5;Bon goût, fruité;51.505344, -0.090942;Angleterre;Londres The Yard (Borough Market) / Londres;;;🌧️;;10.0;Databeer_Images/52432b99.Photo du moment.131500.jpg;;;2024;☀️ Printemps;23🔹3;1;19;4;2024;23;39;10;39🔹3 ◾ 10🔹2,5;Blonde (39🔹3 ◾ 10🔹2,5);Databeer_Images/52432b99.Photo du moment.131500.jpg;;;;;r1p7b8t0
+133;45401.0;Pression;Blonde;;Stone & Wood;;2.5;2.5;2.0;Entre IPA et Blanche, pas mal;51.505287, -0.090912;Angleterre;Londres The Yard (Borough Market) / Londres;;;🌧️;;10.0;Databeer_Images/cb96969f.Photo du moment.050332.jpg;;;2024;☀️ Printemps;41🔹2,5;1;19;4;2024;41;39;67;39🔹2,5 ◾ 67🔹2,5;Blonde (39🔹2,5 ◾ 67🔹2,5);Databeer_Images/cb96969f.Photo du moment.050332.jpg;;;;;l8e2e2j0
+134;45401.0;Pression;Blonde;Pale Ale;Bandit;;1;1.0;0.5;Très amer mais pas IPA (juste Pâle Ale), Sarah pas fan, pas trop de goût;51.505321, -0.090905;Angleterre;Londres The Yard (Borough Market) / Londres;;;🌧️;;10.0;Databeer_Images/3ed1f54f.Photo du moment.050319.jpg;;;2024;☀️ Printemps;135🔹1;1;19;4;2024;135;122;160;122🔹1 ◾ 160🔹1;Blonde (122🔹1 ◾ 160🔹1);Databeer_Images/3ed1f54f.Photo du moment.050319.jpg;Pale Ale;;;;a3n8x7t4
+135;45401.0;Pression;Blonde;;Deya;;0;;;Non noté (je ne sais pas pourquoi);51.505359, -0.090934;Angleterre;Londres The Yard (Borough Market) / Londres;;;🌧️;;10.0;Databeer_Images/27ce0065.Photo du moment.050256.jpg;;;2024;☀️ Printemps;176🔹0;1;19;4;2024;176;;;🔹0 ◾ 🔹;Blonde (🔹0 ◾ 🔹);Databeer_Images/27ce0065.Photo du moment.050256.jpg;;;;;p5b0v1n7
+136;45401.0;Pression;Brune;;Samuel Smith Extra Stout;4.5;1;0.0;2.0;Sarah aime pas, bon goût pour une brune, même style Guiness;51.511837, -0.133402;Angleterre;Pub White Horse / Londres;;;☁️;;10.0;;;;2024;☀️ Printemps;135🔹1;1;19;4;2024;135;172;67;172🔹1 ◾ 67🔹0;Brune (172🔹1 ◾ 67🔹0);;;;;;x6v5y6z1
+137;45401.0;Pression;Blonde;IPA;Nek Oil session IPA;4.2;3;2.5;3.0;Rafraîchissante, bonne IPA, pas trop IPA mais très bonne;51.511190, -0.136099;Angleterre;Pub White Horse / Londres;;;☁️;;10.0;;;;2024;☀️ Printemps;23🔹3;1;19;4;2024;23;39;26;39🔹3 ◾ 26🔹2,5;Blonde (39🔹3 ◾ 26🔹2,5);;IPA;;;;b9j8j8a9
+138;45401.0;Pression;Blonde;;Timothy Taylor’s Landlord;;1;1.0;1.0;Pas fraîche, un peu amère, un peu un goût de café;51.511190, -0.136099;Angleterre;Pub n°2 (pas les bons coordonnées GPS) / Londres;;;☁️;;10.0;;;;2024;☀️ Printemps;135🔹1;1;19;4;2024;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;;;;;z1t8w3m7
+139;45402.0;Pression;Blonde;IPA;Stiff Lip IPA;;0.5;0.0;1.0;Très IPA, pas ouf;51.519055, -0.205712;Angleterre;Marché de Portobello / Londres;;;☁️;;11.0;;;;2024;☀️ Printemps;159🔹0,5;1;20;4;2024;159;172;133;172🔹0,5 ◾ 133🔹0;Blonde (172🔹0,5 ◾ 133🔹0);;IPA;;;;m3s4a7x0
+140;45402.0;Pression;Blonde;;Flint Eye Dry Hopped Lager;4.5;2;2.0;1.5;Rafraîchissante, bière de soif un peu;51.494150, -0.182445;Angleterre;Pub Stanhope / Londres;;;☁️;;11.0;;;;2024;☀️ Printemps;63🔹2;1;20;4;2024;63;61;99;61🔹2 ◾ 99🔹2;Blonde (61🔹2 ◾ 99🔹2);;;;;;n5j3r0p7
+141;45403.0;Bock;Blanche;;Éreinter Weissbier;5.3;1;1.0;1.0;Pas très rafraîchissante, pas le goût d’une blanche mais plutôt une blonde;51.464439, -0.216456;Angleterre;Coat & Badge / Londres;;;☁️;;11.0;Databeer_Images/58a4ba1a.Photo du moment.131526.jpg;;;2024;☀️ Printemps;135🔹1;1;21;4;2024;135;122;133;122🔹1 ◾ 133🔹1;Blanche (122🔹1 ◾ 133🔹1);Databeer_Images/58a4ba1a.Photo du moment.131526.jpg;;;;;m5c1f0k8
+142;45403.0;Pression;Blonde;IPA;Proper Job;;0.5;0.0;0.5;Très amère, pas ouf pour une IPA, très feuillus;51.464454, -0.216464;Angleterre;Coat & Badge / Londres;;;☁️;;11.0;Databeer_Images/4e49396e.Photo du moment.050434.jpg;;;2024;☀️ Printemps;159🔹0,5;1;21;4;2024;159;172;160;172🔹0,5 ◾ 160🔹0;Blonde (172🔹0,5 ◾ 160🔹0);Databeer_Images/4e49396e.Photo du moment.050434.jpg;IPA;;;;e9q1g9c7
+143;45407.0;Bock;Blanche;;Écume Witbier (brasserie VIF);5.0;2;2.0;1.5;Fraîche, légère, rafraîchissante, pas trop de goût;47.483568, -2.444574;;;;;☀️;;12.0;;;;2024;☀️ Printemps;63🔹2;1;25;4;2024;63;61;99;61🔹2 ◾ 99🔹2;Blanche (61🔹2 ◾ 99🔹2);;;;;;i7j6m7r3
+144;45407.0;Bock;Blonde;IPA;Vif & Flou New England IPA (brasserie VIF);6.5;1.5;1.5;1.5;Légère pour une IPA, Sarah aime bien, pas trop de goût, rafraîchissante et pas lourde;47.483391, -2.444596;;;;;☀️;;12.0;;;;2024;☀️ Printemps;100🔹1,5;1;25;4;2024;100;92;99;92🔹1,5 ◾ 99🔹1,5;Blonde (92🔹1,5 ◾ 99🔹1,5);;IPA;;;;c0k3y3i7
+145;45407.0;Pression;Blonde;IPA;Dix-sept heures Session IPA (brasserie VIF);4.0;1;1.0;1.0;A du goût, IPA assez légère, plate;47.483568, -2.444574;;;;;☀️;;12.0;;;;2024;☀️ Printemps;135🔹1;1;25;4;2024;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);;IPA;;;;l6w5s8h6
+146;45420.0;Pression;Blonde;IPA;Exo 7 IPA;6.9;2;1.5;2.5;Bonne IPA mais pas trop de goût, assez plate;47.474616, -2.485036;Quilles et Papilles;Quilles et Papilles / Pénestin (La Mine d’Or);;;☀️;;20.0;;;;2024;☀️ Printemps;63🔹2;1;8;5;2024;63;92;42;92🔹2 ◾ 42🔹1,5;Blonde (92🔹2 ◾ 42🔹1,5);;IPA;;;;h9r6k2k5
+147;45428.0;Bock;Blonde;;Blonde Les 3 Loups;6.3;2.5;2.5;2.5;Bonne bière blonde, elle a du goût, assez élevée en degrés, Sarah la trouve fruité;47.483571, -2.444578;;;;;☁️;;15.0;;Databeer_Images/0e64e014.Photo de la bière.173445.jpg;16.0;2024;☀️ Printemps;41🔹2,5;1;16;5;2024;41;39;42;39🔹2,5 ◾ 42🔹2,5;Blonde (39🔹2,5 ◾ 42🔹2,5);Databeer_Images/0e64e014.Photo de la bière.173445.jpg;;;;;t3m5v0p4
+148;45428.0;Bock;Blonde;IPA;IPA Les 3 Loups;5.6;2;1.0;2.5;Elle a du goût mais très IPA pour Sarah, bonne pour Teddy;47.483532, -2.444473;;;;;☁️;;15.0;;Databeer_Images/c8e13ffd.Photo de la bière.173505.jpg;50.0;2024;☀️ Printemps;63🔹2;1;16;5;2024;63;122;42;122🔹2 ◾ 42🔹1;Blonde (122🔹2 ◾ 42🔹1);Databeer_Images/c8e13ffd.Photo de la bière.173505.jpg;IPA;;;;t1u3g3m4
+149;45434.0;Bock;Blonde;;Triple Les 3 Loups;8.5;0.5;0.5;0.5;Beaucoup de goût mais tout s’emmêle, Sarah aime pas, spécial, forte;47.483611, -2.444447;;;Interieur;;☀️;😎;16.0;;Databeer_Images/f490554d.Photo de la bière.172820.jpg;26.0;2024;☀️ Printemps;159🔹0,5;1;22;5;2024;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);Databeer_Images/f490554d.Photo de la bière.172820.jpg;;;;;y0c3m2n4
+150;45434.0;Bock;Blanche;;Blanche Les 3 Loups;5.5;2;2.0;1.5;Lourde et ne fait pas bière de soif, fait pas trop blanche, Sarah la trouve amère;47.483568, -2.444581;;;Interieur;;☀️;😎;15.0;;Databeer_Images/1ed4f08e.Photo de la bière.173321.jpg;16.0;2024;☀️ Printemps;63🔹2;1;22;5;2024;63;61;99;61🔹2 ◾ 99🔹2;Blanche (61🔹2 ◾ 99🔹2);Databeer_Images/1ed4f08e.Photo de la bière.173321.jpg;;;;;p1c5d2t2
+151;45444.0;Bock;Blanche;;Mort Subite Lambic Blanc;5.5;0.5;0.5;0.5;Goût de fleur, Teddy la trouve chelou;47.092801, 0.013508;Center Parcs;Bar Bowling Center Parcs;Interieur;Week-end Center Parcs Famille Dumoulin;☁️;😎;20.0;;Databeer_Images/8c2b8328.Photo de la bière.163802.jpg;;2024;🌡️ Eté;159🔹0,5;1;1;6;2024;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blanche (154🔹0,5 ◾ 160🔹0,5);Databeer_Images/8c2b8328.Photo de la bière.163802.jpg;;;;;c2q5m8p3
+152;45467.0;Bock;Blanche;;Blanche Brasserie Dulion;5.5;2;2.0;1.5;Bonne mais pas un goût de fou, arrière goût bizarre, légère, rafraîchissante;47.483568, -2.444588;;;Interieur;;☀️;🥵;24.0;;Databeer_Images/65560562.Photo de la bière.173538.jpg;;2024;🌡️ Eté;63🔹2;1;24;6;2024;63;61;99;61🔹2 ◾ 99🔹2;Blanche (61🔹2 ◾ 99🔹2);Databeer_Images/65560562.Photo de la bière.173538.jpg;;;;;j9l9i1y1
+153;45467.0;Bock;Blonde;IPA;IPA Brasserie Dulion;6.0;1;1.0;1.0;Légère comme IPA, fait pas vraiment IPA (plus Pâle Ale);47.483568, -2.444588;;;Interieur;;☀️;🥵;24.0;;Databeer_Images/8ee1cbde.Photo de la bière.173519.jpg;;2024;🌡️ Eté;135🔹1;1;24;6;2024;135;122;133;122🔹1 ◾ 133🔹1;Blonde (122🔹1 ◾ 133🔹1);Databeer_Images/8ee1cbde.Photo de la bière.173519.jpg;IPA;;;;m1y7b9d8
+154;45471.0;Pression;Blonde;IPA;Cadette;6.0;2.5;1.0;4.0;Sarah aime pas, Teddy l’adore;47.483652, -2.474544;;Café du centre / Pénestin (bourg);Terrasse;Fête de la musique Pénestin;☀️;😎;;Databeer_Images/ae8ae6ef.Photo du moment.195345.jpg;;;2024;🌡️ Eté;41🔹2,5;1;28;6;2024;41;122;2;122🔹2,5 ◾ 2🔹1;Blonde (122🔹2,5 ◾ 2🔹1);Databeer_Images/ae8ae6ef.Photo du moment.195345.jpg;IPA;;;;l3w6d0e7
+155;45510.0;Pression;Blonde;;Lancelot Blonde;;1.5;1.5;1.0;Pils de base, plus de goût qu’une 1664 mais sans plus;47.483564, -2.444577;;CDC / Pénestin (bourg Pénestin);Terrasse;;☀️;😎;;;;;2024;🌡️ Eté;100🔹1,5;1;6;8;2024;100;92;133;92🔹1,5 ◾ 133🔹1,5;Blonde (92🔹1,5 ◾ 133🔹1,5);;;;;;d4p5y9v9
+156;45520.0;Pression;Blonde;IPA;Lancelot IPA;5.5;2;1.0;2.5;Sarah aime pas, bonne bière pour une bière de festival;47.744746, -3.357812;;;Terrasse;Festival Interceltique Lorient;🌨️;😎;21.0;Databeer_Images/342c8079.Photo du moment.113549.jpg;;;2024;🌡️ Eté;63🔹2;1;16;8;2024;63;122;42;122🔹2 ◾ 42🔹1;Blonde (122🔹2 ◾ 42🔹1);Databeer_Images/342c8079.Photo du moment.113549.jpg;IPA;;;;a3l0m6n0
+157;45520.0;Pression;Blonde;IPA;Guiness IPA;5.0;1;0.5;1.0;Pas trop de goût, fait pas du tout Guiness, assez plate pour une IPA;47.744747, -3.357824;;;Terrasse;Festival Interceltique Lorient;🌨️;😎;21.0;Databeer_Images/f95f5ea7.Photo du moment.175924.jpg;;;2024;🌡️ Eté;135🔹1;1;16;8;2024;135;154;133;154🔹1 ◾ 133🔹0,5;Blonde (154🔹1 ◾ 133🔹0,5);Databeer_Images/f95f5ea7.Photo du moment.175924.jpg;IPA;;;;o2w2h4p6
+158;45522.0;Bock;Blonde;IPA;Impérial Brut IPA Igor Mill;8.0;3;3.0;2.5;Très bonne pour une bière IPAD en bock, Sarah aime bien car elle pique pas;47.473444, -2.461373;;;Terrasse;;☀️;😎;21.0;Databeer_Images/c240c8bc.Photo du moment.173644.jpg;Databeer_Images/c240c8bc.Photo de la bière.173613.jpg;;2024;🌡️ Eté;23🔹3;1;18;8;2024;23;24;42;24🔹3 ◾ 42🔹3;Blonde (24🔹3 ◾ 42🔹3);Databeer_Images/c240c8bc.Photo du moment.173644.jpg;IPA;;;;r2j8l6w4
+159;45522.0;Bock;Blonde;IPA;New England IPA Ariane Mill;6.0;2;2.0;1.5;On dirait une blanche, pas IPA, Sarah aime bien;47.473444, -2.461373;;;Terrasse;;☀️;😎;20.0;Databeer_Images/4ff16e1a.Photo du moment.181744.jpg;Databeer_Images/4ff16e1a.Photo de la bière.181636.jpg;;2024;🌡️ Eté;63🔹2;1;18;8;2024;63;61;99;61🔹2 ◾ 99🔹2;Blonde (61🔹2 ◾ 99🔹2);Databeer_Images/4ff16e1a.Photo du moment.181744.jpg;IPA;;;;h7b2h2i0
+160;45531.0;Bock;Blonde;IPA;Pietra IPA;6.0;2.5;1.0;3.5;Pas très amer, bonne IPA;47.381529, -2.546354;;La Vigie/Piriac;Terrasse;;☀️;😎;22.0;Databeer_Images/a2b328ca.Photo du moment.174306.jpg;Databeer_Images/a2b328ca.Photo de la bière.174245.jpg;40.0;2024;🌡️ Eté;41🔹2,5;1;27;8;2024;41;122;10;122🔹2,5 ◾ 10🔹1;Blonde (122🔹2,5 ◾ 10🔹1);Databeer_Images/a2b328ca.Photo du moment.174306.jpg;IPA;;;;t7w8e8l5
+161;45654.0;Canette;Ambré;;Vienna Brasserie VIF;5.0;0.5;0.0;0.5;Sarah aime pas du tout, pas grand chose à dire pour Teddy, pas une bonne bière, pas trop de goût, goût à moitié de chocolat;47.483561, -2.444557;;;Interieur;;☁️;😎;4.0;;DataBeer_Images/162.Photo de la bière.212231.jpg;;2024;❄️ Hiver;159🔹0,5;1;28;12;2024;159;172;160;172🔹0,5 ◾ 160🔹0;Ambré (172🔹0,5 ◾ 160🔹0);DataBeer_Images/162.Photo de la bière.212231.jpg;;;;;j1c7y7m0
+162;45654.0;Canette;Blonde;;La Buée Brasserie VIF;5.0;0.5;0.5;0.5;Sarah la trouve amer, moi je la trouve sans goût, pas top;47.483561, -2.444557;;;;;☁️;😎;4.0;;DataBeer_Images/163.Photo de la bière.212042.jpg;;2024;❄️ Hiver;159🔹0,5;1;28;12;2024;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);DataBeer_Images/163.Photo de la bière.212042.jpg;;;;;l6p3g3s5
+163;45696.0;Pression;Blonde;IPA;Diletente Double IPA;8.0;1.5;1.5;1.0;Pas trop de goût pour une IPA (pourtant double apparemment), l’ambiance fait qu’elle est bonne;48.107442, -1.675522;;Le Béret / Rennes;Interieur;Soirée annuelle copains/famille;🌧️;🥶;5.0;DataBeer_Images/164.Photo du moment.183149.jpg;DataBeer_Images/164.Photo de la bière.183054.jpg;;2025;❄️ Hiver;100🔹1,5;1;8;2;2025;100;92;133;92🔹1,5 ◾ 133🔹1,5;Blonde (92🔹1,5 ◾ 133🔹1,5);DataBeer_Images/164.Photo du moment.183149.jpg;IPA;;;;u0z4d6k0
+164;45696.0;Pression;Blonde;Bière de soif;La Recup;5.0;0;0.0;0.0;Bière Pils, équivaut à une 1664, aucun goût après une gorgée d’IPA;48.107462, -1.675383;;Le Béret / Rennes;Interieur;Soirée annuelle copains/famille;🌧️;🥶;5.0;DataBeer_Images/165.Photo du moment.183423.jpg;DataBeer_Images/165.Photo de la bière.183112.jpg;;2025;❄️ Hiver;176🔹0;1;8;2;2025;176;172;176;172🔹0 ◾ 176🔹0;Blonde (172🔹0 ◾ 176🔹0);DataBeer_Images/165.Photo du moment.183423.jpg;Bière de soif;;;;l5a4a1a8
+165;45717.0;Pression;Blonde;;La Joyeuse;7.5;0.5;0.5;0.5;On dirait du cidre, vraiment pas terrible;47.483569, -2.444578;;;Interieur;Apéro repas du midi le jour où on montait la cuisine;☀️;😎;;DataBeer_Images/a1fe2936.Photo du moment.131600.jpg;DataBeer_Images/a1fe2936.Photo de la bière.131038.jpg;;2025;☀️ Printemps;159🔹0,5;1;1;3;2025;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);DataBeer_Images/a1fe2936.Photo du moment.131600.jpg;;;;;a1fe2936
+166;45736.0;Bock;Blonde;;Cobra World Beer Indienne;4.5;0.5;0.5;0.0;Bière bue dans un resto indien, pas de goût, de l’eau, ressemble à une kro;47.658125, -2.751392;Vannes;La porte de l’Inde / Vannes;Interieur;Resto Indien à Vannes;☀️;😎;15.0;DataBeer_Images/b0488ba5.Photo du moment.191844.jpg;DataBeer_Images/b0488ba5.Photo de la bière.191844.jpg;;2025;☀️ Printemps;159🔹0,5;1;20;3;2025;159;154;176;154🔹0,5 ◾ 176🔹0,5;Blonde (154🔹0,5 ◾ 176🔹0,5);DataBeer_Images/b0488ba5.Photo du moment.191844.jpg;;;;;b0488ba5
+167;45745.0;Bock;Blonde;;La Goudale du Printemps;6.8;0;;1.0;;47.479557, -2.470661;;;Interieur;;☀️;😎;;DataBeer_Images/628a7ca7.Photo du moment.224949.jpg;DataBeer_Images/628a7ca7.Photo de la bière.224948.jpg;;2025;☀️ Printemps;176🔹0;1;29;3;2025;176;;133;🔹0 ◾ 133🔹;Blonde (🔹0 ◾ 133🔹);DataBeer_Images/628a7ca7.Photo du moment.224949.jpg;;;;;628a7ca7
+168;45803.0;Bock;Blonde;;San Miguel (bière espagnole);5.4;0.5;0.5;0.5;Pas terrible, plate, bière classique;36.487566, -4.955860;Espagne;Afendi / Puerto Banus;Terrasse;Voyage Pompier Andalousie;☀️;🥵;23.0;DataBeer_Images/18d6d452.Photo du moment.092219.jpg;DataBeer_Images/18d6d452.Photo de la bière.092017.jpg;;2025;☀️ Printemps;159🔹0,5;1;26;5;2025;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);DataBeer_Images/18d6d452.Photo du moment.092219.jpg;;;;;18d6d452
+169;45804.0;Pression;Blonde;Bière de soif;Amstel;;0.5;0.5;0.5;Bière de soif simple;36.723195, -4.411561;Espagne;Málaga / Málaga;Terrasse;Voyage pompier Andalousie;☀️;🥵;24.0;DataBeer_Images/bd589efe.Photo du moment.095322.jpg;;;2025;☀️ Printemps;159🔹0,5;1;27;5;2025;159;154;160;154🔹0,5 ◾ 160🔹0,5;Blonde (154🔹0,5 ◾ 160🔹0,5);DataBeer_Images/bd589efe.Photo du moment.095322.jpg;Bière de soif;;;;bd589efe
+170;45804.0;Pression;Blonde;;Victoria Malaga;;1;0.5;1.0;Sarah aime pas, pas ouf;36.718441, -4.413250;Espagne;Lovento / Malaga;Terrasse;Voyage Pompier 2025;☀️;🥵;25.0;DataBeer_Images/5397b833.Photo du moment.110001.jpg;;;2025;☀️ Printemps;135🔹1;1;27;5;2025;135;154;133;154🔹1 ◾ 133🔹0,5;Blonde (154🔹1 ◾ 133🔹0,5);DataBeer_Images/5397b833.Photo du moment.110001.jpg;;;;;5397b833
+171;45812.0;Pression;Blonde;IPA;Nao West Coast IPA;;1.5;1.0;1.5;Plat pour une IPA, Sarah aime pas;47.493622, -2.440544;;Annexe / Trehiguier;Interieur;;☁️;😎;17.0;DataBeer_Images/bf3aee77.Photo du moment.171054.jpg;;;2025;🌡️ Eté;100🔹1,5;1;4;6;2025;100;122;99;122🔹1,5 ◾ 99🔹1;Blonde (122🔹1,5 ◾ 99🔹1);DataBeer_Images/bf3aee77.Photo du moment.171054.jpg;IPA;;;;bf3aee77
+172;45816.0;Bock;Blonde;IPA;St Erwan double IPA;8.0;1.5;1.0;2.0;Bonne IPA pour une biere bouteille grande consommation, Sarah aime pas du tout;47.374665, -2.534804;;;Terrasse;Week-end Dumoulin Camping Cap Fun Piriac;☀️;😎;16.0;DataBeer_Images/b11e41ee.Photo du moment.123710.jpg;DataBeer_Images/b11e41ee.Photo de la bière.123710.jpg;;2025;🌡️ Eté;100🔹1,5;1;8;6;2025;100;122;67;122🔹1,5 ◾ 67🔹1;Blonde (122🔹1,5 ◾ 67🔹1);DataBeer_Images/b11e41ee.Photo du moment.123710.jpg;IPA;;;;b11e41ee
+173;45817.0;Canette;Blonde;IPA;Wipe Out IPA;6.2;1.5;2.0;1.0;Goût orangé et citronné, ne fait pas IPA, pas degueu pour Sarah, pas hyper rafraîchissante, fait blanche de visuel mais non;47.474602, -2.485048;;Quilles & Papilles / Penestin;Terrasse;;☀️;😎;22.0;;DataBeer_Images/2357aa32.Photo de la bière.162056.jpg;;2025;🌡️ Eté;100🔹1,5;1;9;6;2025;100;61;133;61🔹1,5 ◾ 133🔹2;Blonde (61🔹1,5 ◾ 133🔹2);DataBeer_Images/2357aa32.Photo de la bière.162056.jpg;IPA;;;;2357aa32
+174;45834.0;Pression;Blonde;IPA;St Erwan IPA;;1.5;1.0;2.0;Bonne IPA pour moi, Sarah aime pas;47.474554, -2.486247;;Le p’tit rade / Pénestin;Terrasse;Après un Parcours Sportif;☁️;😎;22.0;DataBeer_Images/6721af9c.Photo du moment.181522.jpg;;;2025;🌡️ Eté;100🔹1,5;1;26;6;2025;100;122;67;122🔹1,5 ◾ 67🔹1;Blonde (122🔹1,5 ◾ 67🔹1);DataBeer_Images/6721af9c.Photo du moment.181522.jpg;IPA;;;;6721af9c
+175;45837.0;Bock;Blonde;IPA;Venetet’s IPA;6.0;1.5;0.5;2.5;Sarah aime pas, pas mal pour une bière IPA en Bock;47.483655, -2.474388;;L’R de rien;Terrasse;Après le marché de Penestin;☀️;🥵;31.0;;DataBeer_Images/07870f23.Photo de la bière.130001.jpg;;2025;🌡️ Eté;100🔹1,5;1;29;6;2025;100;154;42;154🔹1,5 ◾ 42🔹0,5;Blonde (154🔹1,5 ◾ 42🔹0,5);DataBeer_Images/07870f23.Photo de la bière.130001.jpg;IPA;;;;07870f23
+176;45880.0;Pression;Blonde;IPA;La Fougue IPA;;2;1.0;2.5;;47.650903, -2.757410;Vannes;;Terrasse;;☀️;🥵;34.0;;;;2025;🌡️ Eté;63🔹2;1;11;8;2025;63;122;42;122🔹2 ◾ 42🔹1;Blonde (122🔹2 ◾ 42🔹1);;IPA;;;;4da2bb33
+177;45880.0;Pression;Blanche;IPA;La Bringue Blanche IPA;;2;1.5;2.0;;47.650662, -2.757236;;;Terrasse;;☀️;🥵;34.0;;;;2025;🌡️ Eté;63🔹2;1;11;8;2025;63;92;67;92🔹2 ◾ 67🔹1,5;Blanche (92🔹2 ◾ 67🔹1,5);;IPA;;;;3fef24c1
+178;45889.0;Bock;Blonde;IPA;85 IPA;5.6;2;1.0;2.5;Bonne IPA, douce et fraîche. Sarah aime pas;46.784434, -2.073467;;Le Colibri / St Jean de Mont;Terrasse;Vacances St Jean de Mont;☁️;🥵;22.0;DataBeer_Images/1cbeac85.Photo du moment.161241.jpg;DataBeer_Images/1cbeac85.Photo de la bière.161241.jpg;;2025;🌡️ Eté;63🔹2;1;20;8;2025;63;122;42;122🔹2 ◾ 42🔹1;Blonde (122🔹2 ◾ 42🔹1);DataBeer_Images/1cbeac85.Photo du moment.161241.jpg;IPA;;;;1cbeac85
+179;45890.0;Pression;Blonde;IPA;La Débauche IPA;;2;1.0;3.0;IPA douce;46.776793, -2.056363;;Le 20 Six / St Jean de Mont;Interieur;;☀️;😎;20.0;DataBeer_Images/e0861275.Photo du moment.194115.jpg;;;2025;🌡️ Eté;63🔹2;1;21;8;2025;63;122;26;122🔹2 ◾ 26🔹1;Blonde (122🔹2 ◾ 26🔹1);DataBeer_Images/e0861275.Photo du moment.194115.jpg;IPA;;;;e0861275
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

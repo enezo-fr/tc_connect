@@ -295,6 +295,73 @@ service cloud.firestore {
       allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role_app == 'Admin';
     }
 
+    // App « À deux » : trois listes partagées, même patron que `bieres`/`babies`.
+    // Les tours de jeu vivent DANS le document partie → aucune sous-collection.
+    //
+    // Le joker ne couvre QUE les trois collections listées : `estListeDuo()` est
+    // faux partout ailleurs, donc ce bloc n'accorde rien sur les autres. Les
+    // règles s'additionnent (elles n'interdisent jamais), il ne peut donc pas
+    // non plus restreindre une collection déjà autorisée plus haut.
+    match /{listeDuo}/{docId} {
+      function estListeDuo() {
+        return listeDuo in ['duo_films', 'duo_activites', 'duo_parties'];
+      }
+      function estMembreDuo() {
+        return request.auth != null && request.auth.uid in resource.data.members;
+      }
+      allow create: if estListeDuo() && request.auth != null
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.createdBy == request.auth.uid;
+      allow read: if estListeDuo() && (estMembreDuo() || isAdmin());
+      allow update: if estListeDuo() && ((
+          estMembreDuo()
+          && request.resource.data.members == resource.data.members
+          && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+        ) || isAdmin());
+      allow delete: if estListeDuo() && ((
+          estMembreDuo()
+          && resource.data.get('createdBy', request.auth.uid) == request.auth.uid
+        ) || isAdmin());
+    }
+
+    match /bieres/{biereId} {
+      // Catalogue partagé : même patron que `babies`, le partage repose sur `members`.
+      function isBiereMember() {
+        return request.auth != null && request.auth.uid in resource.data.members;
+      }
+
+      allow create: if request.auth != null
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow read: if isBiereMember() || isAdmin();
+
+      // Un membre édite la fiche mais ne touche ni aux membres ni au créateur.
+      allow update: if (
+          isBiereMember()
+          && request.resource.data.members == resource.data.members
+          && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+        ) || isAdmin();
+
+      allow delete: if (
+          isBiereMember()
+          && resource.data.get('createdBy', request.auth.uid) == request.auth.uid
+        ) || isAdmin();
+
+      match /degustations/{degId} {
+        // ⚠️ Les dégustations sont lues par `collectionGroup` : la règle ne peut donc
+        // PAS remonter au parent (le chemin n'est pas connu à l'évaluation d'une
+        // requête de groupe). D'où `membersDeg` recopié sur chaque dégustation,
+        // et la requête client filtrée dessus.
+        allow read: if isAdmin() || (request.auth != null
+          && request.auth.uid in resource.data.membersDeg);
+        allow create: if request.auth != null
+          && request.auth.uid in request.resource.data.membersDeg;
+        allow update, delete: if isAdmin() || (request.auth != null
+          && request.auth.uid in resource.data.membersDeg);
+      }
+    }
+
     match /babies/{babyId} {
       // Le partage entre co-parents repose sur le tableau `members` (liste d'UID).
       function isBabyMember() {

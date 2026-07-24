@@ -1161,14 +1161,29 @@ export default function BebePage() {
           </div>
         </div>
 
-        {/* Onglets vue */}
-        <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-          {[{ key: 'dashboard', icon: LayoutList, label: "Aujourd'hui" }, { key: 'planning', icon: CalendarDays, label: 'Planning' }, { key: 'stats', icon: BarChart3, label: 'Stats' }, { key: 'growth', icon: HeartPulse, label: 'Santé' }, { key: 'arrival', icon: Gift, label: 'Arrivée' }].map(v => {
+        {/* Onglets vue — 5 entrées.
+            Sur mobile, une rangée horizontale débordait sur deux lignes, avec une
+            seconde ligne à moitié vide : on passe en 5 colonnes égales, icône
+            au-dessus du libellé, comme la barre du bas. Sur écran large, la
+            pastille horizontale d'origine. */}
+        <div className="grid grid-cols-5 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
+          {([
+            // `court` : « Aujourd'hui » ne tient pas dans une colonne sur cinq
+            // des petits écrans — il serait tronqué en « Aujourd'h… ».
+            { key: 'dashboard', icon: LayoutList,   label: "Aujourd'hui", court: 'Jour' },
+            { key: 'planning',  icon: CalendarDays, label: 'Planning' },
+            { key: 'stats',     icon: BarChart3,    label: 'Stats' },
+            { key: 'growth',    icon: HeartPulse,   label: 'Santé' },
+            { key: 'arrival',   icon: Gift,         label: 'Arrivée' },
+          ] as const).map(v => {
             const Icon = v.icon
+            const court = 'court' in v ? v.court : v.label
             return (
-              <button key={v.key} onClick={() => setViewMode(v.key as any)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${viewMode === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                <Icon size={15} />{v.label}
+              <button key={v.key} onClick={() => setViewMode(v.key)}
+                className={`flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-lg text-[11px] leading-none font-medium transition sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === v.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                <Icon size={16} className="shrink-0 sm:w-[15px] sm:h-[15px]" />
+                <span className="sm:hidden">{court}</span>
+                <span className="hidden sm:inline">{v.label}</span>
               </button>
             )
           })}

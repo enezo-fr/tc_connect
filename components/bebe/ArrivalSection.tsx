@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
-  CheckCircle2, RotateCcw, Copy, Check, Share2, CircleDashed,
+  CheckCircle2, RotateCcw, Copy, Check, Share2,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
@@ -112,7 +112,7 @@ export function ArrivalSection({
 
   // ── Infos de naissance ──────────────────────────────────────────────────────
   const [showInfo, setShowInfo] = useState(false)
-  const [infoForm, setInfoForm] = useState({ sex: '', weight: '', height: '', head: '', time: '' })
+  const [infoForm, setInfoForm] = useState({ sex: '', weight: '', height: '', time: '' })
   const [savingInfo, setSavingInfo] = useState(false)
 
   const openInfo = () => {
@@ -120,7 +120,6 @@ export function ArrivalSection({
       sex: baby.sex ?? '',
       weight: weightToKgInput(baby.birthWeightG),
       height: baby.birthHeightCm ? String(baby.birthHeightCm) : '',
-      head: baby.birthHeadCm ? String(baby.birthHeadCm) : '',
       time: baby.birthTime ?? '',
     })
     setShowInfo(true)
@@ -133,7 +132,6 @@ export function ArrivalSection({
         sex: infoForm.sex === 'boy' || infoForm.sex === 'girl' ? infoForm.sex : undefined,
         birthWeightG: kgInputToGrams(infoForm.weight),
         birthHeightCm: infoForm.height ? Number(infoForm.height) : undefined,
-        birthHeadCm: infoForm.head ? Number(infoForm.head) : undefined,
         birthTime: infoForm.time || undefined,
       })
       setShowInfo(false)
@@ -283,11 +281,12 @@ export function ArrivalSection({
             <Pencil size={15} />
           </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {/* Pas de périmètre crânien ici : on ne l'annonce pas dans un faire-part.
+            Il se suit dans l'onglet Santé, via une mesure. */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <InfoCell icon={BabyIcon} label="Sexe"  value={baby.sex === 'girl' ? 'Fille' : baby.sex === 'boy' ? 'Garçon' : '—'} />
           <InfoCell icon={Weight}   label="Poids" value={formatWeight(baby.birthWeightG) || '—'} />
           <InfoCell icon={Ruler}    label="Taille" value={baby.birthHeightCm ? `${baby.birthHeightCm} cm` : '—'} />
-          <InfoCell icon={CircleDashed} label="P. crânien" value={baby.birthHeadCm ? `${baby.birthHeadCm} cm` : '—'} />
           <InfoCell icon={Clock}    label="Heure" value={baby.birthTime || '—'} />
         </div>
       </div>
@@ -453,12 +452,6 @@ export function ArrivalSection({
                 onChange={e => setInfoForm(f => ({ ...f, height: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Périmètre crânien (cm)</label>
-            <input type="number" min={0} step={0.5} placeholder="35" value={infoForm.head}
-              onChange={e => setInfoForm(f => ({ ...f, head: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Heure de naissance</label>

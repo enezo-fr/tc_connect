@@ -1,0 +1,162 @@
+IDDetailsCommande;IDCommandeRef;Quoi ?;Nombre
+10745fe8;e815e5f1;Gin Tonic;4.0
+a97ca34a;e815e5f1;Tequila Sunrise
+e5469c9e;e815e5f1;Bière;1.0
+37df15fe;e815e5f1;Caipirina
+2a9c441f;e815e5f1;Blue Lagon
+26972411;e815e5f1;Eau gazeuse/Perrier
+9ec68b15;e815e5f1;Cuba libre;1.0
+cbb6db8e;e815e5f1;San fransisco;1.0
+1cba45c9;555da84c;Gin Tonic;2.0
+50c7cd84;555da84c;Cuba libre;2.0
+;;;
+c389d22c;555da84c;Eau gazeuse/Perrier;1.0
+;;;
+ec6819cc;555da84c;Bière;1.0
+e64a70bb;555da84c;Tequila Sunrise;2.0
+8fd177ac;555da84c;Caipirina;2.0
+3c217d61;2f2527df;Tequila Sunrise;1.0
+a0639b03;2f2527df;Gin Tonic;1.0
+037af08b;2f2527df;Cuba libre;2.0
+2ca2c861;2f2527df;Blue Lagon;3.0
+6413a2cd;8b1fc41b;Vodka Sunrise;1.0
+d78bf975;8b1fc41b;Kass Lemon;1.0
+da41dda8;8b1fc41b;Blue Lagon;2.0
+43786588;8b1fc41b;Tequila Sunrise;2.0
+519f4c23;e141bd4a;Bière;2.0
+12f8a7df;e141bd4a;Pastis;1.0
+0e387efe;e141bd4a;San fransisco;1.0
+22923ff2;e141bd4a;Gin Tonic;3.0
+790adedf;e141bd4a;Blue Lagon;1.0
+9347486e;e141bd4a;Kass Lemon;1.0
+0cc22521;e141bd4a;Cuba libre;1.0
+66b6e765;d39e463b;Cuba libre;1.0
+6d4f2ae4;d39e463b;Gin Tonic;3.0
+f8a73320;d39e463b;Tequila Sunrise;1.0
+c83aeed4;d39e463b;Kass Lemon;1.0
+ee060d7c;d39e463b;Pastis;1.0
+d95d8cf3;d39e463b;Bière;3.0
+0b2b25df;6f4503d8;Café allongé;1.0
+ae32d318;6f4503d8;Eau gazeuse/Perrier;3.0
+382ef851;6f4503d8;Bière;2.0
+ba68ecd9;6f4503d8;Cuba libre;2.0
+62e696ef;6f4503d8;Pepsi;1.0
+0ee6465b;6f4503d8;Ice tea;1.0
+a1e01b03;6f4503d8;Kass Lemon;1.0
+563713d9;6f4503d8;Gin Tonic;1.0
+5acd9194;0d094a8b;Bière;7.0
+70e740e9;0d094a8b;Eau gazeuse/Perrier;2.0
+86ac8ec7;0d094a8b;Fanta Lemon;3.0
+7e7e79e2;0d094a8b;Jus d’orange;1.0
+881df715;0d094a8b;Coca;1.0
+4590609f;bee70422;Eau gazeuse/Perrier;2.0
+b2cd7d01;bee70422;Gin Tonic;1.0
+b3fe16e6;bee70422;Bière;4.0
+a8a98325;bee70422;Kass Lemon;1.0
+09a7948e;bee70422;Tequila Sunrise;1.0
+996de517;bee70422;Blue Lagon;2.0
+ec1df063;e76aa598;Gin Tonic;3.0
+63e3bad8;e76aa598;Eau gazeuse/Perrier;1.0
+6b5597e5;e76aa598;Blue Lagon;2.0
+e73d7eba;e76aa598;Fanta Lemon;1.0
+c033fcd8;e76aa598;Bière;2.0
+a5739b22;e76aa598;Cuba libre;1.0
+1e390ab8;1e38970c;Cuba libre;2.0
+d3cc8bc5;1e38970c;Pastis;1.0
+5172d6cc;1e38970c;Tequila Sunrise;1.0
+f52a77df;1e38970c;Martini Blanco;1.0
+9f5e2b2a;1e38970c;Bière;1.0
+1b5c4405;7fa1f3e4;Cuba libre;3.0
+f3efe397;7fa1f3e4;Blue Lagon;1.0
+79d717b0;7fa1f3e4;Pastis;1.0
+6ae1c87f;7fa1f3e4;Vodka Sunrise;2.0
+38d4858b;7fa1f3e4;Gin Tonic;1.0
+bd5778f4;7fa1f3e4;Bière;1.0
+0d6854b3;dbefbdc7;Bière;1.0
+d03a8c52;dbefbdc7;Cuba libre;3.0
+86aabd27;dbefbdc7;Tequila Sunrise;1.0
+67299529;dbefbdc7;Gin Tonic;1.0
+f30bae77;2eec2b47;Martini Blanco;1.0
+09502c26;2eec2b47;Blue Lagon;2.0
+7bf549ed;2eec2b47;Eau gazeuse/Perrier;3.0
+13fa3125;2eec2b47;Gin Tonic;2.0
+0618c96a;2eec2b47;Bière;2.0
+72bfba48;26d4a345;Cuba libre;2.0
+2e46261b;26d4a345;Bière;2.0
+147fa5f8;26d4a345;Kass Lemon;0.0
+23a8fa1e;26d4a345;Gin Tonic;3.0
+c4ecddd0;26d4a345;Blue Lagon;0.0
+7528380f;475461c6;Gin Tonic;2.0
+4b2a05fe;475461c6;Martini Blanco;1.0
+f53ba640;475461c6;Tequila Sunrise;2.0
+fa17c329;475461c6;Eau gazeuse/Perrier;2.0
+ac46372d;475461c6;Cuba libre;1.0
+5b444e37;488adb18;Marakuya;1.0
+7b9d0805;488adb18;Bière;4.0
+7bca19be;488adb18;Cuba libre;2.0
+fd1364ea;6896f3f1;Bière;4.0
+b5f3fd11;6896f3f1;Gin Tonic;3.0
+5841870c;6896f3f1;Kass Lemon;2.0
+80ee43b0;6896f3f1;Eau gazeuse/Perrier;1.0
+c996cf4d;6896f3f1;Bellini;1.0
+61c1e80a;6896f3f1;Pastis;1.0
+dd208415;6323ad91;Café allongé;1.0
+f07ef8e0;6323ad91;Coca;1.0
+6c67882e;6323ad91;Bière;3.0
+7836c7e5;6323ad91;Gin Tonic;1.0
+1168752b;6323ad91;Blue Lagon;1.0
+9d1c73ab;827bca1c;Bière;1.0
+84166bb6;827bca1c;Kass Lemon;1.0
+932554fc;827bca1c;Cuba libre;1.0
+a5c1fc4a;fc7eb7ae;Bière;2.0
+3ecdc0ec;fc7eb7ae;Blue Lagon;2.0
+5e1cf110;fc7eb7ae;Tequila Sunrise;2.0
+981d8836;fc7eb7ae;Gin Tonic;2.0
+e8f4686b;e0f58715;Demi Lancelot;2.0
+6e4d4bfa;e0f58715;Cuba libre;1.0
+878a5190;e0f58715;IPA;3.0
+a92c25b5;e0f58715;Pinte Picon;1.0
+768750a9;e0f58715;Pinte Duchesse;1.0
+ebc7004e;55f1801a;Pinte IPA;1.0
+631d4068;55f1801a;Pinte blanche;1.0
+84875d37;55f1801a;Demi Blanche;1.0
+661101ad;55f1801a;Pinte Picon;1.0
+275688ce;55f1801a;Pinte Pêche;1.0
+7706678c;ea735e5e;Pinte blanche;5.0
+b0a40b7f;ea735e5e;Pinte IPA;1.0
+24104147;ea735e5e;Diabolo pêche;1.0
+6a0abfc8;ea735e5e;Ice tea;1.0
+91efae21;ea735e5e;Pinte Picon;1.0
+249d5f84;62c59de3;Pinte Picon;1.0
+049859dc;62c59de3;Pinte de Pils;1.0
+565a8504;62c59de3;Pinte blanche;2.0
+038a802b;62c59de3;Pinte IPA;1.0
+e77006ad;62c59de3;Demi Blanche;1.0
+04981cfc;627dda75;Monaco demi;1.0
+c1e2ec0f;627dda75;Demi Lancelot;1.0
+47c96074;627dda75;Perrier citron;1.0
+ead83fa2;627dda75;Diabolo fraise;1.0
+a7f5e949;627dda75;Demi IPA;1.0
+8b41c74f;627dda75;Pinte IPA;3.0
+7a91015f;627dda75;Diabolo menthe;1.0
+11acf393;627dda75;Pinte blanche;3.0
+2061ef05;627dda75;Demi Blanche;1.0
+77a80e4d;627dda75;Coca;1.0
+f9a63957;65c8fe4d;Pinte IPA;3.0
+46c6dbcf;65c8fe4d;Pinte Picon;1.0
+da8f7253;65c8fe4d;Rhum coca;2.0
+747bc43b;65c8fe4d;Pinte Duchesse;1.0
+ad043984;d2cc9b21;Pinte blanche;1.0
+f93874d3;d2cc9b21;Rhum coca;4.0
+a76d35c9;d2cc9b21;Vin rouge;1.0
+74b9c1e8;d2cc9b21;Cuba libre;1.0
+39566645;d2cc9b21;Pinte IPA;2.0
+f923b44d;d2cc9b21
+83847f23;d2cc9b21;Whisky coca;1.0
+ae16e0c4;80ce11d5;Pinte IPA;3.0
+65b0af67;80ce11d5;Cuba libre;1.0
+7533d317;80ce11d5;Rhum coca;3.0
+176d7309;80ce11d5;Pinte blanche;1.0
+6aa06015;fe5fa936;Pinte IPA;2.0
+223edd03;fe5fa936;Pinte Duchesse;1.0
+;;;

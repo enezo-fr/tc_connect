@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDownTrayIcon, XMarkIcon, ShareIcon } from '@heroicons/react/24/outline'
 import { useBrand } from '@/context/BrandContext'
 
@@ -10,6 +10,26 @@ type BeforeInstallPromptEvent = Event & {
 }
 
 const DISMISS_KEY = 'pwa-install-dismissed'
+/** « Plus tard » veut dire plus tard, pas jamais : on se tait un mois. */
+const SILENCE_JOURS = 30
+
+/**
+ * Le bandeau est-il masqué ? La valeur stockée est l'horodatage du refus.
+ * Les anciennes installations ont un `'1'` sans date : on le convertit au vol,
+ * sinon le bandeau resterait masqué pour toujours.
+ */
+function estMasque(): boolean {
+  try {
+    const v = localStorage.getItem(DISMISS_KEY)
+    if (!v) return false
+    if (v === '1') { localStorage.setItem(DISMISS_KEY, String(Date.now())); return true }
+    const t = Number(v)
+    if (!Number.isFinite(t)) return false
+    return Date.now() - t < SILENCE_JOURS * 86_400_000
+  } catch {
+    return false
+  }
+}
 
 export default function PwaInstallPrompt() {
   const { brand } = useBrand()
@@ -18,6 +38,15 @@ export default function PwaInstallPrompt() {
   const [visible, setVisible] = useState(false)
   const [isIos, setIsIos] = useState(false)
   const [showIosHelp, setShowIosHelp] = useState(false)
+  // Refus de la session en cours : `beforeinstallprompt` est ré-émis par Chrome
+  // à chaque navigation, et l'état React seul ne survit pas à un remontage.
+  const refuse = useRef(false)
+
+  const dismiss = useCallback(() => {
+    refuse.current = true
+    setVisible(false)
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch {}
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -25,14 +54,16 @@ export default function PwaInstallPrompt() {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
       || (navigator as any).standalone === true
     if (standalone) return
-    // Déjà masquée par l'utilisateur
-    try { if (localStorage.getItem(DISMISS_KEY) === '1') return } catch {}
+    if (estMasque()) return
 
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
     setIsIos(ios)
 
     const onBip = (e: Event) => {
       e.preventDefault()
+      // ⚠️ LE BUG D'ORIGINE ÉTAIT ICI : l'événement rouvrait le bandeau sans
+      // vérifier le refus, donc « Plus tard » ne tenait pas d'une page à l'autre.
+      if (refuse.current || estMasque()) return
       setDeferred(e as BeforeInstallPromptEvent)
       setVisible(true)
     }
@@ -48,12 +79,7 @@ export default function PwaInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', onBip)
       window.removeEventListener('appinstalled', onInstalled)
     }
-  }, [])
-
-  const dismiss = () => {
-    setVisible(false)
-    try { localStorage.setItem(DISMISS_KEY, '1') } catch {}
-  }
+  }, [dismiss])
 
   const install = async () => {
     if (deferred) {

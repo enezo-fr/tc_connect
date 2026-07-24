@@ -1061,6 +1061,157 @@ export interface StoreSubscription {
   updatedAt?: Timestamp
 }
 
+// ─── App « À deux » : à voir, à faire, scores ────────────────────────────────
+
+/** Champs communs aux trois listes : partage et traçabilité */
+interface DuoBase {
+  id: string
+  /** UID des personnes qui partagent la liste (patron de `Bebe.members`) */
+  members: string[]
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt?: Timestamp
+}
+
+/** Document Firestore : duo_films/{id} — films et séries à voir ou déjà vus */
+export interface DuoFilm extends DuoBase {
+  /** « Film » ou « Série » */
+  type: string
+  nom: string
+  /** Netflix, Canal +, Autre… */
+  plateforme?: string
+  /** Action, Thriller, Comédie… */
+  categorie?: string
+  /** Note de 1 à 5 (l'ancienne app notait en étoiles) */
+  note?: number
+  vu?: boolean
+  /** Date de sortie annoncée — sert à repérer ce qui n'est pas encore disponible */
+  dateSortie?: Timestamp
+  /** Saison ou partie concernée, pour les séries */
+  saison?: string
+  infos?: string
+}
+
+/** Document Firestore : duo_activites/{id} — endroits et sorties */
+export interface DuoActivite extends DuoBase {
+  nom: string
+  /** Restaurant, Bar, Lieu, Parc, Vacances, Aire d'autoroute, Logement… */
+  type?: string
+  /** Ville ou région */
+  zone?: string
+  /** Coordonnées « lat, lng » */
+  gps?: string
+  fait?: boolean
+  note?: number
+  /** « A faire absolument » / « A revoir » / « A ne pas faire » */
+  priorite?: string
+  /** Qui l'a recommandé — souvent la raison pour laquelle on y va */
+  conseillePar?: string
+  lien?: string
+  /** 🟢 Abordable → 🔴 Exorbitant */
+  gammePrix?: string
+  infos?: string
+}
+
+/** Un tour de jeu : le score de chaque joueur sur ce tour */
+export interface DuoTour {
+  scores: { joueur: string; points: number }[]
+}
+
+/**
+ * Document Firestore : duo_parties/{id}
+ *
+ * Les tours vivent DANS le document : une partie fait quelques dizaines de
+ * lignes, très loin de la limite d'un document Firestore. L'ancienne app
+ * plafonnait à 15 joueurs faute de sous-table — ici, aucune limite.
+ */
+export interface DuoPartie extends DuoBase {
+  /** Uno, SkyJo, 6 qui prend… */
+  jeu: string
+  date?: Timestamp
+  /** Noms libres : on joue avec des gens qui n'ont pas de compte */
+  joueurs: string[]
+  tours: DuoTour[]
+  /** Au SkyJo le plus PETIT score gagne — l'inverse de la plupart des jeux */
+  scoreBasGagne?: boolean
+  termine?: boolean
+}
+
+// ─── Catalogue de bières ──────────────────────────────────────────────────────
+
+/**
+ * Document Firestore : bieres/{id}
+ *
+ * Une bière = UNE fiche, et autant de DÉGUSTATIONS qu'on veut (sous-collection).
+ * La même bière bue deux fois au même endroit n'est pas deux bières : c'est ce
+ * que l'ancien tableur ne savait pas dire.
+ *
+ * Rien n'est stocké de ce qui se recalcule (moyenne, classement, compteurs) :
+ * une valeur figée se périmerait au premier ajout.
+ */
+export interface Biere {
+  id: string
+  /** UID des personnes qui partagent ce catalogue (même patron que `Bebe.members`) */
+  members: string[]
+  createdBy: string
+  createdAt: Timestamp
+
+  nom: string
+  /** Pression / Canette / Bock — cf. SERVICES */
+  service?: string
+  /** Blonde, Ambré, Blanche… — cf. TYPES_BIERE */
+  type?: string
+  /** IPA, Bière de soif, Pale Ale… — cf. TYPOLOGIES */
+  typologie?: string
+  /** Degré d'alcool (ex : 6.5) */
+  degres?: number
+  /** Amertume (IBU). Historiquement noté tantôt en IBU, tantôt sur une échelle 0-1. */
+  ibu?: number
+  /** Pays ou région d'origine */
+  origine?: string
+  updatedAt?: Timestamp
+}
+
+/**
+ * Document Firestore : bieres/{biereId}/degustations/{id}
+ *
+ * Le CONTEXTE est ce qui rend une dégustation mémorable — le bar, la météo, le
+ * moment. Tout y est facultatif : on note souvent la bière et l'avis, rarement
+ * la température.
+ */
+export interface Degustation {
+  id: string
+  createdBy: string
+  createdAt: Timestamp
+  /** Absente sur les fiches reprises de l'ancien tableur : 115 bières sur 184 n'avaient pas de date */
+  date?: Timestamp
+
+  /**
+   * Notes de 0 à 5 (pas de 0,5), **indexées par UID** et non par prénom : coder
+   * « Sarah » et « Teddy » en dur rendrait l'app inutilisable par quelqu'un d'autre.
+   */
+  notes?: Record<string, number>
+  /** L'avis en toutes lettres — le champ le plus rempli de l'ancienne base */
+  analyse?: string
+
+  /** Nom du bar / de la ville, tel qu'on l'écrit */
+  lieu?: string
+  /** Coordonnées « lat, lng » si relevées */
+  gps?: string
+  /** Terrasse / Intérieur */
+  contexte?: string
+  /** Festival, week-end, soirée… */
+  evenement?: string
+  /** Emoji météo (☀️ 🌧️ …) */
+  meteo?: string
+  /** Ressenti : 🥶 / 😎 / 🥵 */
+  ressenti?: string
+  /** Température en °C */
+  temperature?: number
+  /** URLs Firebase Storage */
+  photos?: string[]
+}
+
 // ─── Suivi Bébé ───────────────────────────────────────────────────────────────
 
 /** Document Firestore : babies/{babyId} */
