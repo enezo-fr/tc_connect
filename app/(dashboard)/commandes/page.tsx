@@ -301,7 +301,7 @@ export default function CommandesPage() {
   return (
     <StoreGate appRoute="/commandes" bypass={gateBypass}>
       <div className="space-y-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <button onClick={() => setOuverteId(null)}
               className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition mb-1">
