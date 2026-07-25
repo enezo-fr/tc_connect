@@ -6,13 +6,16 @@ import { useCommandes } from '@/hooks/useDuo'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { CommandeShareModal } from '@/components/commandes/CommandeShareModal'
+import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/AjoutBoissonModal'
+import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
+import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2,
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil,
 } from 'lucide-react'
 import {
   BOISSONS_COURANTES, recapBar, additionParPersonne, totalCommande, totalPartiel,
-  nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents,
+  nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents, remapLignesParticipants, propagerPrix,
 } from '@/lib/commandeModel'
 import type { Commande, LigneCommande } from '@/types'
 
@@ -55,63 +58,63 @@ export default function CommandesPage() {
 
   // ── Nouvelle commande ──────────────────────────────────────────────────────
   const [nouvelleOuverte, setNouvelleOuverte] = useState(false)
-  const [form, setForm] = useState({ lieu: '', date: '', participants: [] as string[], saisie: '' })
+  const [form, setForm] = useState({ lieu: '', date: '' })
+  const [partRows, setPartRows] = useState<PRow[]>([])
 
   const ouvrirNouvelle = () => {
-    setForm({ lieu: '', date: dateInput(new Date()), participants: [], saisie: '' })
+    setForm({ lieu: '', date: dateInput(new Date()) })
+    setPartRows([])
     setNouvelleOuverte(true)
   }
 
   const creer = async () => {
     if (!uid) return
     const [y, m, j] = form.date.split('-').map(Number)
+    const participants = Array.from(new Set(partRows.map((r) => r.name.trim()).filter(Boolean)))
     const id = await ajouter({
       members: [uid], createdBy: uid,
       lieu: form.lieu.trim(),
       date: form.date ? Timestamp.fromDate(new Date(y, m - 1, j, 20)) : Timestamp.now(),
-      participants: form.participants,
+      participants,
       lignes: [], terminee: false,
     })
     setNouvelleOuverte(false)
     setOuverteId(id)
   }
 
-  const basculeParticipant = (p: string) =>
-    setForm((f) => ({
-      ...f,
-      participants: f.participants.includes(p)
-        ? f.participants.filter((x) => x !== p)
-        : [...f.participants, p],
-    }))
+  // ── Modifier les infos (lieu / date / personnes) ────────────────────────────
+  const [infosOuvert, setInfosOuvert] = useState(false)
+  const enregistrerInfos = async (r: InfosResult) => {
+    if (!ouverte) return
+    await modifier(ouverte.id, {
+      lieu: r.lieu,
+      date: r.date ? Timestamp.fromMillis(r.date) : null,
+      participants: r.participants,
+      lignes: remapLignesParticipants(ouverte.lignes ?? [], r.renames, r.removed),
+    })
+  }
 
   // ── Ajout d'une ligne ──────────────────────────────────────────────────────
   const [ajoutPour, setAjoutPour] = useState<string | null>(null)
-  const [ligneForm, setLigneForm] = useState({ boisson: '', prix: '', quantite: 1 })
+  // Contenance mémorisée pour enchaîner vite (toute la tablée à la pinte…)
+  const [dernierFormat, setDernierFormat] = useState('Pinte')
 
-  const ouvrirAjout = (pour: string) => {
-    setLigneForm({ boisson: '', prix: '', quantite: 1 })
-    setAjoutPour(pour)
-  }
-
-  /** Choisir une boisson pré-remplit son dernier prix connu : même bar, même carte */
-  const choisirBoisson = (b: string) => {
-    const p = prixConnus(commandes, b)
-    setLigneForm((f) => ({ ...f, boisson: b, prix: p != null ? String(p) : f.prix }))
-  }
-
-  const ajouterLigne = async () => {
-    if (!ouverte || !ligneForm.boisson.trim()) return
+  const ajouterBoisson = async (b: BoissonAjout) => {
+    if (!ouverte) return
+    setDernierFormat(b.format)
     const ligne: LigneCommande = {
       id: idLigne(),
-      boisson: ligneForm.boisson.trim(),
-      quantite: Math.max(1, ligneForm.quantite),
-      prix: ligneForm.prix ? Number(ligneForm.prix.replace(',', '.')) : undefined,
+      boisson: b.boisson,
+      quantite: b.quantite,
+      prix: b.prix,
       pour: ajoutPour && ajoutPour !== 'La table' ? ajoutPour : undefined,
     }
-    // Firestore refuse `undefined` : on retire la clé plutôt que de l'envoyer
     if (ligne.prix === undefined) delete ligne.prix
     if (ligne.pour === undefined) delete ligne.pour
-    await modifier(ouverte.id, { lignes: [...(ouverte.lignes ?? []), ligne] })
+    let lignes = [...(ouverte.lignes ?? []), ligne]
+    // Prix fixe par bar : on le reporte sur toutes les mêmes boissons de la tournée.
+    if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
+    await modifier(ouverte.id, { lignes })
     setAjoutPour(null)
   }
 
@@ -217,46 +220,8 @@ export default function CommandesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Qui est là ?</label>
-              {form.participants.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {form.participants.map((p) => (
-                    <span key={p} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-medium">
-                      {p}
-                      <button type="button" onClick={() => basculeParticipant(p)}
-                        className="text-sky-600 hover:text-red-600">×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {/* Les habitués en un clic : à une table de six, taper six prénoms
-                  au moment de commander, personne ne le fait. */}
-              {gensConnus.filter((p) => !form.participants.includes(p)).length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {gensConnus.filter((p) => !form.participants.includes(p)).map((p) => (
-                    <button key={p} type="button" onClick={() => basculeParticipant(p)}
-                      className="px-2.5 py-1 rounded-full text-xs border border-gray-200 text-gray-600 hover:border-sky-300 hover:text-sky-700 transition">
-                      + {p}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input value={form.saisie} onChange={(e) => setForm((f) => ({ ...f, saisie: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && form.saisie.trim()) {
-                      e.preventDefault()
-                      basculeParticipant(form.saisie.trim())
-                      setForm((f) => ({ ...f, saisie: '' }))
-                    }
-                  }}
-                  placeholder="Prénom" className={champCls} />
-                <button type="button"
-                  onClick={() => { if (form.saisie.trim()) { basculeParticipant(form.saisie.trim()); setForm((f) => ({ ...f, saisie: '' })) } }}
-                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm hover:bg-gray-50 transition shrink-0">
-                  Ajouter
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Qui est là ?</label>
+              <ParticipantsEditor rows={partRows} onChange={setPartRows} gensConnus={gensConnus} />
             </div>
 
             <div className="flex gap-3 pt-1">
@@ -291,7 +256,13 @@ export default function CommandesPage() {
               className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition mb-1">
               <ChevronLeft size={14} />Commandes
             </button>
-            <h1 className="text-xl font-bold text-gray-900 truncate">{ouverte.lieu || 'Tournée'}</h1>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 truncate">{ouverte.lieu || 'Tournée'}</h1>
+              <button onClick={() => setInfosOuvert(true)} title="Modifier lieu, date et personnes"
+                className="p-1 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition shrink-0">
+                <Pencil size={15} />
+              </button>
+            </div>
             <p className="text-sm text-gray-500">
               {ouverte.date?.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
               {' · '}{nbVerres(ouverte)} verre{nbVerres(ouverte) > 1 ? 's' : ''}
@@ -318,6 +289,9 @@ export default function CommandesPage() {
 
         <CommandeShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)}
           commande={ouverte} modifier={modifier} />
+        <InfosCommandeModal isOpen={infosOuvert} onClose={() => setInfosOuvert(false)}
+          initial={{ lieu: ouverte.lieu ?? '', date: ouverte.date?.toMillis?.() ?? null, participants: ouverte.participants ?? [] }}
+          gensConnus={gensConnus} onSave={enregistrerInfos} />
 
         {/* Trois lectures de la même commande */}
         <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
@@ -381,7 +355,7 @@ export default function CommandesPage() {
                         </button>
                       </div>
                     ))}
-                    <button onClick={() => ouvrirAjout(p)}
+                    <button onClick={() => setAjoutPour(p)}
                       className="w-full flex items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-xl py-2 text-sm text-gray-400 hover:border-sky-300 hover:text-sky-600 transition">
                       <Plus size={15} />Ajouter une boisson
                     </button>
@@ -480,68 +454,10 @@ export default function CommandesPage() {
         )}
       </div>
 
-      {/* ── Ajout d'une boisson ────────────────────────────────────────────── */}
-      <Modal isOpen={!!ajoutPour} onClose={() => setAjoutPour(null)}
-        title={ajoutPour ? `Pour ${ajoutPour}` : ''}>
-        <div className="space-y-4">
-          {/* Les boissons déjà commandées d'abord : au bar, on répète les mêmes */}
-          <div className="flex flex-wrap gap-1.5">
-            {boissonsConnues.map((b) => (
-              <button key={b} type="button" onClick={() => choisirBoisson(b)}
-                className={`px-3 py-1.5 rounded-xl text-sm border transition ${
-                  ligneForm.boisson === b ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'
-                }`}>
-                {b}
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Boisson</label>
-            <input value={ligneForm.boisson}
-              onChange={(e) => setLigneForm((f) => ({ ...f, boisson: e.target.value }))}
-              placeholder="Pinte blonde" className={champCls} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
-              <div className="flex items-center gap-2">
-                <button type="button"
-                  onClick={() => setLigneForm((f) => ({ ...f, quantite: Math.max(1, f.quantite - 1) }))}
-                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
-                  <Minus size={15} />
-                </button>
-                <span className="w-8 text-center text-base font-semibold">{ligneForm.quantite}</span>
-                <button type="button"
-                  onClick={() => setLigneForm((f) => ({ ...f, quantite: f.quantite + 1 }))}
-                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
-                  <Plus size={15} />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix unitaire <span className="text-gray-400">(facultatif)</span>
-              </label>
-              <input type="text" inputMode="decimal" value={ligneForm.prix}
-                onChange={(e) => setLigneForm((f) => ({ ...f, prix: e.target.value.replace(/[^\d,.]/g, '') }))}
-                placeholder="6,50" className={champCls} />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <button onClick={() => setAjoutPour(null)}
-              className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
-              Annuler
-            </button>
-            <button onClick={ajouterLigne} disabled={!ligneForm.boisson.trim()}
-              className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
-              Ajouter
-            </button>
-          </div>
-        </div>
-      </Modal>
+      {/* ── Ajout d'une boisson (contenance + nom) ─────────────────────────── */}
+      <AjoutBoissonModal isOpen={!!ajoutPour} onClose={() => setAjoutPour(null)} pour={ajoutPour}
+        boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
+        prixConnu={(b) => prixConnus(commandes, b)} onAdd={ajouterBoisson} />
 
       <Modal isOpen={!!aSupprimer} onClose={() => setASupprimer(null)} title="Supprimer la commande" size="sm">
         <div className="space-y-4">

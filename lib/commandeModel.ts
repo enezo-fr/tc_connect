@@ -17,6 +17,45 @@ export const BOISSONS_COURANTES = [
   'Cocktail', 'Diabolo', 'Perrier',
 ]
 
+/** Contenances proposées avant le nom (« Pinte » + « blonde » → « Pinte blonde »).
+ *  Le format se colle simplement devant le nom : le champ `boisson` reste unique,
+ *  donc les regroupements bar/addition ne changent pas. */
+export const FORMATS_BOISSON = ['Pinte', 'Demi', 'Verre', 'Bouteille', 'Shooter', 'Soft']
+
+/** Compose « format + nom » en évitant de répéter le format déjà tapé dans le nom. */
+export function composerBoisson(format: string, nom: string): string {
+  const n = nom.trim()
+  const f = format.trim()
+  if (!f) return n
+  if (!n) return f
+  if (n.toLowerCase().startsWith(f.toLowerCase())) return n
+  return `${f} ${n}`
+}
+
+/** Reporte un prix sur TOUTES les lignes d'une même boisson (dans un bar, la pinte
+ *  a le même prix partout — sauf happy hour, où l'on ressaisit et ça se propage). */
+export function propagerPrix(lignes: LigneCommande[], boisson: string, prix: number): LigneCommande[] {
+  const cle = boisson.trim().toLowerCase()
+  return (lignes ?? []).map((l) => (l.boisson.trim().toLowerCase() === cle ? { ...l, prix } : l))
+}
+
+/** Remappe le champ `pour` des lignes après renommage / suppression de personnes.
+ *  Personne supprimée → sa boisson repasse sur « La table » (clé `pour` retirée). */
+export function remapLignesParticipants(
+  lignes: LigneCommande[],
+  renames: Record<string, string>,
+  removed: string[],
+): LigneCommande[] {
+  const rm = new Set(removed.map((s) => s.trim()))
+  return (lignes ?? []).map((l) => {
+    const pour = l.pour?.trim()
+    if (!pour) return l
+    if (rm.has(pour)) { const { pour: _drop, ...rest } = l; return rest }
+    if (renames[pour]) return { ...l, pour: renames[pour] }
+    return l
+  })
+}
+
 export interface RecapBoisson {
   boisson: string
   quantite: number

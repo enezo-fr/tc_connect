@@ -1,15 +1,14 @@
 'use client'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
-import Modal from '@/components/ui/Modal'
 import {
   BOISSONS_COURANTES, recapBar, additionParPersonne, totalCommande, totalPartiel,
-  nbVerres, euros, prixConnus, boissonsFrequentes,
+  nbVerres, euros, prixConnus, boissonsFrequentes, remapLignesParticipants, propagerPrix,
 } from '@/lib/commandeModel'
+import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/AjoutBoissonModal'
+import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
 import type { Commande, LigneCommande } from '@/types'
-import { Plus, Trash2, Beer, ClipboardList, Users, Wallet, Check, Minus } from 'lucide-react'
-
-const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500'
+import { Plus, Trash2, Beer, ClipboardList, Users, Wallet, Check, Minus, Pencil } from 'lucide-react'
 
 const idLigne = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -63,7 +62,10 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       const res = await fetch(`/api/commande-share/${token}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lignes: next.lignes, participants: next.participants }),
+        body: JSON.stringify({
+          lieu: next.lieu, date: next.date, participants: next.participants,
+          lignes: next.lignes, terminee: next.terminee,
+        }),
       })
       const data = await res.json()
       if (res.ok && data.commande) setCmd(data.commande)
@@ -89,14 +91,10 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     })
   }
 
-  // ── Ajout d'une ligne ───────────────────────────────────────────────────────
+  // ── Ajout d'une boisson ───────────────────────────────────────────────────
   const [ajoutPour, setAjoutPour] = useState<string | null>(null)
-  const [ligneForm, setLigneForm] = useState({ boisson: '', prix: '', quantite: 1 })
-  const openAjout = (pour: string) => {
-    modalRef.current = true
-    setLigneForm({ boisson: '', prix: '', quantite: 1 })
-    setAjoutPour(pour)
-  }
+  const [dernierFormat, setDernierFormat] = useState('Pinte')
+  const openAjout = (pour: string) => { modalRef.current = true; setAjoutPour(pour) }
   const closeAjout = () => { modalRef.current = false; setAjoutPour(null) }
 
   const boissonsConnues = cmd
@@ -106,26 +104,35 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       })()
     : []
 
-  const choisirBoisson = (b: string) => {
-    const p = cmd ? prixConnus([cmd as unknown as Commande], b) : null
-    setLigneForm((f) => ({ ...f, boisson: b, prix: p != null ? String(p) : f.prix }))
-  }
-
-  const ajouterLigne = () => {
-    if (!cmd || !ligneForm.boisson.trim()) return
+  const ajouterBoisson = (b: BoissonAjout) => {
+    if (!cmd) return
+    setDernierFormat(b.format)
     const ligne: LigneCommande = {
       id: idLigne(),
-      boisson: ligneForm.boisson.trim(),
-      quantite: Math.max(1, ligneForm.quantite),
-      prix: ligneForm.prix ? Number(ligneForm.prix.replace(',', '.')) : undefined,
+      boisson: b.boisson,
+      quantite: b.quantite,
+      prix: b.prix,
       pour: ajoutPour && ajoutPour !== 'La table' ? ajoutPour : undefined,
     }
     if (ligne.prix === undefined) delete ligne.prix
     if (ligne.pour === undefined) delete ligne.pour
-    const next = { ...cmd, lignes: [...cmd.lignes, ligne] }
+    let lignes = [...cmd.lignes, ligne]
+    if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
     modalRef.current = false
     setAjoutPour(null)
-    persist(next)
+    persist({ ...cmd, lignes })
+  }
+
+  // ── Modifier les infos (lieu / date / personnes) ────────────────────────────
+  const [infosOuvert, setInfosOuvert] = useState(false)
+  const openInfos = () => { modalRef.current = true; setInfosOuvert(true) }
+  const enregistrerInfos = (r: InfosResult) => {
+    if (!cmd) return
+    modalRef.current = false
+    persist({
+      ...cmd, lieu: r.lieu, date: r.date, participants: r.participants,
+      lignes: remapLignesParticipants(cmd.lignes, r.renames, r.removed),
+    })
   }
 
   // ── Rendu ───────────────────────────────────────────────────────────────────
@@ -160,18 +167,28 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="max-w-2xl mx-auto space-y-5">
         {/* En-tête */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
             <Beer size={18} className="text-sky-600" />
           </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gray-900 truncate">{cmd.lieu || 'Tournée'}</h1>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 truncate">{cmd.lieu || 'Tournée'}</h1>
+              <button onClick={openInfos} title="Modifier lieu, date et personnes"
+                className="p-1 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition shrink-0">
+                <Pencil size={15} />
+              </button>
+            </div>
             <p className="text-sm text-gray-500">
               {cmd.date ? new Date(cmd.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : ''}
               {' · '}{nbVerres(cmd as unknown as Commande)} verre{nbVerres(cmd as unknown as Commande) > 1 ? 's' : ''}
               {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
             </p>
           </div>
+          <button onClick={() => persist({ ...cmd, terminee: !cmd.terminee })}
+            className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition shrink-0">
+            {cmd.terminee ? 'Rouvrir' : 'Terminer'}
+          </button>
         </div>
 
         {cmd.terminee && (
@@ -313,55 +330,14 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
         </p>
       </div>
 
-      {/* Ajout d'une boisson */}
-      <Modal isOpen={!!ajoutPour} onClose={closeAjout} title={ajoutPour ? `Pour ${ajoutPour}` : ''}>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-1.5">
-            {boissonsConnues.map((b) => (
-              <button key={b} type="button" onClick={() => choisirBoisson(b)}
-                className={`px-3 py-1.5 rounded-xl text-sm border transition ${ligneForm.boisson === b ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'}`}>
-                {b}
-              </button>
-            ))}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Boisson</label>
-            <input value={ligneForm.boisson} onChange={(e) => setLigneForm((f) => ({ ...f, boisson: e.target.value }))}
-              placeholder="Pinte blonde" className={champCls} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setLigneForm((f) => ({ ...f, quantite: Math.max(1, f.quantite - 1) }))}
-                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
-                  <Minus size={15} />
-                </button>
-                <span className="w-8 text-center text-base font-semibold">{ligneForm.quantite}</span>
-                <button type="button" onClick={() => setLigneForm((f) => ({ ...f, quantite: f.quantite + 1 }))}
-                  className="w-9 h-9 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center justify-center">
-                  <Plus size={15} />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Prix unitaire <span className="text-gray-400">(facultatif)</span>
-              </label>
-              <input type="text" inputMode="decimal" value={ligneForm.prix}
-                onChange={(e) => setLigneForm((f) => ({ ...f, prix: e.target.value.replace(/[^\d,.]/g, '') }))}
-                placeholder="6,50" className={champCls} />
-            </div>
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button onClick={closeAjout} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
-            <button onClick={ajouterLigne} disabled={!ligneForm.boisson.trim()}
-              className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
-              Ajouter
-            </button>
-          </div>
-        </div>
-      </Modal>
+      {/* Ajout d'une boisson (contenance + nom) */}
+      <AjoutBoissonModal isOpen={!!ajoutPour} onClose={closeAjout} pour={ajoutPour}
+        boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
+        prixConnu={(b) => (cmd ? prixConnus([cmd as unknown as Commande], b) : null)} onAdd={ajouterBoisson} />
+
+      <InfosCommandeModal isOpen={infosOuvert} onClose={() => { modalRef.current = false; setInfosOuvert(false) }}
+        initial={{ lieu: cmd.lieu, date: cmd.date, participants: cmd.participants }}
+        onSave={enregistrerInfos} />
     </div>
   )
 }

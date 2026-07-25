@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebaseAdmin'
 import { findByToken, publicView } from '@/lib/commandeShare'
 
 /**
  * POST — modifie la commande depuis le lien public (sans compte).
- * On n'accepte QUE `lignes` et `participants`, nettoyés : le porteur du lien ne
- * peut ni s'attribuer le doc, ni toucher aux membres, ni le supprimer.
+ * Champs éditables : `lieu`, `date`, `participants`, `lignes`, `terminee` — tout
+ * ce que le propriétaire peut faire depuis l'app. En revanche, jamais `members`,
+ * `createdBy`, `shareToken` : le porteur du lien ne peut ni s'attribuer le doc,
+ * ni toucher au partage, ni le supprimer.
  */
 const MAX_LIGNES = 300
 const MAX_PART = 40
@@ -33,7 +35,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const doc = await findByToken(token)
   if (!doc) return NextResponse.json({ error: 'Lien invalide.' }, { status: 404 })
 
-  const body = await req.json() as { lignes?: unknown; participants?: unknown }
+  const body = await req.json() as
+    { lieu?: unknown; date?: unknown; participants?: unknown; lignes?: unknown; terminee?: unknown }
   const patch: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() }
 
   if (body.lignes !== undefined) patch.lignes = cleanLignes(body.lignes)
@@ -41,6 +44,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     patch.participants = Array.isArray(body.participants)
       ? Array.from(new Set(body.participants.map((p) => str(p, 40).trim()).filter(Boolean))).slice(0, MAX_PART)
       : []
+  }
+  if (body.lieu !== undefined) patch.lieu = str(body.lieu, 120).trim()
+  if (body.terminee !== undefined) patch.terminee = !!body.terminee
+  if (body.date !== undefined) {
+    patch.date = (typeof body.date === 'number' && Number.isFinite(body.date))
+      ? Timestamp.fromMillis(body.date)
+      : null
   }
 
   await getAdminDb().collection('bar_commandes').doc(doc.id).update(patch)
