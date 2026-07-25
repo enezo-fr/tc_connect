@@ -10,11 +10,10 @@ import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/Ajo
 import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
 import { Timestamp } from 'firebase/firestore'
+import { resoudreBar, chargerBarProche, enregistrerPrix } from '@/lib/barPrix'
+import { BarLocationField } from '@/components/commandes/BarLocationField'
 import {
-  positionActuelle, resoudreBar, chargerBarProche, enregistrerPrix,
-} from '@/lib/barPrix'
-import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin,
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil,
 } from 'lucide-react'
 import {
   BOISSONS_COURANTES, additionParPersonne, totalCommande, totalPartiel,
@@ -64,10 +63,13 @@ export default function CommandesPage() {
   const [nouvelleOuverte, setNouvelleOuverte] = useState(false)
   const [form, setForm] = useState({ lieu: '', date: '' })
   const [partRows, setPartRows] = useState<PRow[]>([])
+  // Position du bar choisie sur la carte à la création (plus de capture auto).
+  const [newLoc, setNewLoc] = useState<{ lat: number; lng: number } | null>(null)
 
   const ouvrirNouvelle = () => {
     setForm({ lieu: '', date: dateInput(new Date()) })
     setPartRows([])
+    setNewLoc(null)
     setNouvelleOuverte(true)
   }
 
@@ -75,12 +77,11 @@ export default function CommandesPage() {
     if (!uid) return
     const [y, m, j] = form.date.split('-').map(Number)
     const participants = Array.from(new Set(partRows.map((r) => r.name.trim()).filter(Boolean)))
-    // Géoloc du bar (best-effort) → rattache au catalogue de prix partagé.
+    // Position du bar posée sur la carte → rattache au catalogue de prix partagé.
     let geo: Record<string, unknown> = {}
-    const pos = await positionActuelle()
-    if (pos) {
-      const bar = await resoudreBar(pos)
-      geo = { lat: pos.lat, lng: pos.lng, barCell: bar.cell }
+    if (newLoc) {
+      const bar = await resoudreBar(newLoc)
+      geo = { lat: newLoc.lat, lng: newLoc.lng, barCell: bar.cell }
     }
     const id = await ajouter({
       members: [uid], createdBy: uid,
@@ -96,7 +97,6 @@ export default function CommandesPage() {
 
   // ── Catalogue de prix par bar (partagé, géolocalisé) ────────────────────────
   const [barPrix, setBarPrix] = useState<Record<string, number>>({})
-  const [localisation, setLocalisation] = useState(false)
 
   // Charge les prix connus du bar dès qu'une commande géolocalisée est ouverte.
   useEffect(() => {
@@ -107,29 +107,23 @@ export default function CommandesPage() {
     return () => { vivant = false }
   }, [ouverte?.id, ouverte?.lat, ouverte?.lng])
 
-  /** Rattacher (ou re-caler) la commande ouverte à un bar via le GPS. */
-  const localiserBar = async () => {
-    if (!ouverte) return
-    setLocalisation(true)
-    try {
-      const pos = await positionActuelle()
-      if (!pos) return
-      const bar = await resoudreBar(pos)
-      await modifier(ouverte.id, { lat: pos.lat, lng: pos.lng, barCell: bar.cell })
-      setBarPrix(bar.prix)
-    } finally { setLocalisation(false) }
-  }
-
-  // ── Modifier les infos (lieu / date / personnes) ────────────────────────────
+  // ── Modifier les infos (lieu / date / personnes / position) ─────────────────
   const [infosOuvert, setInfosOuvert] = useState(false)
   const enregistrerInfos = async (r: InfosResult) => {
     if (!ouverte) return
-    await modifier(ouverte.id, {
+    const patch: Record<string, unknown> = {
       lieu: r.lieu,
       date: r.date ? Timestamp.fromMillis(r.date) : null,
       participants: r.participants,
       lignes: remapLignesParticipants(ouverte.lignes ?? [], r.renames, r.removed),
-    })
+    }
+    // Position du bar (posée sur la carte) → recale le catalogue de prix.
+    if (r.lat != null && r.lng != null) {
+      const bar = await resoudreBar({ lat: r.lat, lng: r.lng })
+      patch.lat = r.lat; patch.lng = r.lng; patch.barCell = bar.cell
+      setBarPrix(bar.prix)
+    }
+    await modifier(ouverte.id, patch)
   }
 
   // ── Ajout d'une ligne ──────────────────────────────────────────────────────
@@ -276,6 +270,9 @@ export default function CommandesPage() {
               <ParticipantsEditor rows={partRows} onChange={setPartRows} gensConnus={gensConnus} />
             </div>
 
+            <BarLocationField lat={newLoc?.lat ?? null} lng={newLoc?.lng ?? null}
+              onChange={(lat, lng) => setNewLoc({ lat, lng })} />
+
             <div className="flex gap-3 pt-1">
               <button onClick={() => setNouvelleOuverte(false)}
                 className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
@@ -307,26 +304,18 @@ export default function CommandesPage() {
               className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition mb-1">
               <ChevronLeft size={14} />Commandes
             </button>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h1 className="text-xl font-bold text-gray-900 truncate">{ouverte.lieu || 'Tournée'}</h1>
-              <button onClick={() => setInfosOuvert(true)} title="Modifier lieu, date et personnes"
-                className="p-1 rounded-lg text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition shrink-0">
-                <Pencil size={15} />
-              </button>
-            </div>
+            <h1 className="text-xl font-bold text-gray-900 truncate">{ouverte.lieu || 'Tournée'}</h1>
             <p className="text-sm text-gray-500">
               {ouverte.date?.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
               {' · '}{nbVerres(ouverte)} verre{nbVerres(ouverte) > 1 ? 's' : ''}
               {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
             </p>
           </div>
-          {/* Accessible depuis les trois vues : la suppression n'avait rien à
-              faire au fond de l'onglet Addition. */}
+          {/* Actions — sous le titre sur mobile, à droite sur desktop */}
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={localiserBar} disabled={localisation}
-              title={ouverte.barCell ? 'Bar localisé — recaler les prix' : 'Localiser le bar (prix partagés)'}
-              className={`p-2 rounded-xl border transition disabled:opacity-60 ${ouverte.barCell ? 'border-emerald-300 text-emerald-600 bg-emerald-50' : 'border-gray-300 text-gray-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50'}`}>
-              <MapPin size={16} />
+            <button onClick={() => setInfosOuvert(true)}
+              className="flex items-center gap-1.5 border border-gray-300 text-gray-700 text-xs font-medium px-3 py-2 rounded-xl hover:bg-gray-50 transition">
+              <Pencil size={14} />Modifier
             </button>
             <button onClick={() => setPartageOuvert(true)} title="Partager cette commande"
               className={`p-2 rounded-xl border transition ${ouverte.shareToken ? 'border-sky-300 text-sky-600 bg-sky-50' : 'border-gray-300 text-gray-400 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50'}`}>
@@ -345,8 +334,8 @@ export default function CommandesPage() {
 
         <CommandeShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)}
           commande={ouverte} modifier={modifier} />
-        <InfosCommandeModal isOpen={infosOuvert} onClose={() => setInfosOuvert(false)}
-          initial={{ lieu: ouverte.lieu ?? '', date: ouverte.date?.toMillis?.() ?? null, participants: ouverte.participants ?? [] }}
+        <InfosCommandeModal isOpen={infosOuvert} onClose={() => setInfosOuvert(false)} avecPosition
+          initial={{ lieu: ouverte.lieu ?? '', date: ouverte.date?.toMillis?.() ?? null, participants: ouverte.participants ?? [], lat: ouverte.lat ?? null, lng: ouverte.lng ?? null }}
           gensConnus={gensConnus} onSave={enregistrerInfos} />
 
         {/* Trois lectures de la même commande */}

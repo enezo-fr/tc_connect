@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
+import { BarLocationField } from '@/components/commandes/BarLocationField'
 
 const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500'
 
@@ -18,6 +19,8 @@ export interface InfosInitial {
   /** Millisecondes, ou null. */
   date: number | null
   participants: string[]
+  lat?: number | null
+  lng?: number | null
 }
 
 export interface InfosResult {
@@ -28,6 +31,9 @@ export interface InfosResult {
   renames: Record<string, string>
   /** Personnes retirées (leurs boissons repassent sur « La table »). */
   removed: string[]
+  /** Position du bar (présente seulement si `avecPosition`). */
+  lat?: number | null
+  lng?: number | null
 }
 
 interface Props {
@@ -35,16 +41,19 @@ interface Props {
   onClose: () => void
   initial: InfosInitial
   gensConnus?: string[]
+  /** Affiche la carte de position du bar (in-app uniquement). */
+  avecPosition?: boolean
   onSave: (r: InfosResult) => void | Promise<void>
 }
 
 /** Édite les infos d'une tournée (lieu, date, personnes) — partagé in-app / page publique. */
-export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], onSave }: Props) {
+export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], avecPosition = false, onSave }: Props) {
   const [lieu, setLieu] = useState('')
   const [date, setDate] = useState('')
   const [rows, setRows] = useState<PRow[]>([])
   // Nom d'origine par id de ligne, pour détecter renommages et suppressions.
   const [origine, setOrigine] = useState<Record<string, string>>({})
+  const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -54,6 +63,7 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
     const seed = (initial.participants ?? []).map((name) => ({ id: pRowId(), name }))
     setRows(seed)
     setOrigine(Object.fromEntries(seed.map((r) => [r.id, r.name])))
+    setPos(initial.lat != null && initial.lng != null ? { lat: initial.lat, lng: initial.lng } : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
@@ -75,7 +85,10 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
       }
 
       const participants = Array.from(new Set([...finalNames.values()]))
-      await onSave({ lieu: lieu.trim(), date: ms, participants, renames, removed })
+      await onSave({
+        lieu: lieu.trim(), date: ms, participants, renames, removed,
+        ...(avecPosition ? { lat: pos?.lat ?? null, lng: pos?.lng ?? null } : {}),
+      })
       onClose()
     } finally { setSaving(false) }
   }
@@ -98,6 +111,11 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Qui est là ?</label>
           <ParticipantsEditor rows={rows} onChange={setRows} gensConnus={gensConnus} />
         </div>
+
+        {avecPosition && (
+          <BarLocationField lat={pos?.lat ?? null} lng={pos?.lng ?? null}
+            onChange={(lat, lng) => setPos({ lat, lng })} />
+        )}
 
         <div className="flex gap-3 pt-1">
           <button onClick={onClose} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
