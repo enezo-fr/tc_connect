@@ -33,6 +33,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const [cmd, setCmd] = useState<PublicCommande | null>(null)
   const [status, setStatus] = useState<'loading' | 'ok' | 'invalid'>('loading')
   const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
+  const [tourneeVue, setTourneeVue] = useState<number | null>(null)
   const savingRef = useRef(false)
   const modalRef = useRef(false)
 
@@ -119,7 +120,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     }
     if (ligne.prix === undefined) delete ligne.prix
     if (ligne.pour === undefined) delete ligne.pour
-    ligne.tournee = tourneeCouranteDe(cmd as unknown as Commande)
+    ligne.tournee = tourneeVue ?? tourneeCouranteDe(cmd as unknown as Commande)
     let lignes = [...cmd.lignes, ligne]
     if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
     modalRef.current = false
@@ -129,7 +130,9 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
 
   const nouvelleTournee = () => {
     if (!cmd) return
-    persist({ ...cmd, tourneeCourante: nbTournees(cmd as unknown as Commande) + 1 })
+    const n = nbTournees(cmd as unknown as Commande) + 1
+    setTourneeVue(n)
+    persist({ ...cmd, tourneeCourante: n })
   }
 
   // ── Modifier les infos (lieu / date / personnes) ────────────────────────────
@@ -170,6 +173,8 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const total = totalCommande(cmd as unknown as Commande)
   const partiel = totalPartiel(cmd as unknown as Commande)
   const colonnes = cmd.participants.length ? [...cmd.participants, 'La table'] : ['La table']
+  const round = tourneeVue ?? tourneeCouranteDe(cmd as unknown as Commande)
+  const nbT = nbTournees(cmd as unknown as Commande)
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
@@ -224,25 +229,27 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
           })}
         </div>
 
-        {/* Tournée en cours + nouvelle tournée */}
+        {/* Sélecteur de tournée (Table + Au bar s'y limitent) */}
         {vue !== 'addition' && (
-          <div className="flex items-center justify-between gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2">
-            <span className="text-sm text-gray-600">
-              Tournée en cours : <strong className="text-gray-900">{tourneeCouranteDe(cmd as unknown as Commande)}</strong>
-              {nbTournees(cmd as unknown as Commande) > 1 && <span className="text-gray-400"> / {nbTournees(cmd as unknown as Commande)}</span>}
-            </span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+            {Array.from({ length: nbT }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setTourneeVue(n)}
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-sm font-medium border transition ${n === round ? 'bg-sky-600 text-white border-sky-600' : 'bg-white border-gray-200 text-gray-600 hover:border-sky-300'}`}>
+                Tournée {n}
+              </button>
+            ))}
             <button onClick={nouvelleTournee}
-              className="flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-700 transition">
-              <Plus size={15} />Nouvelle tournée
+              className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
+              <Plus size={14} />Nouvelle
             </button>
           </div>
         )}
 
-        {/* Vue TABLE */}
+        {/* Vue TABLE (tournée sélectionnée) */}
         {vue === 'table' && (
           <div className="space-y-3">
             {colonnes.map((p) => {
-              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || 'La table') === p)
+              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || 'La table') === p && numeroTournee(l) === round)
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
               return (
                 <div key={p} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -285,52 +292,44 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
           </div>
         )}
 
-        {/* Vue BAR — tournée par tournée, en gros pour lire au comptoir */}
-        {vue === 'bar' && (
-          <div className="space-y-5">
-            <p className="text-xs text-gray-500">À lire au comptoir, tournée par tournée. Coche au fur et à mesure du service.</p>
-            {cmd.lignes.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                <p className="text-sm text-gray-400">Rien de commandé.</p>
-              </div>
-            ) : recapParTournee(cmd as unknown as Commande).filter((t) => t.recap.length > 0).map(({ tournee, recap: rec }) => {
-              const enCours = tournee === tourneeCouranteDe(cmd as unknown as Commande)
-              return (
-                <div key={tournee} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-gray-900">Tournée {tournee}</h3>
-                    {enCours && <span className="text-[11px] font-semibold text-sky-700 bg-sky-100 rounded-full px-2 py-0.5">en cours</span>}
-                  </div>
-                  {rec.map((r) => {
-                    const lignes = cmd.lignes.filter((l) => numeroTournee(l) === tournee && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
-                    const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
-                    return (
-                      <div key={r.boisson}
-                        className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
-                        <button onClick={() => toggleServiTournee(tournee, r.boisson, !toutesServies)}
-                          className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
-                          <Check size={16} />
-                        </button>
-                        <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
-                          {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
-                        </div>
-                        {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
-                      </div>
-                    )
-                  })}
+        {/* Vue BAR — la tournée sélectionnée, en gros pour lire au comptoir */}
+        {vue === 'bar' && (() => {
+          const rec = recapParTournee(cmd as unknown as Commande).find((t) => t.tournee === round)?.recap ?? []
+          return (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">Tournée {round} — à lire au comptoir. Coche au fur et à mesure du service.</p>
+              {rec.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                  <p className="text-sm text-gray-400">Rien dans cette tournée.</p>
                 </div>
-              )
-            })}
-            {total !== null && (
-              <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-sky-900">Total soirée</span>
-                <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
-              </div>
-            )}
-          </div>
-        )}
+              ) : rec.map((r) => {
+                const lignes = cmd.lignes.filter((l) => numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
+                const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
+                return (
+                  <div key={r.boisson}
+                    className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
+                    <button onClick={() => toggleServiTournee(round, r.boisson, !toutesServies)}
+                      className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                      <Check size={16} />
+                    </button>
+                    <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
+                      {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
+                    </div>
+                    {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
+                  </div>
+                )
+              })}
+              {total !== null && (
+                <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-sky-900">Total soirée</span>
+                  <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Vue ADDITION */}
         {vue === 'addition' && (

@@ -143,7 +143,7 @@ export default function CommandesPage() {
     }
     if (ligne.prix === undefined) delete ligne.prix
     if (ligne.pour === undefined) delete ligne.pour
-    ligne.tournee = tourneeCouranteDe(ouverte)
+    ligne.tournee = tourneeVue ?? tourneeCouranteDe(ouverte)
     let lignes = [...(ouverte.lignes ?? []), ligne]
     // Prix fixe par bar : on le reporte sur toutes les mêmes boissons de la tournée.
     if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
@@ -161,7 +161,9 @@ export default function CommandesPage() {
 
   const nouvelleTournee = async () => {
     if (!ouverte) return
-    await modifier(ouverte.id, { tourneeCourante: nbTournees(ouverte) + 1 })
+    const n = nbTournees(ouverte) + 1
+    setTourneeVue(n)
+    await modifier(ouverte.id, { tourneeCourante: n })
   }
 
   const majLigne = async (id: string, patch: Partial<LigneCommande>) => {
@@ -176,6 +178,8 @@ export default function CommandesPage() {
   }
 
   const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
+  // Tournée affichée/éditée (null = par défaut la dernière). Reset au changement de commande.
+  const [tourneeVue, setTourneeVue] = useState<number | null>(null)
   const [aSupprimer, setASupprimer] = useState<Commande | null>(null)
 
   if (loading) {
@@ -222,7 +226,7 @@ export default function CommandesPage() {
                   {g.liste.map((c) => {
                     const t = totalCommande(c)
                     return (
-                      <button key={c.id} onClick={() => { setOuverteId(c.id); setVue('table') }}
+                      <button key={c.id} onClick={() => { setOuverteId(c.id); setVue('table'); setTourneeVue(null) }}
                         className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 text-left hover:shadow-md transition">
                         <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
                           <Beer size={18} className="text-sky-600" />
@@ -294,6 +298,9 @@ export default function CommandesPage() {
   const total = totalCommande(ouverte)
   const partiel = totalPartiel(ouverte)
   const colonnes = ouverte.participants.length ? [...ouverte.participants, 'La table'] : ['La table']
+  // Tournée en cours d'affichage (Table + Au bar s'y limitent ; l'Addition reste globale)
+  const round = tourneeVue ?? tourneeCouranteDe(ouverte)
+  const nbT = nbTournees(ouverte)
 
   return (
     <StoreGate appRoute="/commandes" bypass={gateBypass}>
@@ -357,26 +364,28 @@ export default function CommandesPage() {
           })}
         </div>
 
-        {/* Tournée en cours + bouton pour en démarrer une nouvelle (hors addition) */}
+        {/* Sélecteur de tournée (Table + Au bar s'y limitent) */}
         {vue !== 'addition' && (
-          <div className="flex items-center justify-between gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2">
-            <span className="text-sm text-gray-600">
-              Tournée en cours : <strong className="text-gray-900">{tourneeCouranteDe(ouverte)}</strong>
-              {nbTournees(ouverte) > 1 && <span className="text-gray-400"> / {nbTournees(ouverte)}</span>}
-            </span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+            {Array.from({ length: nbT }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setTourneeVue(n)}
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-sm font-medium border transition ${n === round ? 'bg-sky-600 text-white border-sky-600' : 'bg-white border-gray-200 text-gray-600 hover:border-sky-300'}`}>
+                Tournée {n}
+              </button>
+            ))}
             <button onClick={nouvelleTournee}
-              className="flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-700 transition">
-              <Plus size={15} />Nouvelle tournée
+              className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
+              <Plus size={14} />Nouvelle
             </button>
           </div>
         )}
 
-        {/* ── Vue TABLE : on fait le tour, personne par personne ── */}
+        {/* ── Vue TABLE : on fait le tour, personne par personne (tournée sélectionnée) ── */}
         {vue === 'table' && (
           <div className="space-y-3">
             {colonnes.map((p) => {
               const lignes = (ouverte.lignes ?? []).filter(
-                (l) => (l.pour?.trim() || 'La table') === p,
+                (l) => (l.pour?.trim() || 'La table') === p && numeroTournee(l) === round,
               )
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
               return (
@@ -425,61 +434,53 @@ export default function CommandesPage() {
           </div>
         )}
 
-        {/* ── Vue BAR : ce qu'on annonce au comptoir, tournée par tournée ── */}
-        {vue === 'bar' && (
-          <div className="space-y-5">
-            <p className="text-xs text-gray-500">
-              À lire au comptoir, tournée par tournée. Coche au fur et à mesure du service.
-            </p>
-            {(ouverte.lignes ?? []).length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                <p className="text-sm text-gray-400">Rien de commandé.</p>
-              </div>
-            ) : recapParTournee(ouverte).filter((t) => t.recap.length > 0).map(({ tournee, recap: rec }) => {
-              const enCours = tournee === tourneeCouranteDe(ouverte)
-              return (
-                <div key={tournee} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-gray-900">Tournée {tournee}</h3>
-                    {enCours && <span className="text-[11px] font-semibold text-sky-700 bg-sky-100 rounded-full px-2 py-0.5">en cours</span>}
-                  </div>
-                  {rec.map((r) => {
-                    const lignes = (ouverte.lignes ?? []).filter(
-                      (l) => numeroTournee(l) === tournee && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
-                    )
-                    const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
-                    return (
-                      <div key={r.boisson}
-                        className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
-                        <button
-                          onClick={() => modifier(ouverte.id, {
-                            lignes: (ouverte.lignes ?? []).map((l) =>
-                              (numeroTournee(l) === tournee && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
-                                ? { ...l, servie: !toutesServies } : l),
-                          })}
-                          className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
-                          <Check size={16} />
-                        </button>
-                        <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
-                          {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
-                        </div>
-                        {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
-                      </div>
-                    )
-                  })}
+        {/* ── Vue BAR : la tournée sélectionnée, en gros pour lire au comptoir ── */}
+        {vue === 'bar' && (() => {
+          const rec = recapParTournee(ouverte).find((t) => t.tournee === round)?.recap ?? []
+          return (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">
+                Tournée {round} — à lire au comptoir. Coche au fur et à mesure du service.
+              </p>
+              {rec.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                  <p className="text-sm text-gray-400">Rien dans cette tournée.</p>
                 </div>
-              )
-            })}
-            {total !== null && (
-              <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-sky-900">Total soirée</span>
-                <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
-              </div>
-            )}
-          </div>
-        )}
+              ) : rec.map((r) => {
+                const lignes = (ouverte.lignes ?? []).filter(
+                  (l) => numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
+                )
+                const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
+                return (
+                  <div key={r.boisson}
+                    className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
+                    <button
+                      onClick={() => modifier(ouverte.id, {
+                        lignes: (ouverte.lignes ?? []).map((l) =>
+                          (numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
+                            ? { ...l, servie: !toutesServies } : l),
+                      })}
+                      className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                      <Check size={16} />
+                    </button>
+                    <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
+                      {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
+                    </div>
+                    {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
+                  </div>
+                )
+              })}
+              {total !== null && (
+                <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-sky-900">Total soirée</span>
+                  <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* ── Vue ADDITION : qui doit combien ── */}
         {vue === 'addition' && (
