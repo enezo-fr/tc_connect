@@ -1179,6 +1179,9 @@ export interface Commande {
   /** Close = payée, on ne la modifie plus au quotidien */
   terminee?: boolean
   notes?: string
+  /** Jeton de partage public : présent = accessible par lien/QR à /commande/{token}
+   *  (posé par le propriétaire, retiré pour couper le partage). */
+  shareToken?: string
 }
 
 // ─── Catalogue de bières ──────────────────────────────────────────────────────

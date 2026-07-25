@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext'
 import { useCommandes } from '@/hooks/useDuo'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
+import { CommandeShareModal } from '@/components/commandes/CommandeShareModal'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus,
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2,
 } from 'lucide-react'
 import {
   BOISSONS_COURANTES, recapBar, additionParPersonne, totalCommande, totalPartiel,
@@ -33,6 +34,11 @@ export default function CommandesPage() {
   const { items, loading, ajouter, modifier, supprimer } = useCommandes(uid)
   const commandes = items as Commande[]
 
+  // Compte rattaché à une commande qu'il n'a pas créée → accès gratuit (bypass).
+  const isSharedGuest = !!uid && commandes.some((c) => !!c.createdBy && c.createdBy !== uid)
+  const gateBypass = isSharedGuest || loading
+
+  const [partageOuvert, setPartageOuvert] = useState(false)
   const [ouverteId, setOuverteId] = useState<string | null>(null)
   const ouverte = commandes.find((c) => c.id === ouverteId) ?? null
 
@@ -125,7 +131,7 @@ export default function CommandesPage() {
 
   if (loading) {
     return (
-      <StoreGate appRoute="/commandes">
+      <StoreGate appRoute="/commandes" bypass={gateBypass}>
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -136,7 +142,7 @@ export default function CommandesPage() {
   // ═══ Liste des commandes ═══
   if (!ouverte) {
     return (
-      <StoreGate appRoute="/commandes">
+      <StoreGate appRoute="/commandes" bypass={gateBypass}>
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -277,7 +283,7 @@ export default function CommandesPage() {
   const colonnes = ouverte.participants.length ? [...ouverte.participants, 'La table'] : ['La table']
 
   return (
-    <StoreGate appRoute="/commandes">
+    <StoreGate appRoute="/commandes" bypass={gateBypass}>
       <div className="space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -295,6 +301,10 @@ export default function CommandesPage() {
           {/* Accessible depuis les trois vues : la suppression n'avait rien à
               faire au fond de l'onglet Addition. */}
           <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setPartageOuvert(true)} title="Partager cette commande"
+              className={`p-2 rounded-xl border transition ${ouverte.shareToken ? 'border-sky-300 text-sky-600 bg-sky-50' : 'border-gray-300 text-gray-400 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50'}`}>
+              <Share2 size={16} />
+            </button>
             <button onClick={() => modifier(ouverte.id, { terminee: !ouverte.terminee })}
               className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition">
               {ouverte.terminee ? 'Rouvrir' : 'Terminer'}
@@ -305,6 +315,9 @@ export default function CommandesPage() {
             </button>
           </div>
         </div>
+
+        <CommandeShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)}
+          commande={ouverte} modifier={modifier} />
 
         {/* Trois lectures de la même commande */}
         <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
