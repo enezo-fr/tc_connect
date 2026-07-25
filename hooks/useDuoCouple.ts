@@ -4,30 +4,43 @@ import { useEffect, useState } from 'react'
 import { collection, query, where, limit, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
+export interface DuoCoupleState {
+  /** Membres du couple (les 2 UID une fois liés) — toujours au moins `[uid]`. */
+  members: string[]
+  /** Créateur du couple = le compte qui paie l'app. `null` tant qu'aucun couple. */
+  createdBy: string | null
+  /** `true` tant que le document de couplage n'a pas encore été lu. */
+  loading: boolean
+}
+
 /**
- * Membres du couple « Sarah & Ted » de l'utilisateur courant.
+ * Couple « Sarah & Ted » de l'utilisateur courant.
  *
- * Tant qu'aucun compte n'est lié, l'utilisateur est seul → `[uid]`. Une fois le
- * second compte accepté (routes /api/duo-invite), le document `duo_couples`
- * contient les deux UID, qu'on recopie dans `members[]` à chaque nouvelle écriture
- * pour que les deux voient tout. Renvoie toujours au moins `[uid]`.
+ * Tant qu'aucun compte n'est lié, l'utilisateur est seul → `members = [uid]`.
+ * Une fois le second compte accepté (routes /api/duo-invite), `duo_couples`
+ * contient les deux UID, recopiés dans `members[]` à chaque écriture.
+ *
+ * `createdBy` = celui qui a créé le couple, c.-à-d. le compte abonné : l'AUTRE
+ * membre accède gratuitement (bypass du StoreGate), comme le co-parent de l'app Bébé.
  */
-export function useDuoCouple(uid?: string): string[] {
-  const [members, setMembers] = useState<string[]>([])
+export function useDuoCouple(uid?: string): DuoCoupleState {
+  const [state, setState] = useState<DuoCoupleState>({ members: [], createdBy: null, loading: true })
 
   useEffect(() => {
-    if (!uid) { setMembers([]); return }
+    if (!uid) { setState({ members: [], createdBy: null, loading: false }); return }
     const q = query(collection(db, 'duo_couples'), where('members', 'array-contains', uid), limit(1))
     return onSnapshot(
       q,
       (snap) => {
-        const m = snap.empty ? [uid] : ((snap.docs[0].data().members as string[]) ?? [uid])
-        setMembers(m.includes(uid) ? m : [...m, uid])
+        if (snap.empty) { setState({ members: [uid], createdBy: null, loading: false }); return }
+        const data = snap.docs[0].data()
+        const raw = (data.members as string[]) ?? [uid]
+        const members = raw.includes(uid) ? raw : [...raw, uid]
+        setState({ members, createdBy: (data.createdBy as string) ?? null, loading: false })
       },
-      () => setMembers([uid]),
+      () => setState({ members: uid ? [uid] : [], createdBy: null, loading: false }),
     )
   }, [uid])
 
-  if (!uid) return []
-  return members.length ? members : [uid]
+  return state
 }

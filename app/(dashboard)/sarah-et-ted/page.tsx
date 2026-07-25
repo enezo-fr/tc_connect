@@ -83,8 +83,15 @@ export default function ADeuxPage() {
 
   // Membres du couple (les deux UID une fois liés) : recopiés dans `members[]` à
   // chaque écriture pour que Sarah et Ted voient tout — cf. useDuoCouple.
-  const coupleMembers = useDuoCouple(uid)
-  const base = uid ? { members: coupleMembers, createdBy: uid } : null
+  const couple = useDuoCouple(uid)
+  const base = uid ? { members: couple.members, createdBy: uid } : null
+
+  // Compte INVITÉ (lié à un couple qu'il n'a pas créé) → accès gratuit, sans
+  // abonnement propre : le partage est inclus dans l'abonnement de celui qui invite.
+  // On laisse aussi passer pendant le chargement, sinon l'invité voit brièvement
+  // « Accès non activé » avant l'arrivée du couple.
+  const isSharedGuest = !!uid && !!couple.createdBy && couple.createdBy !== uid
+  const gateBypass = isSharedGuest || couple.loading
 
   // ── À voir ─────────────────────────────────────────────────────────────────
   const [filtreVu, setFiltreVu] = useState<'tous' | 'a_voir' | 'vus'>('tous')
@@ -254,7 +261,7 @@ export default function ADeuxPage() {
   const chargement = films.loading && activites.loading && parties.loading
   if (chargement) {
     return (
-      <StoreGate appRoute="/sarah-et-ted">
+      <StoreGate appRoute="/sarah-et-ted" bypass={gateBypass}>
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -263,7 +270,7 @@ export default function ADeuxPage() {
   }
 
   return (
-    <StoreGate appRoute="/sarah-et-ted">
+    <StoreGate appRoute="/sarah-et-ted" bypass={gateBypass}>
       <div className="space-y-5 max-w-full">
         {/* ══ ACCUEIL : une carte par section ══ */}
         {section === null ? (
