@@ -11,7 +11,7 @@ import { InfosCommandeModal, type InfosResult } from '@/components/commandes/Inf
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
 import { Timestamp } from 'firebase/firestore'
 import dynamic from 'next/dynamic'
-import { resoudreBar, chargerBarProche, enregistrerPrix, chargerTousBars, type BarComplet } from '@/lib/barPrix'
+import { resoudreBar, chargerBarProche, enregistrerPrix, enregistrerBar, chargerTousBars, type BarComplet } from '@/lib/barPrix'
 import { BarLocationField } from '@/components/commandes/BarLocationField'
 import {
   Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin, History, ChevronDown,
@@ -114,6 +114,8 @@ export default function CommandesPage() {
     } else if (newLoc) {
       const bar = await resoudreBar(newLoc)
       geo = { lat: newLoc.lat, lng: newLoc.lng, barCell: bar.cell }
+      // Enregistre le bar tout de suite (apparaît sur la carte, même sans prix).
+      enregistrerBar({ cell: bar.cell, pos: newLoc, nom: form.lieu.trim() }).catch(() => {})
     }
     const id = await ajouter({
       members: [uid], createdBy: uid,
@@ -158,6 +160,7 @@ export default function CommandesPage() {
       if (r.lat != null && r.lng != null) {
         const bar = await resoudreBar({ lat: r.lat, lng: r.lng })
         patch.lat = r.lat; patch.lng = r.lng; patch.barCell = bar.cell
+        enregistrerBar({ cell: bar.cell, pos: { lat: r.lat, lng: r.lng }, nom: r.lieu }).catch(() => {})
         setBarPrix(bar.prix)
       } else {
         patch.lat = null; patch.lng = null; patch.barCell = null
@@ -167,37 +170,47 @@ export default function CommandesPage() {
     await modifier(ouverte.id, patch)
   }
 
-  // ── Ajout d'une ligne ──────────────────────────────────────────────────────
+  // ── Ajout / édition d'une boisson ───────────────────────────────────────────
   const [ajoutPour, setAjoutPour] = useState<string | null>(null)
+  const [ligneEdit, setLigneEdit] = useState<LigneCommande | null>(null)
   // Contenance mémorisée pour enchaîner vite (toute la tablée à la pinte…)
   const [dernierFormat, setDernierFormat] = useState('Pinte')
 
-  const ajouterBoisson = async (b: BoissonAjout) => {
+  /** Écrit le prix dans le catalogue partagé du bar (+ historique) — sauf bar de passage. */
+  const memoriserPrixBar = (boisson: string, prix: number | undefined) => {
+    if (!ouverte || prix == null || !uid || ouverte.barEphemere) return
+    if (ouverte.lat == null || ouverte.lng == null || !ouverte.barCell) return
+    const cle = boisson.trim().toLowerCase()
+    if (barPrix[cle] === prix) return
+    setBarPrix((prev) => ({ ...prev, [cle]: prix }))
+    enregistrerPrix({ cell: ouverte.barCell, pos: { lat: ouverte.lat, lng: ouverte.lng }, nom: ouverte.lieu, boisson, prix, uid }).catch(() => {})
+  }
+
+  const handleBoisson = async (b: BoissonAjout) => {
     if (!ouverte) return
     setDernierFormat(b.format)
-    const ligne: LigneCommande = {
-      id: idLigne(),
-      boisson: b.boisson,
-      quantite: b.quantite,
-      prix: b.prix,
-      pour: ajoutPour && ajoutPour !== 'La table' ? ajoutPour : undefined,
+    let lignes = ouverte.lignes ?? []
+    if (ligneEdit) {
+      const id = ligneEdit.id
+      lignes = lignes.map((l) => {
+        if (l.id !== id) return l
+        const nl: LigneCommande = { ...l, boisson: b.boisson, quantite: b.quantite }
+        if (b.prix != null) nl.prix = b.prix; else delete nl.prix
+        return nl
+      })
+      setLigneEdit(null)
+    } else {
+      const t = typeof tourneeVue === 'number' ? tourneeVue : tourneeCouranteDe(ouverte)
+      const ligne: LigneCommande = { id: idLigne(), boisson: b.boisson, quantite: b.quantite, tournee: t }
+      if (b.prix != null) ligne.prix = b.prix
+      if (ajoutPour && ajoutPour !== 'La table') ligne.pour = ajoutPour
+      lignes = [...lignes, ligne]
+      setAjoutPour(null)
     }
-    if (ligne.prix === undefined) delete ligne.prix
-    if (ligne.pour === undefined) delete ligne.pour
-    ligne.tournee = tourneeVue ?? tourneeCouranteDe(ouverte)
-    let lignes = [...(ouverte.lignes ?? []), ligne]
-    // Prix fixe par bar : on le reporte sur toutes les mêmes boissons de la tournée.
-    if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
+    // Prix fixe par bar : on le reporte sur toutes les mêmes boissons.
+    if (b.prix != null) lignes = propagerPrix(lignes, b.boisson, b.prix)
     await modifier(ouverte.id, { lignes })
-    setAjoutPour(null)
-    // Mémorise le prix dans le catalogue partagé du bar (+ historique) — sauf bar de passage.
-    if (b.prix != null && uid && !ouverte.barEphemere && ouverte.lat != null && ouverte.lng != null && ouverte.barCell) {
-      const cle = ligne.boisson.trim().toLowerCase()
-      if (barPrix[cle] !== b.prix) {
-        setBarPrix((prev) => ({ ...prev, [cle]: b.prix! }))
-        enregistrerPrix({ cell: ouverte.barCell, pos: { lat: ouverte.lat, lng: ouverte.lng }, nom: ouverte.lieu, boisson: ligne.boisson, prix: b.prix, uid }).catch(() => {})
-      }
-    }
+    memoriserPrixBar(b.boisson, b.prix)
   }
 
   const nouvelleTournee = async () => {
@@ -219,8 +232,8 @@ export default function CommandesPage() {
   }
 
   const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
-  // Tournée affichée/éditée (null = par défaut la dernière). Reset au changement de commande.
-  const [tourneeVue, setTourneeVue] = useState<number | null>(null)
+  // Tournée affichée/éditée (null = la dernière ; 'all' = toutes). Reset au changement de commande.
+  const [tourneeVue, setTourneeVue] = useState<number | 'all' | null>(null)
   const [aSupprimer, setASupprimer] = useState<Commande | null>(null)
 
   if (loading) {
@@ -296,7 +309,7 @@ export default function CommandesPage() {
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-gray-800 shrink-0">
-                          {t !== null ? euros(t) : '—'}
+                          {t !== null ? euros(t) : (totalPartiel(c) > 0 ? euros(totalPartiel(c)) : '')}
                         </span>
                       </button>
                     )
@@ -411,10 +424,12 @@ export default function CommandesPage() {
   const addition = additionParPersonne(ouverte)
   const total = totalCommande(ouverte)
   const partiel = totalPartiel(ouverte)
-  const colonnes = ouverte.participants.length ? [...ouverte.participants, 'La table'] : ['La table']
-  // Tournée en cours d'affichage (Table + Au bar s'y limitent ; l'Addition reste globale)
-  const round = tourneeVue ?? tourneeCouranteDe(ouverte)
+  const colonnes = ['La table', ...ouverte.participants]
+  // Tournée en cours d'affichage (Table + Au bar s'y limitent ; l'Addition reste globale).
+  // `round` = numéro, ou 'all' pour tout voir d'un coup.
   const nbT = nbTournees(ouverte)
+  const round: number | 'all' = tourneeVue == null ? tourneeCouranteDe(ouverte) : tourneeVue
+  const toutes = round === 'all'
 
   return (
     <StoreGate appRoute="/commandes" bypass={gateBypass}>
@@ -487,6 +502,12 @@ export default function CommandesPage() {
                 Tournée {n}
               </button>
             ))}
+            {nbT > 1 && (
+              <button onClick={() => setTourneeVue('all')}
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-sm font-medium border transition ${toutes ? 'bg-sky-600 text-white border-sky-600' : 'bg-white border-gray-200 text-gray-600 hover:border-sky-300'}`}>
+                Toutes
+              </button>
+            )}
             <button onClick={nouvelleTournee}
               className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
               <Plus size={14} />Nouvelle
@@ -499,7 +520,7 @@ export default function CommandesPage() {
           <div className="space-y-3">
             {colonnes.map((p) => {
               const lignes = (ouverte.lignes ?? []).filter(
-                (l) => (l.pour?.trim() || 'La table') === p && numeroTournee(l) === round,
+                (l) => (l.pour?.trim() || 'La table') === p && (toutes || numeroTournee(l) === round),
               )
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
               return (
@@ -527,7 +548,10 @@ export default function CommandesPage() {
                           className="w-7 h-7 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center shrink-0">
                           <Plus size={13} />
                         </button>
-                        <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{l.boisson}</span>
+                        <button onClick={() => setLigneEdit(l)} title="Modifier"
+                          className="flex-1 min-w-0 text-sm text-gray-700 truncate text-left hover:text-sky-600 transition">
+                          {l.boisson}
+                        </button>
                         {l.prix != null && (
                           <span className="text-xs text-gray-500 shrink-0">{euros(l.prix * l.quantite)}</span>
                         )}
@@ -548,44 +572,51 @@ export default function CommandesPage() {
           </div>
         )}
 
-        {/* ── Vue BAR : la tournée sélectionnée, en gros pour lire au comptoir ── */}
+        {/* ── Vue BAR : à lire au comptoir, en gros (tournée choisie ou toutes) ── */}
         {vue === 'bar' && (() => {
-          const rec = recapParTournee(ouverte).find((t) => t.tournee === round)?.recap ?? []
+          const nums = toutes ? Array.from({ length: nbT }, (_, i) => i + 1) : [round as number]
+          const blocs = nums.map((n) => ({ n, rec: recapParTournee(ouverte).find((t) => t.tournee === n)?.recap ?? [] }))
+          const vide = blocs.every((b) => b.rec.length === 0)
           return (
-            <div className="space-y-3">
+            <div className="space-y-5">
               <p className="text-xs text-gray-500">
-                Tournée {round} — à lire au comptoir. Coche au fur et à mesure du service.
+                {toutes ? 'Toutes les tournées' : `Tournée ${round}`} — à lire au comptoir. Coche au fur et à mesure du service.
               </p>
-              {rec.length === 0 ? (
+              {vide ? (
                 <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                  <p className="text-sm text-gray-400">Rien dans cette tournée.</p>
+                  <p className="text-sm text-gray-400">Rien à commander.</p>
                 </div>
-              ) : rec.map((r) => {
-                const lignes = (ouverte.lignes ?? []).filter(
-                  (l) => numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
-                )
-                const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
-                return (
-                  <div key={r.boisson}
-                    className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
-                    <button
-                      onClick={() => modifier(ouverte.id, {
-                        lignes: (ouverte.lignes ?? []).map((l) =>
-                          (numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
-                            ? { ...l, servie: !toutesServies } : l),
-                      })}
-                      className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
-                      <Check size={16} />
-                    </button>
-                    <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
-                      {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
-                    </div>
-                    {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
-                  </div>
-                )
-              })}
+              ) : blocs.filter((b) => b.rec.length > 0).map(({ n, rec }) => (
+                <div key={n} className="space-y-2">
+                  {toutes && <h3 className="text-base font-bold text-gray-900">Tournée {n}</h3>}
+                  {rec.map((r) => {
+                    const lignes = (ouverte.lignes ?? []).filter(
+                      (l) => numeroTournee(l) === n && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
+                    )
+                    const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
+                    return (
+                      <div key={r.boisson}
+                        className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
+                        <button
+                          onClick={() => modifier(ouverte.id, {
+                            lignes: (ouverte.lignes ?? []).map((l) =>
+                              (numeroTournee(l) === n && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
+                                ? { ...l, servie: !toutesServies } : l),
+                          })}
+                          className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                          <Check size={16} />
+                        </button>
+                        <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
+                          {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
+                        </div>
+                        {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
               {total !== null && (
                 <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
                   <span className="text-sm font-semibold text-sky-900">Total soirée</span>
@@ -630,9 +661,10 @@ export default function CommandesPage() {
       </div>
 
       {/* ── Ajout d'une boisson (contenance + nom) ─────────────────────────── */}
-      <AjoutBoissonModal isOpen={!!ajoutPour} onClose={() => setAjoutPour(null)} pour={ajoutPour}
+      <AjoutBoissonModal isOpen={!!ajoutPour || !!ligneEdit} onClose={() => { setAjoutPour(null); setLigneEdit(null) }} pour={ajoutPour}
         boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        prixConnu={(b) => barPrix[b.trim().toLowerCase()] ?? prixConnus(commandes, b)} onAdd={ajouterBoisson} />
+        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite } : null}
+        prixConnu={(b) => barPrix[b.trim().toLowerCase()] ?? prixConnus(commandes, b)} onAdd={handleBoisson} />
 
       <Modal isOpen={!!aSupprimer} onClose={() => setASupprimer(null)} title="Supprimer la commande" size="sm">
         <div className="space-y-4">

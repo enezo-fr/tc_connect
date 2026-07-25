@@ -70,6 +70,17 @@ export async function chargerTousBars(): Promise<BarComplet[]> {
     .filter((b) => typeof b.lat === 'number' && typeof b.lng === 'number')
 }
 
+/** Crée/registre le bar (position + nom) SANS prix — pour qu'il apparaisse sur la
+ *  carte des bars dès qu'on le localise, même sans tarif encore saisi. */
+export async function enregistrerBar(args: { cell: string; pos: Position; nom?: string }): Promise<void> {
+  await setDoc(doc(db, COLL, args.cell), {
+    lat: args.pos.lat,
+    lng: args.pos.lng,
+    ...(args.nom ? { nom: args.nom } : {}),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+}
+
 /** Enregistre / met à jour le prix d'une boisson pour ce bar (+ historique). */
 export async function enregistrerPrix(args: {
   cell: string; pos: Position; nom?: string; boisson: string; prix: number; uid: string

@@ -190,7 +190,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const addition = additionParPersonne(cmd as unknown as Commande)
   const total = totalCommande(cmd as unknown as Commande)
   const partiel = totalPartiel(cmd as unknown as Commande)
-  const colonnes = cmd.participants.length ? [...cmd.participants, 'La table'] : ['La table']
+  const colonnes = ['La table', ...cmd.participants]
   const round = tourneeVue ?? tourneeCouranteDe(cmd as unknown as Commande)
   const nbT = nbTournees(cmd as unknown as Commande)
 

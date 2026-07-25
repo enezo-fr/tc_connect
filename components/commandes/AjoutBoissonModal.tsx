@@ -26,6 +26,8 @@ interface Props {
   formatDefaut: string
   /** Dernier prix connu pour un nom de boisson complet. */
   prixConnu: (boisson: string) => number | null
+  /** Édition d'une ligne existante (pré-remplissage) ; absent = ajout. */
+  initial?: { boisson: string; prix?: number; quantite: number } | null
   onAdd: (b: BoissonAjout) => void
 }
 
@@ -34,7 +36,7 @@ interface Props {
  * nom — le format se colle devant. La contenance par défaut est mémorisée pour
  * enchaîner vite quand toute la tablée est au même format.
  */
-export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, formatDefaut, prixConnu, onAdd }: Props) {
+export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, formatDefaut, prixConnu, initial = null, onAdd }: Props) {
   const [format, setFormat] = useState('')
   const [nom, setNom] = useState('')
   const [prix, setPrix] = useState('')
@@ -42,19 +44,36 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
 
   useEffect(() => {
     if (!isOpen) return
-    setFormat(formatDefaut || '')
-    setNom(''); setPrix(''); setQuantite(1)
+    if (initial) {
+      // Édition : le nom complet (déjà « Pinte blonde ») va dans le champ, contenance à part.
+      setFormat(''); setNom(initial.boisson)
+      setPrix(initial.prix != null ? String(initial.prix) : '')
+      setQuantite(Math.max(1, initial.quantite))
+    } else {
+      setFormat(formatDefaut || ''); setNom(''); setPrix(''); setQuantite(1)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
-  // Une suggestion est un nom COMPLET (« Pinte blonde ») : on l'utilise tel quel,
-  // sans re-préfixer de contenance.
-  const choisirSuggestion = (b: string) => {
-    setFormat('')
-    setNom(b)
-    const p = prixConnu(b)
+  // Nom d'une boisson SANS sa contenance de tête (« Pinte blonde » → « blonde »),
+  // pour ne pas répéter la contenance dans les suggestions.
+  const sansFormat = (s: string): string => {
+    const t = s.trim()
+    const m = t.match(/^(\S+)\s+(.+)$/)
+    if (m && FORMATS_BOISSON.some((f) => f.toLowerCase() === m[1].toLowerCase())) return m[2]
+    return t
+  }
+  const bases = Array.from(new Set(boissonsConnues.map(sansFormat).filter(Boolean)))
+
+  // Choisir une boisson connue : on GARDE la contenance sélectionnée, on ne met que le nom.
+  const choisir = (base: string) => {
+    setNom(base)
+    const p = prixConnu(composerBoisson(format, base))
     if (p != null) setPrix(String(p))
   }
+
+  const q = nom.trim().toLowerCase()
+  const auto = q ? bases.filter((b) => b.toLowerCase().includes(q) && b.toLowerCase() !== q).slice(0, 6) : []
 
   const apercu = composerBoisson(format, nom)
 
@@ -70,7 +89,7 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={pour ? `Pour ${pour}` : 'Ajouter une boisson'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={initial ? 'Modifier la boisson' : (pour ? `Pour ${pour}` : 'Ajouter une boisson')}>
       <div className="space-y-4">
         {/* Contenance d'abord */}
         <div>
@@ -83,6 +102,9 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
               </button>
             ))}
           </div>
+          <input value={format} onChange={(e) => setFormat(e.target.value)}
+            placeholder="ou autre (Pichet, Magnum…)"
+            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
         </div>
 
         {/* Puis le nom */}
@@ -91,20 +113,30 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
             {format ? `${format}…` : 'Boisson'}
           </label>
           <input value={nom} onChange={(e) => setNom(e.target.value)}
-            placeholder={format ? 'blonde, IPA, blanche…' : 'Coca, Café, Pinte blonde…'} className={champCls} autoFocus />
+            placeholder={format ? 'blonde, IPA, blanche…' : 'Coca, Café, blonde…'} className={champCls} autoFocus />
+          {auto.length > 0 && (
+            <div className="mt-1 border border-gray-200 rounded-lg divide-y divide-gray-50 overflow-hidden">
+              {auto.map((b) => (
+                <button key={b} type="button" onClick={() => choisir(b)}
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-sky-50 transition">
+                  {b}
+                </button>
+              ))}
+            </div>
+          )}
           {format && nom.trim() && (
             <p className="text-xs text-gray-400 mt-1">→ {apercu}</p>
           )}
         </div>
 
-        {/* Déjà commandées : nom complet, en un clic */}
-        {boissonsConnues.length > 0 && (
+        {/* Déjà commandées : le nom seul (la contenance se choisit au-dessus) */}
+        {bases.length > 0 && (
           <div>
             <p className="text-xs text-gray-400 mb-1.5">Déjà commandées</p>
             <div className="flex flex-wrap gap-1.5">
-              {boissonsConnues.map((b) => (
-                <button key={b} type="button" onClick={() => choisirSuggestion(b)}
-                  className={`px-3 py-1.5 rounded-xl text-sm border transition ${apercu === b ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'}`}>
+              {bases.map((b) => (
+                <button key={b} type="button" onClick={() => choisir(b)}
+                  className={`px-3 py-1.5 rounded-xl text-sm border transition ${nom.trim().toLowerCase() === b.toLowerCase() ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'}`}>
                   {b}
                 </button>
               ))}
@@ -140,7 +172,7 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
           <button onClick={onClose} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
           <button onClick={valider} disabled={!apercu.trim()}
             className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
-            Ajouter
+            {initial ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
       </div>

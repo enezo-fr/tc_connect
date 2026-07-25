@@ -20,7 +20,7 @@ export const BOISSONS_COURANTES = [
 /** Contenances proposées avant le nom (« Pinte » + « blonde » → « Pinte blonde »).
  *  Le format se colle simplement devant le nom : le champ `boisson` reste unique,
  *  donc les regroupements bar/addition ne changent pas. */
-export const FORMATS_BOISSON = ['Pinte', 'Demi', 'Verre', 'Bouteille', 'Shooter', 'Soft']
+export const FORMATS_BOISSON = ['Pinte', 'Demi', 'Verre', 'Bouteille', 'Shooter']
 
 /** Compose « format + nom » en évitant de répéter le format déjà tapé dans le nom. */
 export function composerBoisson(format: string, nom: string): string {
