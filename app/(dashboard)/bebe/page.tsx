@@ -42,6 +42,7 @@ const EVENT_ICONS: Record<BebeEventType, React.ElementType> = {
   temp:    Thermometer,
   vaccine: Syringe,
   pump:    Droplet,
+  waste:   Trash2,
 }
 
 const EVENT_LABELS: Record<BebeEventType, string> = {
@@ -55,6 +56,7 @@ const EVENT_LABELS: Record<BebeEventType, string> = {
   temp:    'Température',
   vaccine: 'Vaccin',
   pump:    'Tirage',
+  waste:   'Lait jeté',
 }
 
 const EVENT_COLORS: Record<BebeEventType, { bg: string; text: string }> = {
@@ -67,6 +69,7 @@ const EVENT_COLORS: Record<BebeEventType, { bg: string; text: string }> = {
   temp:    { bg: 'bg-orange-100',  text: 'text-orange-600'  },
   vaccine: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
   pump:    { bg: 'bg-pink-100',    text: 'text-pink-600'    },
+  waste:   { bg: 'bg-gray-100',    text: 'text-gray-500'    },
 }
 
 /**
@@ -105,6 +108,7 @@ const NOTE_PLACEHOLDERS: Record<BebeEventType, string> = {
   temp:    'prise en rectal, au réveil, après le biberon…',
   vaccine: 'bien supporté, cuisse gauche, fièvre le soir…',
   pump:    'peu de lait ce matin, tire-lait manuel…',
+  waste:   'périmé, biberon non terminé, laissé dehors…',
 }
 
 /** Couleurs des deux courbes (valeurs CSS : le SVG ne lit pas les classes Tailwind) */
@@ -272,7 +276,11 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
       const mesure = estSein(data.kind)
         ? (data.durationMin ? formatDuration(data.durationMin) : null)
         : (data.amount ? `${data.amount} ml` : null)
-      return [mesure, data.kind ? k[data.kind] ?? data.kind : null].filter(Boolean).join(' · ') || 'Repas'
+      return [
+        mesure,
+        data.kind ? k[data.kind] ?? data.kind : null,
+        data.wasted ? `dont ${data.wasted} ml jeté` : null,
+      ].filter(Boolean).join(' · ') || 'Repas'
     }
     case 'diaper': {
       const k: Record<string, string> = { seche: 'Sèche', urine: 'Pipi', selles: 'Caca', mixte: 'Mixte' }
@@ -307,10 +315,11 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
       const k: Record<string, string> = { les_deux: 'Les deux', sein_g: 'Sein G.', sein_d: 'Sein D.' }
       return [
         data.amount ? `${data.amount} ml` : null,
-        data.durationMin ? formatDuration(data.durationMin) : null,
         data.kind ? k[data.kind] ?? data.kind : null,
       ].filter(Boolean).join(' · ') || 'Tirage'
     }
+    case 'waste':
+      return data.amount ? `${data.amount} ml jeté` : 'Lait jeté'
   }
 }
 
@@ -659,7 +668,7 @@ export default function BebePage() {
     diaperKind:   selectedBaby?.defauts?.diaperKind   ?? DEFAUTS_FALLBACK.diaperKind,
   }), [selectedBaby])
 
-  const [bottleForm, setBottleForm] = useState({ amount: '120', kind: 'biberon', duration: '15' })
+  const [bottleForm, setBottleForm] = useState({ amount: '120', kind: 'biberon', duration: '15', wasted: '' })
 
   // Dernière tétée au sein : sert à alterner les côtés (l'info que cherche un
   // parent qui allaite, et qu'aucun écran ne donnait).
@@ -684,7 +693,9 @@ export default function BebePage() {
   const [whenForm, setWhenForm] = useState({ date: '', time: '' })
   // Vaccin : porte une date (souvent saisi le soir, après le rendez-vous)
   const [vaccineForm, setVaccineForm] = useState({ name: '', date: '' })
-  const [pumpForm, setPumpForm] = useState({ amount: '100', duration: '20', kind: 'les_deux' })
+  const [pumpForm, setPumpForm] = useState({ amount: '100', kind: 'les_deux' })
+  // Lait maternel jeté (action à part) — sort de la réserve sans avoir été bu
+  const [wasteForm, setWasteForm] = useState({ amount: '' })
 
   const openNewModal = (type: BebeEventType) => {
     setEditingEvent(null)
@@ -694,7 +705,7 @@ export default function BebePage() {
       const kind = estSein(defauts.bottleKind) && derniereTetee
         ? (derniereTetee.kind === 'sein_g' ? 'sein_d' : 'sein_g')
         : defauts.bottleKind
-      setBottleForm({ amount: String(defauts.bottleAmount), kind, duration: String(defauts.bottleDurationMin) })
+      setBottleForm({ amount: String(defauts.bottleAmount), kind, duration: String(defauts.bottleDurationMin), wasted: '' })
     }
     if (type === 'diaper') setDiaperForm({ kind: defauts.diaperKind })
     if (type === 'sleep')  setSleepForm({ startTime: nowTimeStr(), endTime: nowTimeStr() })
@@ -702,7 +713,8 @@ export default function BebePage() {
     if (type === 'growth') setGrowthForm({ weight: '', height: '', head: '', date: dateInputStr(new Date()) })
     if (type === 'temp')    setTempForm('')
     if (type === 'vaccine') setVaccineForm({ name: '', date: dateInputStr(new Date()) })
-    if (type === 'pump')    setPumpForm({ amount: '100', duration: '20', kind: 'les_deux' })
+    if (type === 'pump')    setPumpForm({ amount: '100', kind: 'les_deux' })
+    if (type === 'waste')   setWasteForm({ amount: '' })
     setWhenForm({ date: dateInputStr(new Date()), time: nowTimeStr() })
     setNoteForm('')
     setModalType(type)
@@ -715,6 +727,7 @@ export default function BebePage() {
         amount: String(event.data?.amount ?? defauts.bottleAmount),
         kind: event.data?.kind ?? defauts.bottleKind,
         duration: String(event.data?.durationMin ?? 15),
+        wasted: event.data?.wasted ? String(event.data.wasted) : '',
       })
     }
     if (event.type === 'diaper') setDiaperForm({ kind: event.data?.kind ?? defauts.diaperKind })
@@ -736,10 +749,10 @@ export default function BebePage() {
     if (event.type === 'pump') {
       setPumpForm({
         amount: String(event.data?.amount ?? 100),
-        duration: String(event.data?.durationMin ?? 20),
         kind: event.data?.kind ?? 'les_deux',
       })
     }
+    if (event.type === 'waste') setWasteForm({ amount: String(event.data?.amount ?? '') })
     if (event.type === 'vaccine') {
       setVaccineForm({
         name: event.data?.name ?? '',
@@ -770,7 +783,13 @@ export default function BebePage() {
         // de durée sur un biberon — sinon les totaux mélangent des unités.
         data = estSein(bottleForm.kind)
           ? { kind: bottleForm.kind, durationMin: Number(bottleForm.duration) || 0 }
-          : { kind: bottleForm.kind, amount: Number(bottleForm.amount) || 0 }
+          : {
+              kind: bottleForm.kind,
+              amount: Number(bottleForm.amount) || 0,
+              // « dont jeté » : uniquement pour un biberon de lait maternel, et seulement s'il y a un reste
+              ...(bottleForm.kind === 'tire_lait' && Number(bottleForm.wasted) > 0
+                ? { wasted: Number(bottleForm.wasted) } : {}),
+            }
       } else if (modalType === 'diaper') {
         data = { kind: diaperForm.kind }
       } else if (modalType === 'sleep') {
@@ -801,9 +820,10 @@ export default function BebePage() {
       } else if (modalType === 'pump') {
         data = {
           amount: Number(pumpForm.amount) || 0,
-          durationMin: Number(pumpForm.duration) || 0,
           kind: pumpForm.kind,
         }
+      } else if (modalType === 'waste') {
+        data = { amount: Number(wasteForm.amount) || 0 }
       } else if (modalType === 'bath') {
         data = {}
       } else if (modalType === 'temp') {
@@ -816,7 +836,7 @@ export default function BebePage() {
 
       // Saisies « instantanées » : l'horodatage vient des champs date + heure
       // (le sommeil pose le sien depuis ses bornes, mesure et vaccin depuis leur date).
-      if ((['bottle', 'diaper', 'meds', 'bath', 'temp', 'pump'] as BebeEventType[]).includes(modalType)
+      if ((['bottle', 'diaper', 'meds', 'bath', 'temp', 'pump', 'waste'] as BebeEventType[]).includes(modalType)
           && whenForm.date && whenForm.time) {
         ts = timeStrToTs(whenForm.time, whenForm.date)
       }
@@ -971,6 +991,23 @@ export default function BebePage() {
       fievres: par('temp').filter(e => Number(e.data?.tempC) >= SEUIL_FIEVRE).length,
     }
   }, [events, statsRange, journee])
+
+  // ── Réserve de lait maternel ───────────────────────────────────────────────
+  // Stock physique (frigo/congélateur), donc CUMULÉ sur tout l'historique :
+  //   ce qui a été tiré  −  ce qui a été bu  −  ce qui a été jeté.
+  // « Bu » = biberons de lait maternel (kind `tire_lait`). « Jeté » vient de deux
+  // sources : le reste d'un biberon (`wasted`) et l'action « Lait jeté » (type `waste`).
+  const stockLait = useMemo(() => {
+    let tire = 0, bu = 0, jete = 0
+    for (const e of events) {
+      if (e.type === 'pump') tire += Number(e.data?.amount) || 0
+      else if (e.type === 'bottle' && e.data?.kind === 'tire_lait') {
+        bu   += Number(e.data?.amount) || 0
+        jete += Number(e.data?.wasted) || 0
+      } else if (e.type === 'waste') jete += Number(e.data?.amount) || 0
+    }
+    return { tire, bu, jete, restant: tire - bu - jete, actif: tire > 0 || bu > 0 || jete > 0 }
+  }, [events])
 
   // ── Croissance ─────────────────────────────────────────────────────────────
   // Les infos de naissance servent de PREMIER point : la courbe démarre à la
@@ -1304,11 +1341,39 @@ export default function BebePage() {
               </div>
             </div>
 
+            {/* Réserve de lait maternel — n'apparaît que si le foyer tire/donne du lait maternel */}
+            {stockLait.actif && (
+              <div className="rounded-2xl border border-pink-200 bg-pink-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-pink-100">
+                    <Droplet size={18} className="text-pink-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-pink-700">Réserve de lait maternel</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Tiré {stockLait.tire} ml · Bu {stockLait.bu} ml · Jeté {stockLait.jete} ml
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-2xl font-bold leading-none ${stockLait.restant < 0 ? 'text-orange-600' : 'text-pink-700'}`}>
+                      {stockLait.restant}
+                    </p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-1">ml restant</p>
+                  </div>
+                </div>
+                {stockLait.restant < 0 && (
+                  <p className="text-xs text-orange-600 mt-2">
+                    Réserve négative : des tirages n&apos;ont pas été notés, ou des biberons de lait maternel ont été comptés en trop.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* 4 boutons rapides + Start sommeil */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Ajouter</p>
               <div className="grid grid-cols-3 gap-2">
-                {(['bottle', 'pump', 'diaper', 'sleep', 'bath', 'temp', 'meds', 'growth', 'vaccine'] as BebeEventType[]).map(type => {
+                {(['bottle', 'pump', 'waste', 'diaper', 'sleep', 'bath', 'temp', 'meds', 'growth', 'vaccine'] as BebeEventType[]).map(type => {
                   const Icon = EVENT_ICONS[type]
                   const c    = EVENT_COLORS[type]
                   return (
@@ -1599,6 +1664,9 @@ export default function BebePage() {
                         { l: 'Tirages', v: String(stats.tirages) },
                         { l: 'Lait tiré', v: `${stats.tirageMl} ml` },
                       ] : []),
+                      ...(stockLait.actif ? [
+                        { l: 'Réserve de lait (actuelle)', v: `${stockLait.restant} ml` },
+                      ] : []),
                     ]} />
                 </div>
               </>
@@ -1861,6 +1929,21 @@ export default function BebePage() {
               </div>
             </div>
           )}
+
+          {/* Reste jeté — seulement pour un biberon de lait maternel (sort de la réserve) */}
+          {bottleForm.kind === 'tire_lait' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dont jeté (ml)</label>
+              <input type="number" min={0} step={5} value={bottleForm.wasted}
+                onChange={e => setBottleForm(f => ({ ...f, wasted: e.target.value }))}
+                placeholder="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="text-xs text-gray-400 mt-1">
+                Reste non bu, retiré de la réserve de lait maternel. Laissez vide si tout a été bu.
+              </p>
+            </div>
+          )}
+
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
         </div>
@@ -1997,27 +2080,42 @@ export default function BebePage() {
               onChange={e => setPumpForm(f => ({ ...f, amount: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Durée (minutes)</label>
-              <input type="number" min={0} step={1} value={pumpForm.duration}
-                onChange={e => setPumpForm(f => ({ ...f, duration: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Côté</label>
-              <select value={pumpForm.kind} onChange={e => setPumpForm(f => ({ ...f, kind: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {PUMP_KINDS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Côté</label>
+            <select value={pumpForm.kind} onChange={e => setPumpForm(f => ({ ...f, kind: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {PUMP_KINDS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+            </select>
           </div>
           <p className="text-xs text-gray-400">
             Le tirage n&apos;est pas un repas : il n&apos;entre pas dans le compte du jour. Le lait
-            recueilli se note ensuite comme « Biberon de lait maternel » au moment où il est donné.
+            recueilli s&apos;ajoute à la réserve, puis se note comme « Biberon de lait maternel »
+            au moment où il est donné.
           </p>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
+        </div>
+      </Modal>
+
+      {/* ── Modale Lait jeté ────────────────────────────────────────────────── */}
+      <Modal isOpen={modalType === 'waste'} onClose={closeModal} title={editingEvent ? 'Modifier — Lait jeté' : 'Lait jeté'}>
+        <div className="space-y-4">
+          <WhenField date={whenForm.date} time={whenForm.time}
+            onDate={v => setWhenForm(f => ({ ...f, date: v }))} onTime={v => setWhenForm(f => ({ ...f, time: v }))} />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Quantité jetée (ml)</label>
+            <input type="number" min={0} step={5} value={wasteForm.amount}
+              onChange={e => setWasteForm(f => ({ ...f, amount: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <p className="text-xs text-gray-400">
+            Lait maternel jeté sans avoir été bu (périmé, reste d&apos;un biberon…). Il est retiré
+            de la réserve. Pour le reste d&apos;un biberon donné, utilisez plutôt le champ « dont jeté »
+            du repas.
+          </p>
+          <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
+          <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent}
+            disabled={!(Number(wasteForm.amount) > 0)} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
         </div>
       </Modal>
 

@@ -3,12 +3,14 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useDuoFilms, useDuoActivites, useDuoParties } from '@/hooks/useDuo'
+import { useDuoCouple } from '@/hooks/useDuoCouple'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import AutoTextarea from '@/components/ui/AutoTextarea'
+import { DuoShareModal } from '@/components/duo/DuoShareModal'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X, ChevronLeft,
+  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X, ChevronLeft, Users,
 } from 'lucide-react'
 import {
   TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
@@ -77,8 +79,12 @@ export default function ADeuxPage() {
    */
   const [section, setSection] = useState<'films' | 'activites' | 'jeux' | null>(null)
   const [recherche, setRecherche] = useState('')
+  const [partageOuvert, setPartageOuvert] = useState(false)
 
-  const base = uid ? { members: [uid], createdBy: uid } : null
+  // Membres du couple (les deux UID une fois liés) : recopiés dans `members[]` à
+  // chaque écriture pour que Sarah et Ted voient tout — cf. useDuoCouple.
+  const coupleMembers = useDuoCouple(uid)
+  const base = uid ? { members: coupleMembers, createdBy: uid } : null
 
   // ── À voir ─────────────────────────────────────────────────────────────────
   const [filtreVu, setFiltreVu] = useState<'tous' | 'a_voir' | 'vus'>('tous')
@@ -262,9 +268,15 @@ export default function ADeuxPage() {
         {/* ══ ACCUEIL : une carte par section ══ */}
         {section === null ? (
           <>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Sarah &amp; Ted</h1>
-              <p className="text-sm text-gray-500">Choisis une section.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-gray-900">Sarah &amp; Ted</h1>
+                <p className="text-sm text-gray-500">Choisis une section.</p>
+              </div>
+              <button onClick={() => setPartageOuvert(true)}
+                className="flex items-center gap-1.5 border border-gray-200 text-gray-600 hover:border-rose-300 hover:text-rose-600 text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
+                <Users size={16} />Partager
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -837,6 +849,9 @@ export default function ADeuxPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Partage entre les deux comptes ─────────────────────────────────── */}
+      <DuoShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)} />
     </StoreGate>
   )
 }

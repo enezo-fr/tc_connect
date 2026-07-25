@@ -1362,10 +1362,12 @@ export interface BebeContact {
  * `pump` = une séance de TIRAGE au tire-lait : c'est un acte de la mère, distinct
  * du repas — le lait recueilli est donné plus tard au biberon, et compter les
  * deux comme des repas doublerait les volumes.
+ * `waste` = du lait maternel JETÉ (périmé, reste de biberon non terminé) : sort
+ * de la réserve sans avoir été bu. Ne compte pas comme un repas.
  * Tous les types acceptent en plus une observation libre dans `data.note`.
  */
 export type BebeEventType =
-  | 'bottle' | 'diaper' | 'sleep' | 'meds' | 'growth' | 'bath' | 'temp' | 'vaccine' | 'pump'
+  | 'bottle' | 'diaper' | 'sleep' | 'meds' | 'growth' | 'bath' | 'temp' | 'vaccine' | 'pump' | 'waste'
 
 /** Document Firestore : babies/{babyId}/events/{eventId} */
 export interface BebeEvent {

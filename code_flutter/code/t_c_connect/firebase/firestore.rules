@@ -318,10 +318,18 @@ service cloud.firestore {
           && request.resource.data.members == resource.data.members
           && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
         ) || isAdmin());
-      allow delete: if estListeDuo() && ((
-          estMembreDuo()
-          && resource.data.get('createdBy', request.auth.uid) == request.auth.uid
-        ) || isAdmin());
+      // Suppression : n'importe quel membre du couple (les deux gèrent les mêmes
+      // listes ; réserver au créateur empêchait l'autre d'effacer une entrée).
+      allow delete: if estListeDuo() && (estMembreDuo() || isAdmin());
+    }
+
+    // Couplage « Sarah & Ted » : source de vérité des deux UID (cf. /api/duo-invite).
+    // Le client ne fait que LIRE son couple (pour recopier `members` à l'écriture) ;
+    // la création et la liaison passent par l'Admin SDK, qui outrepasse ces règles.
+    match /duo_couples/{coupleId} {
+      allow read: if request.auth != null
+        && (request.auth.uid in resource.data.members || isAdmin());
+      allow write: if isAdmin();
     }
 
     match /bieres/{biereId} {
