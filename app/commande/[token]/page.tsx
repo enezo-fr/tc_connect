@@ -33,7 +33,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const [cmd, setCmd] = useState<PublicCommande | null>(null)
   const [status, setStatus] = useState<'loading' | 'ok' | 'invalid'>('loading')
   const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
-  const [tourneeVue, setTourneeVue] = useState<number | null>(null)
+  const [tourneeVue, setTourneeVue] = useState<number | 'all' | null>(null)
   // Prix connus du bar (catalogue partagé) — via route serveur (pas d'accès Firestore ici).
   const [barPrix, setBarPrix] = useState<Record<string, number>>({})
   const savingRef = useRef(false)
@@ -102,11 +102,13 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     })
   }
 
-  // ── Ajout d'une boisson ───────────────────────────────────────────────────
+  // ── Ajout / édition d'une boisson ─────────────────────────────────────────
   const [ajoutPour, setAjoutPour] = useState<string | null>(null)
+  const [ligneEdit, setLigneEdit] = useState<LigneCommande | null>(null)
   const [dernierFormat, setDernierFormat] = useState('Pinte')
   const openAjout = (pour: string) => { modalRef.current = true; setAjoutPour(pour) }
-  const closeAjout = () => { modalRef.current = false; setAjoutPour(null) }
+  const openEdit = (l: LigneCommande) => { modalRef.current = true; setLigneEdit(l) }
+  const closeBoisson = () => { modalRef.current = false; setAjoutPour(null); setLigneEdit(null) }
 
   const boissonsConnues = cmd
     ? (() => {
@@ -115,35 +117,43 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       })()
     : []
 
-  const ajouterBoisson = (b: BoissonAjout) => {
+  /** Alimente le catalogue de prix du bar (via route serveur) + local. */
+  const memoriserPrixPublic = (boisson: string, prix: number | undefined) => {
+    if (prix == null) return
+    const cle = boisson.trim().toLowerCase()
+    if (barPrix[cle] === prix) return
+    setBarPrix((prev) => ({ ...prev, [cle]: prix }))
+    fetch(`/api/commande-share/${token}/bar-prix`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ boisson, prix }),
+    }).catch(() => {})
+  }
+
+  const handleBoisson = (b: BoissonAjout) => {
     if (!cmd) return
     setDernierFormat(b.format)
-    const ligne: LigneCommande = {
-      id: idLigne(),
-      boisson: b.boisson,
-      quantite: b.quantite,
-      prix: b.prix,
-      pour: ajoutPour && ajoutPour !== 'La table' ? ajoutPour : undefined,
+    let lignes = cmd.lignes
+    if (ligneEdit) {
+      const id = ligneEdit.id
+      lignes = lignes.map((l) => {
+        if (l.id !== id) return l
+        const nl: LigneCommande = { ...l, boisson: b.boisson, quantite: b.quantite }
+        if (b.prix != null) nl.prix = b.prix; else delete nl.prix
+        return nl
+      })
+      setLigneEdit(null)
+    } else {
+      const t = typeof tourneeVue === 'number' ? tourneeVue : tourneeCouranteDe(cmd as unknown as Commande)
+      const ligne: LigneCommande = { id: idLigne(), boisson: b.boisson, quantite: b.quantite, tournee: t }
+      if (b.prix != null) ligne.prix = b.prix
+      if (ajoutPour && ajoutPour !== 'La table') ligne.pour = ajoutPour
+      lignes = [...lignes, ligne]
+      setAjoutPour(null)
     }
-    if (ligne.prix === undefined) delete ligne.prix
-    if (ligne.pour === undefined) delete ligne.pour
-    ligne.tournee = tourneeVue ?? tourneeCouranteDe(cmd as unknown as Commande)
-    let lignes = [...cmd.lignes, ligne]
-    if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
+    if (b.prix != null) lignes = propagerPrix(lignes, b.boisson, b.prix)
     modalRef.current = false
-    setAjoutPour(null)
     persist({ ...cmd, lignes })
-    // Alimente le catalogue de prix du bar (via route serveur) + local.
-    if (b.prix != null) {
-      const cle = ligne.boisson.trim().toLowerCase()
-      if (barPrix[cle] !== b.prix) {
-        setBarPrix((prev) => ({ ...prev, [cle]: b.prix! }))
-        fetch(`/api/commande-share/${token}/bar-prix`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boisson: ligne.boisson, prix: b.prix }),
-        }).catch(() => {})
-      }
-    }
+    memoriserPrixPublic(b.boisson, b.prix)
   }
 
   const nouvelleTournee = () => {
@@ -191,8 +201,9 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const total = totalCommande(cmd as unknown as Commande)
   const partiel = totalPartiel(cmd as unknown as Commande)
   const colonnes = ['La table', ...cmd.participants]
-  const round = tourneeVue ?? tourneeCouranteDe(cmd as unknown as Commande)
   const nbT = nbTournees(cmd as unknown as Commande)
+  const round: number | 'all' = tourneeVue == null ? tourneeCouranteDe(cmd as unknown as Commande) : tourneeVue
+  const toutes = round === 'all'
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
@@ -256,6 +267,12 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
                 Tournée {n}
               </button>
             ))}
+            {nbT > 1 && (
+              <button onClick={() => setTourneeVue('all')}
+                className={`shrink-0 px-3 py-1.5 rounded-xl text-sm font-medium border transition ${toutes ? 'bg-sky-600 text-white border-sky-600' : 'bg-white border-gray-200 text-gray-600 hover:border-sky-300'}`}>
+                Toutes
+              </button>
+            )}
             <button onClick={nouvelleTournee}
               className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
               <Plus size={14} />Nouvelle
@@ -267,7 +284,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
         {vue === 'table' && (
           <div className="space-y-3">
             {colonnes.map((p) => {
-              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || 'La table') === p && numeroTournee(l) === round)
+              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || 'La table') === p && (toutes || numeroTournee(l) === round))
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
               return (
                 <div key={p} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -291,7 +308,10 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
                           className="w-7 h-7 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center shrink-0">
                           <Plus size={13} />
                         </button>
-                        <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{l.boisson}</span>
+                        <button onClick={() => openEdit(l)} title="Modifier"
+                          className="flex-1 min-w-0 text-sm text-gray-700 truncate text-left hover:text-sky-600 transition">
+                          {l.boisson}
+                        </button>
                         {l.prix != null && <span className="text-xs text-gray-500 shrink-0">{euros(l.prix * l.quantite)}</span>}
                         <button onClick={() => retirerLigne(l.id)}
                           className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition shrink-0">
@@ -310,35 +330,44 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
           </div>
         )}
 
-        {/* Vue BAR — la tournée sélectionnée, en gros pour lire au comptoir */}
+        {/* Vue BAR — à lire au comptoir (tournée choisie ou toutes) */}
         {vue === 'bar' && (() => {
-          const rec = recapParTournee(cmd as unknown as Commande).find((t) => t.tournee === round)?.recap ?? []
+          const nums = toutes ? Array.from({ length: nbT }, (_, i) => i + 1) : [round as number]
+          const blocs = nums.map((n) => ({ n, rec: recapParTournee(cmd as unknown as Commande).find((t) => t.tournee === n)?.recap ?? [] }))
+          const vide = blocs.every((b) => b.rec.length === 0)
           return (
-            <div className="space-y-3">
-              <p className="text-xs text-gray-500">Tournée {round} — à lire au comptoir. Coche au fur et à mesure du service.</p>
-              {rec.length === 0 ? (
+            <div className="space-y-5">
+              <p className="text-xs text-gray-500">
+                {toutes ? 'Toutes les tournées' : `Tournée ${round}`} — à lire au comptoir. Coche au fur et à mesure du service.
+              </p>
+              {vide ? (
                 <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                  <p className="text-sm text-gray-400">Rien dans cette tournée.</p>
+                  <p className="text-sm text-gray-400">Rien à commander.</p>
                 </div>
-              ) : rec.map((r) => {
-                const lignes = cmd.lignes.filter((l) => numeroTournee(l) === round && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
-                const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
-                return (
-                  <div key={r.boisson}
-                    className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
-                    <button onClick={() => toggleServiTournee(round, r.boisson, !toutesServies)}
-                      className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
-                      <Check size={16} />
-                    </button>
-                    <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
-                      {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
-                    </div>
-                    {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
-                  </div>
-                )
-              })}
+              ) : blocs.filter((b) => b.rec.length > 0).map(({ n, rec }) => (
+                <div key={n} className="space-y-2">
+                  {toutes && <h3 className="text-base font-bold text-gray-900">Tournée {n}</h3>}
+                  {rec.map((r) => {
+                    const lignes = cmd.lignes.filter((l) => numeroTournee(l) === n && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
+                    const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
+                    return (
+                      <div key={r.boisson}
+                        className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
+                        <button onClick={() => toggleServiTournee(n, r.boisson, !toutesServies)}
+                          className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                          <Check size={16} />
+                        </button>
+                        <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
+                          {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
+                        </div>
+                        {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
               {total !== null && (
                 <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
                   <span className="text-sm font-semibold text-sky-900">Total soirée</span>
@@ -381,9 +410,10 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       </div>
 
       {/* Ajout d'une boisson (contenance + nom) */}
-      <AjoutBoissonModal isOpen={!!ajoutPour} onClose={closeAjout} pour={ajoutPour}
+      <AjoutBoissonModal isOpen={!!ajoutPour || !!ligneEdit} onClose={closeBoisson} pour={ajoutPour}
         boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        prixConnu={(b) => (cmd ? (barPrix[b.trim().toLowerCase()] ?? prixConnus([cmd as unknown as Commande], b)) : null)} onAdd={ajouterBoisson} />
+        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite } : null}
+        prixConnu={(b) => (cmd ? (barPrix[b.trim().toLowerCase()] ?? prixConnus([cmd as unknown as Commande], b)) : null)} onAdd={handleBoisson} />
 
       <InfosCommandeModal isOpen={infosOuvert} onClose={() => { modalRef.current = false; setInfosOuvert(false) }}
         initial={{ lieu: cmd.lieu, date: cmd.date, participants: cmd.participants }}
