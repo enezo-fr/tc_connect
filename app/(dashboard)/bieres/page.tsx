@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useUsers } from '@/hooks/useUsers'
 import { useBieres } from '@/hooks/useBieres'
+import { useBieresCouple } from '@/hooks/useBieresCouple'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import AutoTextarea from '@/components/ui/AutoTextarea'
+import { BieresShareModal } from '@/components/bieres/BieresShareModal'
 import { Timestamp, deleteField } from 'firebase/firestore'
-import { Plus, Pencil, Trash2, Search, Star, BarChart3, ListFilter, MapPin, Camera, LocateFixed, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Star, BarChart3, ListFilter, MapPin, Camera, LocateFixed, ChevronRight, Users } from 'lucide-react'
 import {
   SERVICES, TYPES_BIERE, TYPOLOGIES, CONTEXTES, METEOS, RESSENTIS, NOTES,
   classer, bilan, formatNote, moyenneDegustation, moyennePersonne,
@@ -134,6 +136,14 @@ export default function BieresPage() {
     ajouterBiere, majBiere, supprimerBiere,
     ajouterDegustation, majDegustation, supprimerDegustation,
   } = useBieres(uid)
+
+  // Partage du catalogue entre 2 comptes (cf. useBieresCouple / /api/bieres-invite).
+  const couple = useBieresCouple(uid)
+  const [partageOuvert, setPartageOuvert] = useState(false)
+  // Compte INVITÉ (lié à un catalogue qu'il n'a pas créé) → accès gratuit, sans
+  // abonnement propre. On laisse passer pendant le chargement pour éviter le flash « Accès non activé ».
+  const isSharedGuest = !!uid && !!couple.createdBy && couple.createdBy !== uid
+  const gateBypass = isSharedGuest || couple.loading
 
   const [onglet, setOnglet] = useState<'catalogue' | 'carte' | 'bilan'>('catalogue')
   const [recherche, setRecherche] = useState('')
@@ -313,7 +323,7 @@ export default function BieresPage() {
         await majBiere(ficheEditee.id, champs)
         setFicheOuverte(false)
       } else {
-        const id = await ajouterBiere({ ...champs, members: [uid], createdBy: uid } as Omit<Biere, 'id' | 'createdAt'>)
+        const id = await ajouterBiere({ ...champs, members: couple.members, createdBy: uid } as Omit<Biere, 'id' | 'createdAt'>)
         setFicheOuverte(false)
         if (enchainerDegustation) {
           setEnchainerDegustation(false)
@@ -321,7 +331,7 @@ export default function BieresPage() {
           // La bière n'est pas encore revenue par l'écoute Firestore : on compose
           // une fiche minimale, suffisante pour enregistrer la dégustation.
           ouvrirDegustation({
-            biere: { id, ...champs, members: [uid], createdBy: uid } as Biere,
+            biere: { id, ...champs, members: couple.members, createdBy: uid } as Biere,
             degustations: [], moyenne: null, nbDegustations: 0,
             annees: [], lieux: [], aPhoto: false,
           })
@@ -565,7 +575,7 @@ export default function BieresPage() {
 
   if (loading) {
     return (
-      <StoreGate appRoute="/bieres">
+      <StoreGate appRoute="/bieres" bypass={gateBypass}>
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -574,7 +584,7 @@ export default function BieresPage() {
   }
 
   return (
-    <StoreGate appRoute="/bieres">
+    <StoreGate appRoute="/bieres" bypass={gateBypass}>
       <div className="space-y-5 max-w-full">
 
         {/* En-tête */}
@@ -586,10 +596,18 @@ export default function BieresPage() {
               {resume.notees > 0 && ` · ${resume.notees} notée${resume.notees > 1 ? 's' : ''}`}
             </p>
           </div>
-          <button onClick={() => { setRechercheBiere(''); setChoixOuvert(true) }}
-            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
-            <Plus size={16} />Déguster</button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setPartageOuvert(true)}
+              className="flex items-center gap-1.5 border border-gray-200 text-gray-600 hover:border-amber-300 hover:text-amber-600 text-sm font-medium px-3 py-2 rounded-xl transition">
+              <Users size={16} /><span className="hidden sm:inline">Partager</span>
+            </button>
+            <button onClick={() => { setRechercheBiere(''); setChoixOuvert(true) }}
+              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition">
+              <Plus size={16} />Déguster</button>
+          </div>
         </div>
+
+        <BieresShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)} />
 
         {/* Onglets */}
         <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">

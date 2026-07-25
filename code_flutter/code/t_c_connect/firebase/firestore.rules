@@ -351,10 +351,8 @@ service cloud.firestore {
           && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
         ) || isAdmin();
 
-      allow delete: if (
-          isBiereMember()
-          && resource.data.get('createdBy', request.auth.uid) == request.auth.uid
-        ) || isAdmin();
+      // Suppression : n'importe quel membre du catalogue partagé (les deux gèrent).
+      allow delete: if isBiereMember() || isAdmin();
 
       match /degustations/{degId} {
         // Accès par le chemin direct (écriture depuis la fiche bière).
@@ -378,6 +376,14 @@ service cloud.firestore {
     match /{chemin=**}/degustations/{degId} {
       allow read: if isAdmin() || (request.auth != null
         && request.auth.uid in resource.data.membersDeg);
+    }
+
+    // Couplage « Bible de la bière » : source de vérité des deux UID (cf. /api/bieres-invite).
+    // Le client ne fait que LIRE son couple ; création et liaison passent par l'Admin SDK.
+    match /bieres_couples/{coupleId} {
+      allow read: if request.auth != null
+        && (request.auth.uid in resource.data.members || isAdmin());
+      allow write: if isAdmin();
     }
 
     match /babies/{babyId} {

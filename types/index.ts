@@ -1226,6 +1226,9 @@ export interface Biere {
 export interface Degustation {
   id: string
   createdBy: string
+  /** UID qui partagent cette dégustation (recopié depuis `Biere.members` à la
+   *  création) — conditionne la lecture par la requête `collectionGroup`. */
+  membersDeg?: string[]
   createdAt: Timestamp
   /** Absente sur les fiches reprises de l'ancien tableur : 115 bières sur 184 n'avaient pas de date */
   date?: Timestamp

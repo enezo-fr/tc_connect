@@ -23,8 +23,10 @@ export const DUO_INVITES = 'duo_invites'
 export const DUO_COUPLES = 'duo_couples'
 /** Durée de validité d'un lien d'invitation. */
 export const DUO_TTL_DAYS = 7
-/** Listes partagées entre les deux membres — celles portant un `members[]`. */
-export const DUO_COLLECTIONS = ['duo_films', 'duo_activites', 'duo_parties', 'bar_commandes']
+/** Listes partagées entre les deux membres — celles portant un `members[]`.
+ *  NB : `bar_commandes` en est volontairement EXCLU — les commandes se partagent
+ *  au cas par cas (lien public par commande), pas en bloc avec tout le couple. */
+export const DUO_COLLECTIONS = ['duo_films', 'duo_activites', 'duo_parties']
 
 /** Document de couplage auquel appartient `uid`, ou null s'il est encore seul. */
 export async function findCouple(uid: string) {
