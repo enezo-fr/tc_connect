@@ -136,6 +136,11 @@ export default function BoutiqueAdminPage() {
   // ── Sub modal state ───────────────────────────────────────────────────────
   const [showSubModal, setShowSubModal] = useState(false);
   const [editSub, setEditSub] = useState<StoreSubscription | null>(null);
+  // Confirmation de suppression (modale propre, à la place du confirm() natif)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message?: string; confirmLabel?: string; onConfirm: () => void | Promise<void>;
+  } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [subForm, setSubForm] = useState({
     appId: "", clientId: "", clientNom: "", clientEmail: "", userUid: "",
     statut: "active" as StoreSubStatut, dateDebut: new Date().toISOString().split("T")[0],
@@ -265,10 +270,13 @@ export default function BoutiqueAdminPage() {
     }
   };
 
-  const handleDeleteApp = async (app: StoreApp) => {
-    if (!confirm(`Supprimer "${app.nom}" ? Les abonnements associés resteront en base.`)) return;
-    await deleteStoreApp(app.id);
-    showToast("Application supprimée.");
+  const handleDeleteApp = (app: StoreApp) => {
+    setConfirmDialog({
+      title: `Supprimer « ${app.nom} » ?`,
+      message: "Les abonnements associés resteront en base. Cette action est définitive.",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => { await deleteStoreApp(app.id); showToast("Application supprimée."); },
+    });
   };
 
   // ── Sub CRUD ──────────────────────────────────────────────────────────────
@@ -404,10 +412,13 @@ export default function BoutiqueAdminPage() {
     }
   };
 
-  const handleDeleteSub = async (sub: StoreSubscription) => {
-    if (!confirm(`Supprimer l'abonnement de ${sub.clientNom} ?`)) return;
-    await deleteStoreSubscription(sub.id);
-    showToast("Abonnement supprimé.");
+  const handleDeleteSub = (sub: StoreSubscription) => {
+    setConfirmDialog({
+      title: `Supprimer l'abonnement de ${sub.clientNom} ?`,
+      message: "Cette action est définitive.",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => { await deleteStoreSubscription(sub.id); showToast("Abonnement supprimé."); },
+    });
   };
 
   const handleFacturer = (sub: StoreSubscription) => {
@@ -1166,6 +1177,35 @@ export default function BoutiqueAdminPage() {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-lg py-2.5 text-sm font-semibold transition">
                 {savingSub ? "Enregistrement…" : editSub ? "Enregistrer" : "Créer"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRMATION DE SUPPRESSION ───────────────────────────────────────── */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => { if (!confirming) setConfirmDialog(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="font-semibold text-gray-900 text-base">{confirmDialog.title}</h2>
+              {confirmDialog.message && <p className="text-sm text-gray-500 mt-1.5">{confirmDialog.message}</p>}
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setConfirmDialog(null)} disabled={confirming}
+                  className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                  Annuler
+                </button>
+                <button
+                  onClick={async () => {
+                    setConfirming(true);
+                    try { await confirmDialog.onConfirm(); setConfirmDialog(null); }
+                    finally { setConfirming(false); }
+                  }}
+                  disabled={confirming}
+                  className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
+                  {confirming ? "Suppression…" : (confirmDialog.confirmLabel ?? "Supprimer")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
