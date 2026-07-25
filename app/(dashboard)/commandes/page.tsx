@@ -10,11 +10,22 @@ import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/Ajo
 import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
 import { Timestamp } from 'firebase/firestore'
-import { resoudreBar, chargerBarProche, enregistrerPrix } from '@/lib/barPrix'
+import dynamic from 'next/dynamic'
+import { resoudreBar, chargerBarProche, enregistrerPrix, chargerTousBars, type BarComplet } from '@/lib/barPrix'
 import { BarLocationField } from '@/components/commandes/BarLocationField'
 import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil,
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin, History, ChevronDown,
 } from 'lucide-react'
+
+// Leaflet touche `window` dès l'import → carte en client uniquement.
+const CarteBars = dynamic(() => import('@/components/commandes/CarteBars'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[50vh] rounded-2xl border border-gray-100 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
+      Chargement de la carte…
+    </div>
+  ),
+})
 import {
   BOISSONS_COURANTES, additionParPersonne, totalCommande, totalPartiel,
   nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents, remapLignesParticipants, propagerPrix,
@@ -46,6 +57,22 @@ export default function CommandesPage() {
 
   const [partageOuvert, setPartageOuvert] = useState(false)
   const [ouverteId, setOuverteId] = useState<string | null>(null)
+
+  // Onglet de la page liste : les commandes, ou la carte des bars répertoriés.
+  const [ongletListe, setOngletListe] = useState<'commandes' | 'bars'>('commandes')
+  const [bars, setBars] = useState<BarComplet[]>([])
+  const [barsLoading, setBarsLoading] = useState(false)
+  const [barsCharges, setBarsCharges] = useState(false)
+  const [barOuvert, setBarOuvert] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (ongletListe !== 'bars' || barsCharges) return
+    setBarsLoading(true)
+    chargerTousBars()
+      .then((b) => { setBars(b); setBarsCharges(true) })
+      .catch(() => {})
+      .finally(() => setBarsLoading(false))
+  }, [ongletListe, barsCharges])
   const ouverte = commandes.find((c) => c.id === ouverteId) ?? null
 
   const listeTriee = useMemo(
@@ -208,7 +235,20 @@ export default function CommandesPage() {
             </button>
           </div>
 
-          {listeTriee.length === 0 ? (
+          {/* Onglets : les commandes, ou la carte des bars répertoriés */}
+          <div className="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl sm:flex sm:w-fit">
+            {([{ k: 'commandes', l: 'Tournées', icon: ClipboardList }, { k: 'bars', l: 'Bars & prix', icon: MapPin }] as const).map((o) => {
+              const I = o.icon
+              return (
+                <button key={o.k} onClick={() => setOngletListe(o.k)}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${ongletListe === o.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <I size={15} />{o.l}
+                </button>
+              )
+            })}
+          </div>
+
+          {ongletListe === 'commandes' && (listeTriee.length === 0 ? (
             <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
               <ClipboardList size={28} className="text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-400">Aucune commande enregistrée.</p>
@@ -249,6 +289,65 @@ export default function CommandesPage() {
                   })}
                 </div>
               ))}
+            </div>
+          ))}
+
+          {ongletListe === 'bars' && (
+            <div className="space-y-4">
+              {barsLoading ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <CarteBars bars={bars} />
+                  <div className="space-y-2">
+                    {bars.slice().sort((a, b) => (a.nom || '').localeCompare(b.nom || '')).map((b) => {
+                      const ouvert = barOuvert === b.key
+                      const entrees = Object.entries(b.prix).sort((x, y) => x[0].localeCompare(y[0]))
+                      return (
+                        <div key={b.key} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                          <button onClick={() => setBarOuvert(ouvert ? null : b.key)} className="w-full flex items-center gap-3 px-4 py-3 text-left">
+                            <div className="w-9 h-9 rounded-xl bg-sky-100 flex items-center justify-center shrink-0"><MapPin size={16} className="text-sky-600" /></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate">{b.nom || 'Bar'}</p>
+                              <p className="text-xs text-gray-500">{entrees.length} boisson{entrees.length > 1 ? 's' : ''} tarifée{entrees.length > 1 ? 's' : ''}</p>
+                            </div>
+                            <ChevronDown size={16} className={`text-gray-400 shrink-0 transition ${ouvert ? 'rotate-180' : ''}`} />
+                          </button>
+                          {ouvert && (
+                            <div className="px-4 pb-3 space-y-3">
+                              {entrees.length > 0 && (
+                                <ul className="divide-y divide-gray-50 border border-gray-100 rounded-xl overflow-hidden">
+                                  {entrees.map(([boisson, prix]) => (
+                                    <li key={boisson} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                                      <span className="text-gray-700 capitalize">{boisson}</span><strong className="text-gray-900">{euros(prix)}</strong>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {b.histo.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><History size={12} />Historique des prix</p>
+                                  <ul className="space-y-1 max-h-48 overflow-auto">
+                                    {b.histo.slice().reverse().map((h, i) => (
+                                      <li key={i} className="text-xs text-gray-600 flex items-center justify-between gap-3">
+                                        <span className="capitalize flex-1 min-w-0 truncate">{h.boisson}</span>
+                                        <span className="text-gray-400 shrink-0">{h.at?.toDate?.().toLocaleDateString('fr-FR') ?? ''}</span>
+                                        <strong className="text-gray-800 shrink-0">{euros(h.prix)}</strong>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

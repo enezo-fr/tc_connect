@@ -25,6 +25,8 @@ const RAYON_M = 70
 
 export interface Position { lat: number; lng: number }
 export interface BarProche { key: string; lat: number; lng: number; nom?: string; prix: Record<string, number> }
+export interface HistoPrix { boisson: string; prix: number; at?: Timestamp; by?: string }
+export interface BarComplet extends BarProche { histo: HistoPrix[] }
 
 /** Position GPS actuelle (ou null si refusée / indisponible). */
 export function positionActuelle(): Promise<Position | null> {
@@ -84,6 +86,17 @@ export async function resoudreBar(pos: Position): Promise<{ cell: string; nom?: 
   const proche = await chargerBarProche(pos)
   if (proche) return { cell: proche.key, nom: proche.nom, prix: proche.prix }
   return { cell: cellKey(pos.lat, pos.lng), prix: {} }
+}
+
+/** Tous les bars répertoriés (pour la carte + les prix de la page Commandes). */
+export async function chargerTousBars(): Promise<BarComplet[]> {
+  const snap = await getDocs(collection(db, COLL))
+  return snap.docs
+    .map((d) => {
+      const x = d.data() as { lat?: number; lng?: number; nom?: string; prix?: Record<string, number>; histo?: HistoPrix[] }
+      return { key: d.id, lat: x.lat as number, lng: x.lng as number, nom: x.nom, prix: x.prix ?? {}, histo: Array.isArray(x.histo) ? x.histo : [] }
+    })
+    .filter((b) => typeof b.lat === 'number' && typeof b.lng === 'number')
 }
 
 /** Enregistre / met à jour le prix d'une boisson pour ce bar (+ historique). */
