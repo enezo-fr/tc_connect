@@ -150,6 +150,10 @@ const DIAPER_KINDS: { v: BebeDiaperKind; l: string }[] = [
 ]
 
 const BOTTLE_AMOUNTS = [60, 90, 120, 150, 180, 210]
+/** Volumes proposés en un clic pour un tirage (souvent plus petits qu'un biberon) */
+const PUMP_AMOUNTS = [30, 60, 90, 120, 150, 180]
+/** Restes jetés proposés en un clic (petites quantités) */
+const WASTE_AMOUNTS = [10, 20, 30, 40, 60, 90]
 /** Durées de tétée proposées (minutes) */
 const TETEE_DUREES = [5, 10, 15, 20, 25, 30]
 
@@ -1938,6 +1942,14 @@ export default function BebePage() {
                 onChange={e => setBottleForm(f => ({ ...f, wasted: e.target.value }))}
                 placeholder="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="flex gap-1.5 mt-2">
+                {WASTE_AMOUNTS.map(ml => (
+                  <button key={ml} type="button" onClick={() => setBottleForm(f => ({ ...f, wasted: String(ml) }))}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border transition ${bottleForm.wasted === String(ml) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}>
+                    {ml}
+                  </button>
+                ))}
+              </div>
               <p className="text-xs text-gray-400 mt-1">
                 Reste non bu, retiré de la réserve de lait maternel. Laissez vide si tout a été bu.
               </p>
@@ -2079,6 +2091,14 @@ export default function BebePage() {
             <input type="number" min={0} step={5} value={pumpForm.amount}
               onChange={e => setPumpForm(f => ({ ...f, amount: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex gap-1.5 mt-2">
+              {PUMP_AMOUNTS.map(ml => (
+                <button key={ml} type="button" onClick={() => setPumpForm(f => ({ ...f, amount: String(ml) }))}
+                  className={`flex-1 text-xs py-1.5 rounded-lg border transition ${pumpForm.amount === String(ml) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}>
+                  {ml}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Côté</label>
@@ -2107,6 +2127,14 @@ export default function BebePage() {
             <input type="number" min={0} step={5} value={wasteForm.amount}
               onChange={e => setWasteForm(f => ({ ...f, amount: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex gap-1.5 mt-2">
+              {WASTE_AMOUNTS.map(ml => (
+                <button key={ml} type="button" onClick={() => setWasteForm(f => ({ ...f, amount: String(ml) }))}
+                  className={`flex-1 text-xs py-1.5 rounded-lg border transition ${wasteForm.amount === String(ml) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}>
+                  {ml}
+                </button>
+              ))}
+            </div>
           </div>
           <p className="text-xs text-gray-400">
             Lait maternel jeté sans avoir été bu (périmé, reste d&apos;un biberon…). Il est retiré
