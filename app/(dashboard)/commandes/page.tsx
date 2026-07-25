@@ -292,10 +292,18 @@ export default function CommandesPage() {
               {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
             </p>
           </div>
-          <button onClick={() => modifier(ouverte.id, { terminee: !ouverte.terminee })}
-            className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition shrink-0">
-            {ouverte.terminee ? 'Rouvrir' : 'Terminer'}
-          </button>
+          {/* Accessible depuis les trois vues : la suppression n'avait rien à
+              faire au fond de l'onglet Addition. */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => modifier(ouverte.id, { terminee: !ouverte.terminee })}
+              className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition">
+              {ouverte.terminee ? 'Rouvrir' : 'Terminer'}
+            </button>
+            <button onClick={() => setASupprimer(ouverte)} title="Supprimer cette commande"
+              className="p-2 rounded-xl border border-gray-300 text-gray-400 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition">
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Trois lectures de la même commande */}
@@ -455,10 +463,6 @@ export default function CommandesPage() {
                 {total !== null ? euros(total) : euros(partiel)}
               </span>
             </div>
-            <button onClick={() => setASupprimer(ouverte)}
-              className="w-full text-xs text-gray-400 hover:text-red-600 py-2 transition">
-              Supprimer cette commande
-            </button>
           </div>
         )}
       </div>
