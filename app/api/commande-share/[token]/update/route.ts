@@ -26,6 +26,7 @@ function cleanLignes(input: any): any[] {
     if (l?.prix != null && Number.isFinite(Number(l.prix))) out.prix = Math.max(0, Number(l.prix))
     if (typeof l?.pour === 'string' && l.pour.trim()) out.pour = str(l.pour, 60)
     if (l?.servie === true) out.servie = true
+    if (l?.tournee != null && Number.isFinite(Number(l.tournee))) out.tournee = Math.max(1, Math.floor(Number(l.tournee)))
     return out
   }).filter((l) => (l.boisson as string).trim().length > 0)
 }
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   if (!doc) return NextResponse.json({ error: 'Lien invalide.' }, { status: 404 })
 
   const body = await req.json() as
-    { lieu?: unknown; date?: unknown; participants?: unknown; lignes?: unknown; terminee?: unknown }
+    { lieu?: unknown; date?: unknown; participants?: unknown; lignes?: unknown; terminee?: unknown; tourneeCourante?: unknown }
   const patch: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() }
 
   if (body.lignes !== undefined) patch.lignes = cleanLignes(body.lignes)
@@ -47,6 +48,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   if (body.lieu !== undefined) patch.lieu = str(body.lieu, 120).trim()
   if (body.terminee !== undefined) patch.terminee = !!body.terminee
+  if (body.tourneeCourante !== undefined) {
+    patch.tourneeCourante = Math.max(1, Math.floor(Number(body.tourneeCourante) || 1))
+  }
   if (body.date !== undefined) {
     patch.date = (typeof body.date === 'number' && Number.isFinite(body.date))
       ? Timestamp.fromMillis(body.date)

@@ -1157,6 +1157,8 @@ export interface LigneCommande {
   pour?: string
   /** Déjà servie — utile quand le bar apporte en plusieurs fois */
   servie?: boolean
+  /** Numéro de tournée (1, 2, 3…) dans la soirée. Absent = tournée 1. */
+  tournee?: number
 }
 
 /**
@@ -1178,6 +1180,8 @@ export interface Commande {
   lignes: LigneCommande[]
   /** Close = payée, on ne la modifie plus au quotidien */
   terminee?: boolean
+  /** Tournée en cours : les boissons ajoutées y sont rattachées. Absent = 1. */
+  tourneeCourante?: number
   notes?: string
   /** Jeton de partage public : présent = accessible par lien/QR à /commande/{token}
    *  (posé par le propriétaire, retiré pour couper le partage). */

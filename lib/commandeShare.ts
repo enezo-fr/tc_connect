@@ -34,5 +34,6 @@ export function publicView(id: string, data: Record<string, any>) {
     participants: Array.isArray(data.participants) ? data.participants : [],
     lignes: Array.isArray(data.lignes) ? data.lignes : [],
     terminee: !!data.terminee,
+    tourneeCourante: data.tourneeCourante ?? null,
   }
 }

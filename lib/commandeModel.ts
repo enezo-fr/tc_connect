@@ -80,6 +80,36 @@ export function recapBar(c: Commande): RecapBoisson[] {
   return [...m.values()].sort((a, b) => b.quantite - a.quantite || a.boisson.localeCompare(b.boisson))
 }
 
+/** Numéro de tournée d'une ligne (1 par défaut). */
+export const numeroTournee = (l: LigneCommande): number => l.tournee ?? 1
+
+/** Plus grand numéro de tournée présent (au moins 1). */
+export function derniereTournee(c: Commande): number {
+  return (c.lignes ?? []).reduce((mx, l) => Math.max(mx, numeroTournee(l)), 1)
+}
+
+/** Tournée où sont rattachées les nouvelles boissons. */
+export function tourneeCouranteDe(c: Commande): number {
+  return c.tourneeCourante ?? derniereTournee(c)
+}
+
+/** Nombre de tournées de la soirée. */
+export function nbTournees(c: Commande): number {
+  return Math.max(derniereTournee(c), tourneeCouranteDe(c))
+}
+
+/** Récap bar découpé PAR tournée (pour lire au comptoir, une tournée à la fois). */
+export function recapParTournee(c: Commande): { tournee: number; recap: RecapBoisson[]; quantite: number }[] {
+  const total = nbTournees(c)
+  const out: { tournee: number; recap: RecapBoisson[]; quantite: number }[] = []
+  for (let n = 1; n <= total; n++) {
+    const lignes = (c.lignes ?? []).filter((l) => numeroTournee(l) === n)
+    const recap = recapBar({ ...c, lignes } as Commande)
+    out.push({ tournee: n, recap, quantite: lignes.reduce((s, l) => s + l.quantite, 0) })
+  }
+  return out
+}
+
 export interface PartPersonne {
   personne: string
   lignes: LigneCommande[]

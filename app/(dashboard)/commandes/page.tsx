@@ -14,8 +14,9 @@ import {
   Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil,
 } from 'lucide-react'
 import {
-  BOISSONS_COURANTES, recapBar, additionParPersonne, totalCommande, totalPartiel,
+  BOISSONS_COURANTES, additionParPersonne, totalCommande, totalPartiel,
   nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents, remapLignesParticipants, propagerPrix,
+  recapParTournee, tourneeCouranteDe, nbTournees, numeroTournee,
 } from '@/lib/commandeModel'
 import type { Commande, LigneCommande } from '@/types'
 
@@ -111,11 +112,17 @@ export default function CommandesPage() {
     }
     if (ligne.prix === undefined) delete ligne.prix
     if (ligne.pour === undefined) delete ligne.pour
+    ligne.tournee = tourneeCouranteDe(ouverte)
     let lignes = [...(ouverte.lignes ?? []), ligne]
     // Prix fixe par bar : on le reporte sur toutes les mêmes boissons de la tournée.
     if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
     await modifier(ouverte.id, { lignes })
     setAjoutPour(null)
+  }
+
+  const nouvelleTournee = async () => {
+    if (!ouverte) return
+    await modifier(ouverte.id, { tourneeCourante: nbTournees(ouverte) + 1 })
   }
 
   const majLigne = async (id: string, patch: Partial<LigneCommande>) => {
@@ -241,7 +248,6 @@ export default function CommandesPage() {
   }
 
   // ═══ Détail d'une commande ═══
-  const recap = recapBar(ouverte)
   const addition = additionParPersonne(ouverte)
   const total = totalCommande(ouverte)
   const partiel = totalPartiel(ouverte)
@@ -312,6 +318,20 @@ export default function CommandesPage() {
           })}
         </div>
 
+        {/* Tournée en cours + bouton pour en démarrer une nouvelle (hors addition) */}
+        {vue !== 'addition' && (
+          <div className="flex items-center justify-between gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2">
+            <span className="text-sm text-gray-600">
+              Tournée en cours : <strong className="text-gray-900">{tourneeCouranteDe(ouverte)}</strong>
+              {nbTournees(ouverte) > 1 && <span className="text-gray-400"> / {nbTournees(ouverte)}</span>}
+            </span>
+            <button onClick={nouvelleTournee}
+              className="flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-700 transition">
+              <Plus size={15} />Nouvelle tournée
+            </button>
+          </div>
+        )}
+
         {/* ── Vue TABLE : on fait le tour, personne par personne ── */}
         {vue === 'table' && (
           <div className="space-y-3">
@@ -366,55 +386,56 @@ export default function CommandesPage() {
           </div>
         )}
 
-        {/* ── Vue BAR : ce qu'on annonce au comptoir ── */}
+        {/* ── Vue BAR : ce qu'on annonce au comptoir, tournée par tournée ── */}
         {vue === 'bar' && (
-          <div className="space-y-2">
+          <div className="space-y-5">
             <p className="text-xs text-gray-500">
-              Regroupé par boisson — à lire au barman. Coche au fur et à mesure du service.
+              À lire au comptoir, tournée par tournée. Coche au fur et à mesure du service.
             </p>
-            {recap.length === 0 ? (
+            {(ouverte.lignes ?? []).length === 0 ? (
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
                 <p className="text-sm text-gray-400">Rien de commandé.</p>
               </div>
-            ) : recap.map((r) => {
-              const lignes = (ouverte.lignes ?? []).filter(
-                (l) => l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
-              )
-              const toutesServies = lignes.every((l) => l.servie)
+            ) : recapParTournee(ouverte).filter((t) => t.recap.length > 0).map(({ tournee, recap: rec }) => {
+              const enCours = tournee === tourneeCouranteDe(ouverte)
               return (
-                <div key={r.boisson}
-                  className={`rounded-2xl border shadow-sm px-4 py-3 flex items-center gap-3 ${
-                    toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'
-                  }`}>
-                  <button
-                    onClick={() => modifier(ouverte.id, {
-                      lignes: (ouverte.lignes ?? []).map((l) =>
-                        l.boisson.trim().toLowerCase() === r.boisson.toLowerCase()
-                          ? { ...l, servie: !toutesServies } : l),
-                    })}
-                    className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition ${
-                      toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'
-                    }`}>
-                    <Check size={15} />
-                  </button>
-                  <span className="text-xl font-bold text-sky-700 w-8 shrink-0">{r.quantite}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                      {r.boisson}
-                    </p>
-                    {r.pour.length > 0 && (
-                      <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>
-                    )}
+                <div key={tournee} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-gray-900">Tournée {tournee}</h3>
+                    {enCours && <span className="text-[11px] font-semibold text-sky-700 bg-sky-100 rounded-full px-2 py-0.5">en cours</span>}
                   </div>
-                  {r.total !== null && (
-                    <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>
-                  )}
+                  {rec.map((r) => {
+                    const lignes = (ouverte.lignes ?? []).filter(
+                      (l) => numeroTournee(l) === tournee && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase(),
+                    )
+                    const toutesServies = lignes.length > 0 && lignes.every((l) => l.servie)
+                    return (
+                      <div key={r.boisson}
+                        className={`rounded-2xl border shadow-sm px-4 py-3.5 flex items-center gap-3 ${toutesServies ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-100'}`}>
+                        <button
+                          onClick={() => modifier(ouverte.id, {
+                            lignes: (ouverte.lignes ?? []).map((l) =>
+                              (numeroTournee(l) === tournee && l.boisson.trim().toLowerCase() === r.boisson.toLowerCase())
+                                ? { ...l, servie: !toutesServies } : l),
+                          })}
+                          className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition ${toutesServies ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                          <Check size={16} />
+                        </button>
+                        <span className="text-3xl font-extrabold text-sky-700 w-10 text-center shrink-0 tabular-nums">{r.quantite}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-lg font-bold leading-tight ${toutesServies ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{r.boisson}</p>
+                          {r.pour.length > 0 && <p className="text-xs text-gray-500 truncate">pour {r.pour.join(', ')}</p>}
+                        </div>
+                        {r.total !== null && <span className="text-sm text-gray-600 shrink-0">{euros(r.total)}</span>}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
             {total !== null && (
               <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-sky-900">Total</span>
+                <span className="text-sm font-semibold text-sky-900">Total soirée</span>
                 <span className="text-lg font-bold text-sky-900">{euros(total)}</span>
               </div>
             )}
