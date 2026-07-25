@@ -403,7 +403,7 @@ export default function BoutiqueAdminPage() {
             title: arret ? "Abonnement arrêté" : "Accès suspendu",
             body: arret
               ? `Votre accès à "${sub.appNom}" a été arrêté.`
-              : `Votre accès à "${sub.appNom}" a été suspendu. Contactez votre coach pour le réactiver.`,
+              : `Votre accès à "${sub.appNom}" a été suspendu. Contactez-nous pour le réactiver.`,
             url: "/boutique",
           }),
         }).catch(() => {});
