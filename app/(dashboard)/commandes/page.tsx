@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useCommandes } from '@/hooks/useDuo'
 import { StoreGate } from '@/components/ui/StoreGate'
@@ -11,7 +11,10 @@ import { InfosCommandeModal, type InfosResult } from '@/components/commandes/Inf
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil,
+  positionActuelle, resoudreBar, chargerBarProche, enregistrerPrix,
+} from '@/lib/barPrix'
+import {
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin,
 } from 'lucide-react'
 import {
   BOISSONS_COURANTES, additionParPersonne, totalCommande, totalPartiel,
@@ -72,15 +75,49 @@ export default function CommandesPage() {
     if (!uid) return
     const [y, m, j] = form.date.split('-').map(Number)
     const participants = Array.from(new Set(partRows.map((r) => r.name.trim()).filter(Boolean)))
+    // Géoloc du bar (best-effort) → rattache au catalogue de prix partagé.
+    let geo: Record<string, unknown> = {}
+    const pos = await positionActuelle()
+    if (pos) {
+      const bar = await resoudreBar(pos)
+      geo = { lat: pos.lat, lng: pos.lng, barCell: bar.cell }
+    }
     const id = await ajouter({
       members: [uid], createdBy: uid,
       lieu: form.lieu.trim(),
       date: form.date ? Timestamp.fromDate(new Date(y, m - 1, j, 20)) : Timestamp.now(),
       participants,
       lignes: [], terminee: false,
+      ...geo,
     })
     setNouvelleOuverte(false)
     setOuverteId(id)
+  }
+
+  // ── Catalogue de prix par bar (partagé, géolocalisé) ────────────────────────
+  const [barPrix, setBarPrix] = useState<Record<string, number>>({})
+  const [localisation, setLocalisation] = useState(false)
+
+  // Charge les prix connus du bar dès qu'une commande géolocalisée est ouverte.
+  useEffect(() => {
+    const lat = ouverte?.lat, lng = ouverte?.lng
+    if (lat == null || lng == null) { setBarPrix({}); return }
+    let vivant = true
+    chargerBarProche({ lat, lng }).then((bar) => { if (vivant) setBarPrix(bar?.prix ?? {}) }).catch(() => {})
+    return () => { vivant = false }
+  }, [ouverte?.id, ouverte?.lat, ouverte?.lng])
+
+  /** Rattacher (ou re-caler) la commande ouverte à un bar via le GPS. */
+  const localiserBar = async () => {
+    if (!ouverte) return
+    setLocalisation(true)
+    try {
+      const pos = await positionActuelle()
+      if (!pos) return
+      const bar = await resoudreBar(pos)
+      await modifier(ouverte.id, { lat: pos.lat, lng: pos.lng, barCell: bar.cell })
+      setBarPrix(bar.prix)
+    } finally { setLocalisation(false) }
   }
 
   // ── Modifier les infos (lieu / date / personnes) ────────────────────────────
@@ -118,6 +155,14 @@ export default function CommandesPage() {
     if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
     await modifier(ouverte.id, { lignes })
     setAjoutPour(null)
+    // Mémorise le prix dans le catalogue partagé du bar (+ historique).
+    if (b.prix != null && uid && ouverte.lat != null && ouverte.lng != null && ouverte.barCell) {
+      const cle = ligne.boisson.trim().toLowerCase()
+      if (barPrix[cle] !== b.prix) {
+        setBarPrix((prev) => ({ ...prev, [cle]: b.prix! }))
+        enregistrerPrix({ cell: ouverte.barCell, pos: { lat: ouverte.lat, lng: ouverte.lng }, nom: ouverte.lieu, boisson: ligne.boisson, prix: b.prix, uid }).catch(() => {})
+      }
+    }
   }
 
   const nouvelleTournee = async () => {
@@ -278,6 +323,11 @@ export default function CommandesPage() {
           {/* Accessible depuis les trois vues : la suppression n'avait rien à
               faire au fond de l'onglet Addition. */}
           <div className="flex items-center gap-2 shrink-0">
+            <button onClick={localiserBar} disabled={localisation}
+              title={ouverte.barCell ? 'Bar localisé — recaler les prix' : 'Localiser le bar (prix partagés)'}
+              className={`p-2 rounded-xl border transition disabled:opacity-60 ${ouverte.barCell ? 'border-emerald-300 text-emerald-600 bg-emerald-50' : 'border-gray-300 text-gray-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50'}`}>
+              <MapPin size={16} />
+            </button>
             <button onClick={() => setPartageOuvert(true)} title="Partager cette commande"
               className={`p-2 rounded-xl border transition ${ouverte.shareToken ? 'border-sky-300 text-sky-600 bg-sky-50' : 'border-gray-300 text-gray-400 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50'}`}>
               <Share2 size={16} />
@@ -478,7 +528,7 @@ export default function CommandesPage() {
       {/* ── Ajout d'une boisson (contenance + nom) ─────────────────────────── */}
       <AjoutBoissonModal isOpen={!!ajoutPour} onClose={() => setAjoutPour(null)} pour={ajoutPour}
         boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        prixConnu={(b) => prixConnus(commandes, b)} onAdd={ajouterBoisson} />
+        prixConnu={(b) => barPrix[b.trim().toLowerCase()] ?? prixConnus(commandes, b)} onAdd={ajouterBoisson} />
 
       <Modal isOpen={!!aSupprimer} onClose={() => setASupprimer(null)} title="Supprimer la commande" size="sm">
         <div className="space-y-4">

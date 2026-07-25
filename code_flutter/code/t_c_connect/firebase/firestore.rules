@@ -323,6 +323,13 @@ service cloud.firestore {
       allow delete: if estListeDuo() && (estMembreDuo() || isAdmin());
     }
 
+    // Catalogue de prix par bar, PARTAGÉ entre tous les utilisateurs (app Commandes) :
+    // n'importe quel compte connecté lit et met à jour les prix (cf. lib/barPrix).
+    match /bar_prix/{cell} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
     // Couplage « Sarah & Ted » : source de vérité des deux UID (cf. /api/duo-invite).
     // Le client ne fait que LIRE son couple (pour recopier `members` à l'écriture) ;
     // la création et la liaison passent par l'Admin SDK, qui outrepasse ces règles.

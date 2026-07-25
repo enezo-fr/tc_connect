@@ -1182,6 +1182,10 @@ export interface Commande {
   terminee?: boolean
   /** Tournée en cours : les boissons ajoutées y sont rattachées. Absent = 1. */
   tourneeCourante?: number
+  /** Position GPS du bar + cellule du catalogue de prix partagé (cf. lib/barPrix). */
+  lat?: number
+  lng?: number
+  barCell?: string
   notes?: string
   /** Jeton de partage public : présent = accessible par lien/QR à /commande/{token}
    *  (posé par le propriétaire, retiré pour couper le partage). */
