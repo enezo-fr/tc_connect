@@ -29,7 +29,7 @@ const CarteBars = dynamic(() => import('@/components/commandes/CarteBars'), {
 import {
   BOISSONS_COURANTES, additionParPersonne, totalCommande, totalPartiel,
   nbVerres, euros, prixConnus, boissonsFrequentes, participantsFrequents, remapLignesParticipants, propagerPrix,
-  recapParTournee, tourneeCouranteDe, nbTournees, numeroTournee,
+  recapParTournee, tourneeCouranteDe, nbTournees, numeroTournee, supprimerTournee,
 } from '@/lib/commandeModel'
 import type { Commande, LigneCommande } from '@/types'
 
@@ -218,6 +218,15 @@ export default function CommandesPage() {
     const n = nbTournees(ouverte) + 1
     setTourneeVue(n)
     await modifier(ouverte.id, { tourneeCourante: n })
+  }
+
+  const [tourneeASupprimer, setTourneeASupprimer] = useState<number | null>(null)
+  const confirmerSupprTournee = async () => {
+    if (!ouverte || tourneeASupprimer == null) return
+    const { lignes, tourneeCourante } = supprimerTournee(ouverte, tourneeASupprimer)
+    setTourneeVue(null)
+    setTourneeASupprimer(null)
+    await modifier(ouverte.id, { lignes, tourneeCourante })
   }
 
   const majLigne = async (id: string, patch: Partial<LigneCommande>) => {
@@ -512,6 +521,12 @@ export default function CommandesPage() {
               className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
               <Plus size={14} />Nouvelle
             </button>
+            {nbT > 1 && !toutes && (
+              <button onClick={() => setTourneeASupprimer(round as number)} title="Supprimer cette tournée"
+                className="shrink-0 p-1.5 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
         )}
 
@@ -681,6 +696,25 @@ export default function CommandesPage() {
               if (aSupprimer) await supprimer(aSupprimer.id)
               setASupprimer(null); setOuverteId(null)
             }}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium transition">
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={tourneeASupprimer != null} onClose={() => setTourneeASupprimer(null)} title="Supprimer la tournée" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Supprimer la <strong>tournée {tourneeASupprimer}</strong> et ses boissons ? Les tournées
+            suivantes seront renumérotées.
+          </p>
+          <div className="flex gap-3">
+            <button onClick={() => setTourneeASupprimer(null)}
+              className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+              Annuler
+            </button>
+            <button onClick={confirmerSupprTournee}
               className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium transition">
               Supprimer
             </button>

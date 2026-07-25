@@ -98,6 +98,18 @@ export function nbTournees(c: Commande): number {
   return Math.max(derniereTournee(c), tourneeCouranteDe(c))
 }
 
+/** Supprime la tournée `n` : retire ses lignes et renumérote les suivantes (N→N-1).
+ *  Renvoie les nouvelles `lignes` + la `tourneeCourante` ajustée. */
+export function supprimerTournee(c: Commande, n: number): { lignes: LigneCommande[]; tourneeCourante: number } {
+  const lignes = (c.lignes ?? [])
+    .filter((l) => numeroTournee(l) !== n)
+    .map((l) => (numeroTournee(l) > n ? { ...l, tournee: numeroTournee(l) - 1 } : l))
+  const nbApres = Math.max(1, nbTournees(c) - 1)
+  let courante = tourneeCouranteDe(c)
+  if (courante > n) courante -= 1
+  return { lignes, tourneeCourante: Math.min(Math.max(1, courante), nbApres) }
+}
+
 /** Récap bar découpé PAR tournée (pour lire au comptoir, une tournée à la fois). */
 export function recapParTournee(c: Commande): { tournee: number; recap: RecapBoisson[]; quantite: number }[] {
   const total = nbTournees(c)
