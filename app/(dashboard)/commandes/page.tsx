@@ -92,11 +92,13 @@ export default function CommandesPage() {
   const [partRows, setPartRows] = useState<PRow[]>([])
   // Position du bar choisie sur la carte à la création (plus de capture auto).
   const [newLoc, setNewLoc] = useState<{ lat: number; lng: number } | null>(null)
+  const [newEphemere, setNewEphemere] = useState(false)
 
   const ouvrirNouvelle = () => {
     setForm({ lieu: '', date: dateInput(new Date()) })
     setPartRows([])
     setNewLoc(null)
+    setNewEphemere(false)
     setNouvelleOuverte(true)
   }
 
@@ -105,8 +107,11 @@ export default function CommandesPage() {
     const [y, m, j] = form.date.split('-').map(Number)
     const participants = Array.from(new Set(partRows.map((r) => r.name.trim()).filter(Boolean)))
     // Position du bar posée sur la carte → rattache au catalogue de prix partagé.
+    // Bar de passage (« éphémère ») → on ne mémorise rien.
     let geo: Record<string, unknown> = {}
-    if (newLoc) {
+    if (newEphemere) {
+      geo = { barEphemere: true }
+    } else if (newLoc) {
       const bar = await resoudreBar(newLoc)
       geo = { lat: newLoc.lat, lng: newLoc.lng, barCell: bar.cell }
     }
@@ -144,11 +149,20 @@ export default function CommandesPage() {
       participants: r.participants,
       lignes: remapLignesParticipants(ouverte.lignes ?? [], r.renames, r.removed),
     }
-    // Position du bar (posée sur la carte) → recale le catalogue de prix.
-    if (r.lat != null && r.lng != null) {
-      const bar = await resoudreBar({ lat: r.lat, lng: r.lng })
-      patch.lat = r.lat; patch.lng = r.lng; patch.barCell = bar.cell
-      setBarPrix(bar.prix)
+    // Position du bar / bar de passage → recale (ou coupe) le catalogue de prix.
+    if (r.barEphemere) {
+      patch.barEphemere = true; patch.lat = null; patch.lng = null; patch.barCell = null
+      setBarPrix({})
+    } else {
+      patch.barEphemere = false
+      if (r.lat != null && r.lng != null) {
+        const bar = await resoudreBar({ lat: r.lat, lng: r.lng })
+        patch.lat = r.lat; patch.lng = r.lng; patch.barCell = bar.cell
+        setBarPrix(bar.prix)
+      } else {
+        patch.lat = null; patch.lng = null; patch.barCell = null
+        setBarPrix({})
+      }
     }
     await modifier(ouverte.id, patch)
   }
@@ -176,8 +190,8 @@ export default function CommandesPage() {
     if (b.prix != null) lignes = propagerPrix(lignes, ligne.boisson, b.prix)
     await modifier(ouverte.id, { lignes })
     setAjoutPour(null)
-    // Mémorise le prix dans le catalogue partagé du bar (+ historique).
-    if (b.prix != null && uid && ouverte.lat != null && ouverte.lng != null && ouverte.barCell) {
+    // Mémorise le prix dans le catalogue partagé du bar (+ historique) — sauf bar de passage.
+    if (b.prix != null && uid && !ouverte.barEphemere && ouverte.lat != null && ouverte.lng != null && ouverte.barCell) {
       const cle = ligne.boisson.trim().toLowerCase()
       if (barPrix[cle] !== b.prix) {
         setBarPrix((prev) => ({ ...prev, [cle]: b.prix! }))
@@ -374,7 +388,8 @@ export default function CommandesPage() {
             </div>
 
             <BarLocationField lat={newLoc?.lat ?? null} lng={newLoc?.lng ?? null}
-              onChange={(lat, lng) => setNewLoc({ lat, lng })} />
+              onChange={(lat, lng) => setNewLoc({ lat, lng })}
+              ephemere={newEphemere} onEphemere={setNewEphemere} />
 
             <div className="flex gap-3 pt-1">
               <button onClick={() => setNouvelleOuverte(false)}
@@ -441,7 +456,7 @@ export default function CommandesPage() {
         <CommandeShareModal isOpen={partageOuvert} onClose={() => setPartageOuvert(false)}
           commande={ouverte} modifier={modifier} />
         <InfosCommandeModal isOpen={infosOuvert} onClose={() => setInfosOuvert(false)} avecPosition
-          initial={{ lieu: ouverte.lieu ?? '', date: ouverte.date?.toMillis?.() ?? null, participants: ouverte.participants ?? [], lat: ouverte.lat ?? null, lng: ouverte.lng ?? null }}
+          initial={{ lieu: ouverte.lieu ?? '', date: ouverte.date?.toMillis?.() ?? null, participants: ouverte.participants ?? [], lat: ouverte.lat ?? null, lng: ouverte.lng ?? null, barEphemere: ouverte.barEphemere ?? false }}
           gensConnus={gensConnus} onSave={enregistrerInfos} />
 
         {/* Trois lectures de la même commande */}

@@ -21,6 +21,7 @@ export interface InfosInitial {
   participants: string[]
   lat?: number | null
   lng?: number | null
+  barEphemere?: boolean
 }
 
 export interface InfosResult {
@@ -34,6 +35,7 @@ export interface InfosResult {
   /** Position du bar (présente seulement si `avecPosition`). */
   lat?: number | null
   lng?: number | null
+  barEphemere?: boolean
 }
 
 interface Props {
@@ -54,6 +56,7 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
   // Nom d'origine par id de ligne, pour détecter renommages et suppressions.
   const [origine, setOrigine] = useState<Record<string, string>>({})
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [ephemere, setEphemere] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
     setRows(seed)
     setOrigine(Object.fromEntries(seed.map((r) => [r.id, r.name])))
     setPos(initial.lat != null && initial.lng != null ? { lat: initial.lat, lng: initial.lng } : null)
+    setEphemere(!!initial.barEphemere)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
@@ -87,7 +91,7 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
       const participants = Array.from(new Set([...finalNames.values()]))
       await onSave({
         lieu: lieu.trim(), date: ms, participants, renames, removed,
-        ...(avecPosition ? { lat: pos?.lat ?? null, lng: pos?.lng ?? null } : {}),
+        ...(avecPosition ? { lat: ephemere ? null : (pos?.lat ?? null), lng: ephemere ? null : (pos?.lng ?? null), barEphemere: ephemere } : {}),
       })
       onClose()
     } finally { setSaving(false) }
@@ -114,7 +118,8 @@ export function InfosCommandeModal({ isOpen, onClose, initial, gensConnus = [], 
 
         {avecPosition && (
           <BarLocationField lat={pos?.lat ?? null} lng={pos?.lng ?? null}
-            onChange={(lat, lng) => setPos({ lat, lng })} />
+            onChange={(lat, lng) => setPos({ lat, lng })}
+            ephemere={ephemere} onEphemere={setEphemere} />
         )}
 
         <div className="flex gap-3 pt-1">

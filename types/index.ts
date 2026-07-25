@@ -1186,6 +1186,8 @@ export interface Commande {
   lat?: number
   lng?: number
   barCell?: string
+  /** Bar de passage : on ne mémorise pas ses prix dans le catalogue partagé. */
+  barEphemere?: boolean
   notes?: string
   /** Jeton de partage public : présent = accessible par lien/QR à /commande/{token}
    *  (posé par le propriétaire, retiré pour couper le partage). */

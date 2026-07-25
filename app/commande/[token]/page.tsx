@@ -34,6 +34,8 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const [status, setStatus] = useState<'loading' | 'ok' | 'invalid'>('loading')
   const [vue, setVue] = useState<'table' | 'bar' | 'addition'>('table')
   const [tourneeVue, setTourneeVue] = useState<number | null>(null)
+  // Prix connus du bar (catalogue partagé) — via route serveur (pas d'accès Firestore ici).
+  const [barPrix, setBarPrix] = useState<Record<string, number>>({})
   const savingRef = useRef(false)
   const modalRef = useRef(false)
 
@@ -51,6 +53,11 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   }, [token])
 
   useEffect(() => { fetchCmd() }, [fetchCmd])
+  // Prix du bar (une fois) pour pré-remplir les saisies.
+  useEffect(() => {
+    fetch(`/api/commande-share/${token}/bar-prix`).then((r) => r.json())
+      .then((d) => setBarPrix(d?.prix ?? {})).catch(() => {})
+  }, [token])
   // Rafraîchissement léger : voir les modifs des autres personnes à table.
   useEffect(() => {
     const t = setInterval(() => { if (!savingRef.current && !modalRef.current) fetchCmd() }, 5000)
@@ -126,6 +133,17 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     modalRef.current = false
     setAjoutPour(null)
     persist({ ...cmd, lignes })
+    // Alimente le catalogue de prix du bar (via route serveur) + local.
+    if (b.prix != null) {
+      const cle = ligne.boisson.trim().toLowerCase()
+      if (barPrix[cle] !== b.prix) {
+        setBarPrix((prev) => ({ ...prev, [cle]: b.prix! }))
+        fetch(`/api/commande-share/${token}/bar-prix`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boisson: ligne.boisson, prix: b.prix }),
+        }).catch(() => {})
+      }
+    }
   }
 
   const nouvelleTournee = () => {
@@ -365,7 +383,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       {/* Ajout d'une boisson (contenance + nom) */}
       <AjoutBoissonModal isOpen={!!ajoutPour} onClose={closeAjout} pour={ajoutPour}
         boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        prixConnu={(b) => (cmd ? prixConnus([cmd as unknown as Commande], b) : null)} onAdd={ajouterBoisson} />
+        prixConnu={(b) => (cmd ? (barPrix[b.trim().toLowerCase()] ?? prixConnus([cmd as unknown as Commande], b)) : null)} onAdd={ajouterBoisson} />
 
       <InfosCommandeModal isOpen={infosOuvert} onClose={() => { modalRef.current = false; setInfosOuvert(false) }}
         initial={{ lieu: cmd.lieu, date: cmd.date, participants: cmd.participants }}

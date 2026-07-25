@@ -15,11 +15,14 @@ const CarteBarPicker = dynamic(() => import('@/components/commandes/CarteBarPick
   ),
 })
 
-/** Choix de la position du bar : carte (toucher pour placer) + bouton « ma position ». */
-export function BarLocationField({ lat, lng, onChange }: {
+/** Choix de la position du bar : carte (toucher pour placer) + bouton « ma position ».
+ *  Interrupteur « bar de passage » = ne pas mémoriser les prix dans le catalogue. */
+export function BarLocationField({ lat, lng, onChange, ephemere = false, onEphemere }: {
   lat: number | null
   lng: number | null
   onChange: (lat: number, lng: number) => void
+  ephemere?: boolean
+  onEphemere?: (v: boolean) => void
 }) {
   const [signal, setSignal] = useState(0)
   const [loc, setLoc] = useState(false)
@@ -38,17 +41,32 @@ export function BarLocationField({ lat, lng, onChange }: {
         <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
           <MapPin size={14} />Position du bar <span className="text-gray-400 font-normal">(facultatif)</span>
         </label>
-        <button type="button" onClick={maPosition} disabled={loc}
-          className="text-xs font-medium text-sky-600 hover:text-sky-700 flex items-center gap-1 disabled:opacity-60">
-          <LocateFixed size={13} />{loc ? 'Localisation…' : 'Ma position'}
-        </button>
+        {!ephemere && (
+          <button type="button" onClick={maPosition} disabled={loc}
+            className="text-xs font-medium text-sky-600 hover:text-sky-700 flex items-center gap-1 disabled:opacity-60">
+            <LocateFixed size={13} />{loc ? 'Localisation…' : 'Ma position'}
+          </button>
+        )}
       </div>
-      <CarteBarPicker lat={lat} lng={lng} signal={signal} onPick={onChange} />
-      <p className="text-xs text-gray-400">
-        {lat != null
-          ? 'Touchez la carte pour ajuster le point exact du bar. Sert au catalogue de prix partagé.'
-          : 'Touchez la carte à l’emplacement du bar (ou « Ma position » si vous y êtes). Sert au catalogue de prix partagé.'}
-      </p>
+
+      {!ephemere && (
+        <>
+          <CarteBarPicker lat={lat} lng={lng} signal={signal} onPick={onChange} />
+          <p className="text-xs text-gray-400">
+            {lat != null
+              ? 'Touchez la carte pour ajuster le point exact du bar. Sert au catalogue de prix partagé.'
+              : 'Touchez la carte à l’emplacement du bar (ou « Ma position » si vous y êtes). Sert au catalogue de prix partagé.'}
+          </p>
+        </>
+      )}
+
+      {onEphemere && (
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none pt-0.5">
+          <input type="checkbox" checked={ephemere} onChange={(e) => onEphemere(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
+          Bar de passage — ne pas mémoriser les prix
+        </label>
+      )}
     </div>
   )
 }

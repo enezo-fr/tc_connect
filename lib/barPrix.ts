@@ -4,26 +4,17 @@ import {
   collection, doc, documentId, getDocs, query, where, setDoc, serverTimestamp, arrayUnion, Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { COLL, RAYON_M, cellKey, voisines, distanceM, type Position } from '@/lib/barPrixCore'
 
 /**
- * Catalogue de prix PAR BAR, partagé entre tous les utilisateurs.
- *
- * Un bar est repéré par sa position GPS. On découpe la carte en cellules d'environ
- * 50 m ; deux commandes passées au même endroit tombent dans la même cellule (ou
- * une voisine) et partagent donc les prix. Pas de géo-requête à index : on lit la
- * cellule + ses 8 voisines et on garde la plus proche à moins de `RAYON_M`.
- *
- * Doc `bar_prix/{cellKey}` : { lat, lng, nom?, prix: {boissonMinuscule: number},
- * histo: [{boisson, prix, at, by}], updatedAt }.
+ * Catalogue de prix PAR BAR, partagé entre tous les utilisateurs (côté CLIENT).
+ * Géo-logique (cellules ~50 m + voisines + distance) dans `barPrixCore` (partagée
+ * avec la version serveur `barPrixAdmin`). Doc `bar_prix/{cellKey}` :
+ * { lat, lng, nom?, prix: {boissonMinuscule: number}, histo: [{boisson,prix,at,by}], updatedAt }.
  */
 
-const COLL = 'bar_prix'
-/** ~0,0005° de latitude ≈ 55 m. */
-const CELL = 0.0005
-/** Rayon de rattachement « même bar ». */
-const RAYON_M = 70
-
-export interface Position { lat: number; lng: number }
+export type { Position } from '@/lib/barPrixCore'
+export { cellKey } from '@/lib/barPrixCore'
 export interface BarProche { key: string; lat: number; lng: number; nom?: string; prix: Record<string, number> }
 export interface HistoPrix { boisson: string; prix: number; at?: Timestamp; by?: string }
 export interface BarComplet extends BarProche { histo: HistoPrix[] }
@@ -38,26 +29,6 @@ export function positionActuelle(): Promise<Position | null> {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     )
   })
-}
-
-const idx = (v: number) => Math.round(v / CELL)
-export const cellKey = (lat: number, lng: number) => `${idx(lat)}_${idx(lng)}`
-
-/** La cellule et ses 8 voisines (pour ne pas rater un bar à cheval sur une limite). */
-function voisines(lat: number, lng: number): string[] {
-  const i = idx(lat), j = idx(lng)
-  const keys: string[] = []
-  for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) keys.push(`${i + di}_${j + dj}`)
-  return keys
-}
-
-/** Distance en mètres (haversine). */
-export function distanceM(a: Position, b: Position): number {
-  const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng)
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(s))
 }
 
 /** Bar connu le plus proche (≤ RAYON_M), ou null. */
