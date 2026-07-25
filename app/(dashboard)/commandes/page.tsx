@@ -521,13 +521,15 @@ export default function CommandesPage() {
               className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium border border-dashed border-gray-300 text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition">
               <Plus size={14} />Nouvelle
             </button>
-            {nbT > 1 && !toutes && (
-              <button onClick={() => setTourneeASupprimer(round as number)} title="Supprimer cette tournée"
-                className="shrink-0 p-1.5 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition">
-                <Trash2 size={15} />
-              </button>
-            )}
           </div>
+        )}
+
+        {/* Supprimer la tournée affichée (bien visible) */}
+        {vue !== 'addition' && !toutes && nbT > 1 && (
+          <button onClick={() => setTourneeASupprimer(round as number)}
+            className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-600 transition -mt-2">
+            <Trash2 size={13} />Supprimer la tournée
+          </button>
         )}
 
         {/* ── Vue TABLE : on fait le tour, personne par personne (tournée sélectionnée) ── */}
