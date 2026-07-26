@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
   CheckCircle2, RotateCcw, Copy, Check, Share2, Users, User, BookUser, CopyPlus,
-  ImagePlus, Camera, X, Eye, ClipboardPaste, ChevronDown,
+  ImagePlus, Camera, X, Eye, ClipboardPaste, ChevronDown, ChevronUp, Phone, PhoneMissed,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
@@ -246,6 +246,19 @@ export function ArrivalSection({
     await updateBebe(baby.id, { arrivalTemplates: templates.filter(t => t.id !== id) })
   }
 
+  /**
+   * Ordre des modèles = ordre du tableau `arrivalTemplates`, qui pilote aussi les
+   * listes déroulantes et le modèle proposé par défaut. Déplacement aux flèches :
+   * le glisser-déposer est trop fragile au doigt dans une liste qui défile.
+   */
+  const deplacerTpl = async (index: number, sens: -1 | 1) => {
+    const cible = index + sens
+    if (cible < 0 || cible >= templates.length) return
+    const suite = [...templates]
+    ;[suite[index], suite[cible]] = [suite[cible], suite[index]]
+    await updateBebe(baby.id, { arrivalTemplates: suite })
+  }
+
   // ── Copier / partager le message sans passer par un contact ────────────────
   // (groupes Messenger, WhatsApp, réseaux… : on colle le texte à la main)
   const [copie, setCopie] = useState<string | null>(null)
@@ -399,17 +412,25 @@ export function ArrivalSection({
   /** Les 9 derniers chiffres suffisent à reconnaître un même numéro écrit autrement. */
   const cleNumero = (indicatif: string, telephone: string) => chiffres(`${indicatif}${telephone}`).slice(-9)
 
+  /** Sans numéro, on ne peut comparer que les noms (une personne « en attente de numéro »). */
   const dejaPresent = (p: PersonneCollee, liste: PersonneCollee[]) => {
+    if (!p.telephone.trim()) {
+      const nom = p.nom.trim().toLowerCase()
+      return contacts.some(c => c.name.trim().toLowerCase() === nom)
+        || liste.some(x => x.nom.trim().toLowerCase() === nom)
+    }
     const cle = cleNumero(p.indicatif, p.telephone)
-    return contacts.some(c => cleNumero(c.indicatif, c.telephone) === cle)
-      || liste.some(x => cleNumero(x.indicatif, x.telephone) === cle)
+    return contacts.some(c => !!c.telephone && cleNumero(c.indicatif, c.telephone) === cle)
+      || liste.some(x => !!x.telephone && cleNumero(x.indicatif, x.telephone) === cle)
   }
 
   /** Valide la saisie courante et la verse dans la liste, prête pour la suivante. */
   const verserSaisieDansLot = () => {
     const telephone = lotSaisie.telephone.trim()
-    if (!telephone) return
-    const p: PersonneCollee = { nom: lotSaisie.nom.trim() || telephone, indicatif: lotSaisie.indicatif || '+33', telephone }
+    const nom = lotSaisie.nom.trim()
+    // Le numéro peut manquer (on l'attend), mais il faut au moins de quoi nommer la personne
+    if (!nom && !telephone) return
+    const p: PersonneCollee = { nom: nom || telephone, indicatif: lotSaisie.indicatif || '+33', telephone }
     if (dejaPresent(p, lotListe)) {
       setLotInfo(`${p.nom} est déjà dans la liste ou déjà enregistré·e.`)
       return
@@ -474,7 +495,8 @@ export function ArrivalSection({
   }
 
   const saveCt = async () => {
-    if (!ctForm.name.trim() || !ctForm.telephone.trim()) return
+    // Numéro facultatif : on enregistre une personne « en attente de numéro »
+    if (!ctForm.name.trim()) return
     setSavingCt(true)
     try {
       const data = {
@@ -495,6 +517,7 @@ export function ArrivalSection({
   const [sendText, setSendText] = useState('')
 
   const openSend = (c: BebeContact) => {
+    if (!c.telephone) return // pas de destinataire tant que le numéro manque
     const tpl = templates.find(t => t.id === c.templateId) ?? templates[0]
     setSendCt(c)
     setSendTplId(tpl?.id ?? '')
@@ -563,6 +586,8 @@ export function ArrivalSection({
           {' '}sert à remplir une liste d&apos;un coup : pour chaque personne, touchez le champ
           téléphone et laissez iOS proposer <strong>« Remplir depuis un contact »</strong>, puis
           « Ajouter à la liste » — et un seul modèle s&apos;applique à toute la liste.
+          {' '}Une personne peut être enregistrée <strong>sans numéro</strong> (« Numéro à
+          compléter ») : l&apos;envoi se débloque dès que vous l&apos;ajoutez.
           {' '}<span className="text-sky-900/60">
             (Sélectionner plusieurs contacts d&apos;un seul geste n&apos;est pas possible : Apple
             n&apos;ouvre pas le carnet d&apos;adresses aux pages web.)
@@ -662,9 +687,22 @@ export function ArrivalSection({
           </div>
         ) : (
           <div className="space-y-2">
-            {templates.map(t => (
+            {templates.map((t, i) => (
               <div key={t.id} className={`rounded-xl border shadow-sm px-4 py-3 ${t.groupe ? 'bg-indigo-50/50 border-indigo-100' : 'bg-white border-gray-100'}`}>
                 <div className="flex items-start gap-3">
+                  {/* Ordre des modèles — flèches plutôt que glisser-déposer */}
+                  {templates.length > 1 && (
+                    <div className="flex flex-col shrink-0 -ml-1">
+                      <button onClick={() => deplacerTpl(i, -1)} disabled={i === 0} title="Monter"
+                        className="p-0.5 rounded text-gray-300 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-300 transition">
+                        <ChevronUp size={16} />
+                      </button>
+                      <button onClick={() => deplacerTpl(i, 1)} disabled={i === templates.length - 1} title="Descendre"
+                        className="p-0.5 rounded text-gray-300 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-300 transition">
+                        <ChevronDown size={16} />
+                      </button>
+                    </div>
+                  )}
                   {/* Le bloc texte ouvre l'aperçu : le message est tronqué ici,
                       et on veut pouvoir le relire en entier, photo comprise. */}
                   <button onClick={() => setApercuTpl(t)} className="flex-1 min-w-0 text-left group">
@@ -684,18 +722,20 @@ export function ArrivalSection({
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => copier(t.id, resolveMessage(t.body, baby))}
                       title="Copier le message"
-                      className={`p-1.5 rounded-lg transition ${copie === t.id ? 'text-green-600 bg-green-50' : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'}`}>
-                      {copie === t.id ? <Check size={14} /> : <Copy size={14} />}
+                      className={`p-1.5 rounded-lg transition ${copie === t.id ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                      {copie === t.id ? <Check size={15} /> : <Copy size={15} />}
                     </button>
                     {peutPartager && (
                       <button onClick={() => partager(resolveMessage(t.body, baby))}
-                        title="Partager le message"
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Share2 size={14} /></button>
+                        title={photoPartageable ? 'Partager le message et la photo' : 'Partager le message'}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"><Share2 size={15} /></button>
                     )}
                     <button onClick={() => dupliquerTpl(t)} title="Dupliquer ce modèle"
-                      className="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition"><CopyPlus size={14} /></button>
-                    <button onClick={() => openEditTpl(t)} className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Pencil size={14} /></button>
-                    <button onClick={() => deleteTpl(t.id)} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition"><CopyPlus size={15} /></button>
+                    <button onClick={() => openEditTpl(t)} title="Modifier ce modèle"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"><Pencil size={15} /></button>
+                    <button onClick={() => deleteTpl(t.id)} title="Supprimer ce modèle"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"><Trash2 size={15} /></button>
                   </div>
                 </div>
 
@@ -808,7 +848,13 @@ export function ArrivalSection({
                     {c.name}
                   </p>
                   <p className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
-                    <span>{c.indicatif} {c.telephone}</span>
+                    {c.telephone
+                      ? <span>{c.indicatif} {c.telephone}</span>
+                      : (
+                        <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                          <PhoneMissed size={11} />Numéro à compléter
+                        </span>
+                      )}
                     {tplLabel(c.templateId) && (
                       <span className="inline-flex items-center gap-1 text-blue-500"><Tag size={11} />{tplLabel(c.templateId)}</span>
                     )}
@@ -825,13 +871,25 @@ export function ArrivalSection({
                     <button onClick={() => unmarkSent(c)} title="Marquer comme non envoyé"
                       className="p-1.5 rounded-lg text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition"><RotateCcw size={14} /></button>
                   )}
-                  <button
-                    onClick={() => openSend(c)}
-                    disabled={templates.length === 0}
-                    className={`flex items-center gap-1.5 disabled:opacity-40 text-white text-xs font-medium px-3 py-2 rounded-xl transition ${c.sentAt ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                    <Send size={13} /> {c.sentAt ? 'Renvoyer' : 'Envoyer'}
-                  </button>
-                  <button onClick={() => openEditCt(c)} className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Pencil size={14} /></button>
+                  {/* Sans numéro, l'envoi n'a pas de destinataire : on renvoie vers
+                      la fiche pour le compléter plutôt que d'ouvrir un envoi mort. */}
+                  {c.telephone ? (
+                    <button
+                      onClick={() => openSend(c)}
+                      disabled={templates.length === 0}
+                      title={templates.length === 0 ? 'Créez d’abord un modèle de message' : undefined}
+                      className={`flex items-center gap-1.5 disabled:opacity-40 text-white text-xs font-medium px-3 py-2 rounded-xl transition ${c.sentAt ? 'bg-gray-400 hover:bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                      <Send size={13} /> {c.sentAt ? 'Renvoyer' : 'Envoyer'}
+                    </button>
+                  ) : (
+                    <button onClick={() => openEditCt(c)}
+                      title="Ajouter le numéro pour pouvoir envoyer"
+                      className="flex items-center gap-1.5 border border-amber-200 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-2 rounded-xl hover:bg-amber-100 transition">
+                      <Phone size={13} />Numéro
+                    </button>
+                  )}
+                  <button onClick={() => openEditCt(c)} title="Modifier"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"><Pencil size={14} /></button>
                   <button onClick={() => setDeleteCt(c.id)} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
                 </div>
               </div>
@@ -944,28 +1002,29 @@ export function ArrivalSection({
               <BookUser size={16} />Choisir dans mes contacts
             </button>
           )}
-          {/* Les deux champs dans un vrai <form> : c'est ce qui permet à iOS de
-              proposer « Remplir depuis un contact » au-dessus du clavier, faute
-              d'accès direct au carnet d'adresses. Boutons laissés HORS du form
-              pour qu'aucun clic ne le soumette. */}
-          <form onSubmit={e => e.preventDefault()} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-              <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
-                onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
-                name="name" autoComplete="name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-              <PhoneInput
-                indicatif={ctForm.indicatif}
-                telephone={ctForm.telephone}
-                onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
-                onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
-              />
-            </div>
-          </form>
+          {/* ⚠️ Pas de <form> autour de ces champs : l'ajouter a fait disparaître
+              l'autoremplissage iOS « Remplir depuis un contact » (cf. PhoneInput). */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+            <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
+              onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Téléphone <span className="text-gray-400 font-normal">(facultatif)</span>
+            </label>
+            <PhoneInput
+              indicatif={ctForm.indicatif}
+              telephone={ctForm.telephone}
+              onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
+              onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Laissez vide si vous ne l&apos;avez pas encore : la personne est enregistrée,
+              l&apos;envoi se débloquera une fois le numéro ajouté.
+            </p>
+          </div>
           {templates.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modèle de message</label>
@@ -979,7 +1038,7 @@ export function ArrivalSection({
             </div>
           )}
           <FooterBtns onCancel={() => setCtModal({ open: false, editing: null })} onSave={saveCt} saving={savingCt}
-            disabled={!ctForm.name.trim() || !ctForm.telephone.trim()} label={ctModal.editing ? 'Enregistrer' : 'Ajouter'} />
+            disabled={!ctForm.name.trim()} label={ctModal.editing ? 'Enregistrer' : 'Ajouter'} />
         </div>
       </Modal>
 
@@ -1063,10 +1122,9 @@ export function ArrivalSection({
               « Remplir depuis un contact »), le bouton reste dehors. */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Personne à ajouter</label>
-            <form onSubmit={e => { e.preventDefault(); verserSaisieDansLot() }} className="space-y-2">
+            <div className="space-y-2">
               <input ref={lotNomRef} type="text" placeholder="Nom" value={lotSaisie.nom}
                 onChange={e => setLotSaisie(s => ({ ...s, nom: e.target.value }))}
-                name="name" autoComplete="name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <PhoneInput
                 indicatif={lotSaisie.indicatif}
@@ -1074,16 +1132,17 @@ export function ArrivalSection({
                 onIndicatifChange={v => setLotSaisie(s => ({ ...s, indicatif: v }))}
                 onTelephoneChange={v => setLotSaisie(s => ({ ...s, telephone: v }))}
               />
-            </form>
-            <button type="button" onClick={verserSaisieDansLot} disabled={!lotSaisie.telephone.trim()}
+            </div>
+            <button type="button" onClick={verserSaisieDansLot}
+              disabled={!lotSaisie.nom.trim() && !lotSaisie.telephone.trim()}
               className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-semibold transition">
               <Plus size={16} />Ajouter à la liste
             </button>
             <div className="mt-2">
               <LigneAide>
                 Touchez le champ téléphone : iOS propose <strong>« Remplir depuis un contact »</strong>{' '}
-                au-dessus du clavier et remplit le nom et le numéro. Puis « Ajouter à la liste », et on
-                recommence — la liste se construit sans rien taper.
+                au-dessus du clavier. Puis « Ajouter à la liste », et on recommence — la liste se
+                construit sans rien taper. Le numéro peut rester vide si vous ne l&apos;avez pas encore.
               </LigneAide>
             </div>
           </div>
@@ -1100,7 +1159,9 @@ export function ArrivalSection({
                 {lotListe.map((p, i) => (
                   <div key={`${p.telephone}-${i}`} className="flex items-center gap-2 text-xs bg-white rounded-lg px-2 py-1.5">
                     <span className="font-medium text-gray-700 truncate flex-1">{p.nom}</span>
-                    <span className="text-gray-400 font-mono shrink-0">{p.indicatif} {p.telephone}</span>
+                    {p.telephone
+                      ? <span className="text-gray-400 font-mono shrink-0">{p.indicatif} {p.telephone}</span>
+                      : <span className="text-amber-600 shrink-0">sans numéro</span>}
                     <button type="button" onClick={() => setLotListe(l => l.filter((_, k) => k !== i))}
                       className="p-1 text-gray-300 hover:text-red-500 transition shrink-0"><X size={13} /></button>
                   </div>

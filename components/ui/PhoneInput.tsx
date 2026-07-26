@@ -276,12 +276,13 @@ export function PhoneInput({
         )}
       </div>
 
-      {/* Phone number input — `autoComplete`/`name` déclenchent l'autoremplissage
-          depuis les contacts (seule voie sur iPhone, faute de Contact Picker API) */}
+      {/* ⚠️ NE PAS ajouter `autoComplete`/`name` ici, et ne pas envelopper ce champ
+          dans un <form> : essayé le 2026-07-26 pour « aider » l'autoremplissage iOS,
+          ça l'a au contraire fait DISPARAÎTRE (Teddy ne pouvait plus pré-remplir
+          depuis un contact). Safari propose « Remplir depuis un contact » tout seul
+          sur un simple `type="tel"` — on ne touche pas. */}
       <input
         type="tel"
-        name="tel"
-        autoComplete="tel"
         value={telephone}
         onChange={(e) => onTelephoneChange(e.target.value)}
         placeholder={placeholder || '06 12 34 56 78'}

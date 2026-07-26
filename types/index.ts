@@ -1380,6 +1380,10 @@ export interface BebeContact {
   name: string
   /** Indicatif pays, ex : "+33" */
   indicatif: string
+  /**
+   * ⚠️ Peut être VIDE : on enregistre une personne « en attente de numéro ».
+   * L'envoi est alors verrouillé (il n'y a pas de destinataire à composer).
+   */
   telephone: string
   /** Modèle de message assigné (id d'un ArrivalTemplate) */
   templateId?: string
