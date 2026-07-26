@@ -8,12 +8,20 @@
 import type { DuoPartie } from '@/types'
 
 export const TYPES_FILM = ['Film', 'Série'] as const
-export const PLATEFORMES = ['Netflix', 'Canal +', 'Prime Video', 'Disney+', 'Cinéma', 'Autre'] as const
+/** ⚠️ « Autre » ne fait PAS partie de la liste : c'est une pastille qui ouvre un
+ *  champ libre (`ChipsAutre`), et c'est le texte saisi qui est enregistré. */
+export const PLATEFORMES = ['Netflix', 'Canal +', 'Prime Video', 'Disney+', 'Cinéma'] as const
 export const CATEGORIES_FILM = [
   'Action', 'Aventure', 'Thriller', 'Comédie', 'Comédie dramatique', 'Braquage',
   'Fantastique', 'Biopic', 'Histoire vraie', 'Série documentaire', 'Film de Noël', 'Football',
 ] as const
+/** Raccourcis de saisie du champ « Saison / partie » — la liste reste ouverte */
+export const SAISONS_PARTIES = [
+  'Saison 1', 'Saison 2', 'Saison 3', 'Saison 4', 'Saison 5',
+  'Partie 1', 'Partie 2', 'Intégrale',
+] as const
 
+/** Même principe que PLATEFORMES : « Autre » est un déclencheur de champ libre. */
 export const TYPES_ACTIVITE = [
   'Restaurant', 'Bar', 'Activité', 'Lieu', 'Parc', 'Vacances', 'Logement', "Aire d'autoroute",
 ] as const
@@ -23,8 +31,15 @@ export const GAMMES_PRIX = ['🟢 Abordable', '🟡 Modéré', '🟠 Cher', '�
 /** Jeux déjà joués — repères de saisie, la liste reste ouverte */
 export const JEUX_COURANTS = ['Uno', 'SkyJo', '6 qui prend', 'Molki', 'Belote', 'Triomino'] as const
 
-/** Note en étoiles pleines, pour l'affichage des listes */
-export const etoiles = (n?: number): string => (n ? '⭐'.repeat(Math.round(n)) : '')
+/**
+ * Catégories d'un titre. Un film en porte plusieurs (`categories`) ; les fiches
+ * importées d'AppSheet n'avaient qu'un seul champ texte (`categorie`), on le
+ * relit ici pour ne pas avoir à migrer la base.
+ */
+export function categoriesFilm(f: { categories?: string[]; categorie?: string }): string[] {
+  if (f.categories?.length) return f.categories
+  return f.categorie ? [f.categorie] : []
+}
 
 export interface ClassementJoueur {
   joueur: string

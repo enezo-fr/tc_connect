@@ -19,17 +19,8 @@ export interface BarProche { key: string; lat: number; lng: number; nom?: string
 export interface HistoPrix { boisson: string; prix: number; at?: Timestamp; by?: string }
 export interface BarComplet extends BarProche { histo: HistoPrix[] }
 
-/** Position GPS actuelle (ou null si refusée / indisponible). */
-export function positionActuelle(): Promise<Position | null> {
-  return new Promise((resolve) => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null)
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-    )
-  })
-}
+/** Position GPS actuelle — vit dans `lib/geoloc.ts`, réexportée ici pour les appelants existants. */
+export { positionActuelle } from '@/lib/geoloc'
 
 /** Bar connu le plus proche (≤ RAYON_M), ou null. */
 export async function chargerBarProche(pos: Position): Promise<BarProche | null> {

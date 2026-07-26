@@ -11,14 +11,20 @@ import { DuoShareModal } from '@/components/duo/DuoShareModal'
 import { Timestamp } from 'firebase/firestore'
 import {
   Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X, ChevronLeft, Users,
+  Star, Eye, LocateFixed,
 } from 'lucide-react'
 import {
-  TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
-  JEUX_COURANTS, classementPartie, palmares,
+  TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, SAISONS_PARTIES, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
+  JEUX_COURANTS, categoriesFilm, classementPartie, palmares,
 } from '@/lib/duoModel'
+import { positionActuelle, formatCoords } from '@/lib/geoloc'
 import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
 
 const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500'
+const chipCls = (actif: boolean) =>
+  `px-3 py-1.5 rounded-xl text-sm border transition ${
+    actif ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-700 hover:border-rose-300'
+  }`
 
 function Chips({ options, valeur, onChange }: {
   options: readonly string[]; valeur: string; onChange: (v: string) => void
@@ -26,10 +32,7 @@ function Chips({ options, valeur, onChange }: {
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((o) => (
-        <button key={o} type="button" onClick={() => onChange(valeur === o ? '' : o)}
-          className={`px-3 py-1.5 rounded-xl text-sm border transition ${
-            valeur === o ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-700 hover:border-rose-300'
-          }`}>
+        <button key={o} type="button" onClick={() => onChange(valeur === o ? '' : o)} className={chipCls(valeur === o)}>
           {o}
         </button>
       ))}
@@ -37,21 +40,161 @@ function Chips({ options, valeur, onChange }: {
   )
 }
 
-/** Note en étoiles, cliquable. Re-cliquer l'étoile courante efface la note. */
-function Etoiles({ note, onChange, taille = 18 }: {
+/**
+ * Choix unique + pastille « Autre » qui ouvre un champ libre : c'est le texte
+ * saisi qui est enregistré, pas le mot « Autre ».
+ *
+ * ⚠️ `libre` est porté par le formulaire (et non par un état interne) : la
+ * modale est montée en permanence, un état interne resterait sur la fiche
+ * précédente à la réouverture.
+ */
+function ChipsAutre({ options, valeur, libre, onChange, placeholder }: {
+  options: readonly string[]
+  valeur: string
+  libre: boolean
+  onChange: (valeur: string, libre: boolean) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button key={o} type="button" onClick={() => onChange(!libre && valeur === o ? '' : o, false)}
+            className={chipCls(!libre && valeur === o)}>
+            {o}
+          </button>
+        ))}
+        <button type="button" onClick={() => onChange('', !libre)} className={chipCls(libre)}>Autre…</button>
+      </div>
+      {libre && (
+        <input value={valeur} onChange={(e) => onChange(e.target.value, true)}
+          placeholder={placeholder} className={champCls} />
+      )}
+    </div>
+  )
+}
+
+/** Choix multiple + création d'une valeur absente de la liste (elle rejoint les pastilles). */
+function ChipsMulti({ options, valeurs, onChange, placeholder }: {
+  options: readonly string[]
+  valeurs: string[]
+  onChange: (v: string[]) => void
+  placeholder?: string
+}) {
+  const [saisie, setSaisie] = useState<string | null>(null)
+
+  const basculer = (o: string) =>
+    onChange(valeurs.includes(o) ? valeurs.filter((v) => v !== o) : [...valeurs, o])
+
+  const ajouter = () => {
+    const v = (saisie ?? '').trim()
+    if (v && !valeurs.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...valeurs, v])
+    setSaisie(null)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => {
+          const actif = valeurs.includes(o)
+          return (
+            <button key={o} type="button" onClick={() => basculer(o)}
+              className={`${chipCls(actif)} inline-flex items-center gap-1`}>
+              {actif && <Check size={13} />}{o}
+            </button>
+          )
+        })}
+        <button type="button" onClick={() => setSaisie(saisie === null ? '' : null)}
+          className={`${chipCls(false)} inline-flex items-center gap-1 border-dashed`}>
+          <Plus size={13} />Autre
+        </button>
+      </div>
+      {saisie !== null && (
+        <div className="flex gap-2">
+          <input value={saisie} onChange={(e) => setSaisie(e.target.value)} autoFocus placeholder={placeholder}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ajouter() } }}
+            className={champCls} />
+          <button type="button" onClick={ajouter} disabled={!saisie.trim()}
+            className="px-3 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm shrink-0">
+            Ajouter
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Champ libre + raccourcis en pastilles (la pastille remplit le champ). */
+function ChampAvecChips({ valeur, options, onChange, placeholder }: {
+  valeur: string; options: readonly string[]; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <>
+      <input value={valeur} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={champCls} />
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        {options.map((o) => (
+          <button key={o} type="button" onClick={() => onChange(valeur === o ? '' : o)}
+            className={`px-2.5 py-1 rounded-lg text-xs border transition ${
+              valeur === o ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-600 hover:border-rose-300'
+            }`}>
+            {o}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** Note de 1 à 5. Re-cliquer l'étoile courante efface la note. */
+function Etoiles({ note, onChange, taille = 22 }: {
   note?: number; onChange?: (n: number | undefined) => void; taille?: number
 }) {
   return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" disabled={!onChange}
-          onClick={() => onChange?.(note === n ? undefined : n)}
-          className={`${onChange ? 'cursor-pointer' : 'cursor-default'} leading-none`}
-          style={{ fontSize: taille }}>
-          <span className={n <= (note ?? 0) ? 'opacity-100' : 'opacity-20'}>⭐</span>
-        </button>
-      ))}
+    <span className="inline-flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((n) => {
+        const pleine = n <= (note ?? 0)
+        return (
+          <button key={n} type="button" disabled={!onChange}
+            onClick={() => onChange?.(note === n ? undefined : n)}
+            title={onChange ? (note === n ? 'Retirer la note' : `Noter ${n} sur 5`) : undefined}
+            aria-label={`${n} sur 5`}
+            className={`${onChange ? 'cursor-pointer' : 'cursor-default'} leading-none transition ${
+              onChange && !pleine ? 'text-gray-300 hover:text-amber-300' : ''
+            } ${pleine ? 'text-amber-400' : 'text-gray-300'}`}>
+            <Star size={taille} strokeWidth={1.75} className={pleine ? 'fill-amber-400' : 'fill-transparent'} />
+          </button>
+        )
+      })}
     </span>
+  )
+}
+
+/** Interrupteur libellé — plus lisible qu'une case à cocher au rendu du système. */
+function Interrupteur({ actif, onChange, titre, aide, icone: Icone }: {
+  actif: boolean
+  onChange: (v: boolean) => void
+  titre: string
+  aide?: string
+  icone: typeof Eye
+}) {
+  return (
+    <button type="button" role="switch" aria-checked={actif} onClick={() => onChange(!actif)}
+      className={`w-full flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+        actif ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}>
+      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
+        actif ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'
+      }`}>
+        <Icone size={15} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium text-gray-800">{titre}</span>
+        {aide && <span className="block text-xs text-gray-500">{aide}</span>}
+      </span>
+      <span className={`w-10 h-6 rounded-full p-0.5 shrink-0 transition ${actif ? 'bg-emerald-500' : 'bg-gray-200'}`}>
+        <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${actif ? 'translate-x-4' : ''}`} />
+      </span>
+    </button>
   )
 }
 
@@ -98,10 +241,11 @@ export default function ADeuxPage() {
   const [filtreType, setFiltreType] = useState('')
   const [filmOuvert, setFilmOuvert] = useState(false)
   const [filmEdite, setFilmEdite] = useState<DuoFilm | null>(null)
-  const [filmForm, setFilmForm] = useState({
-    type: 'Film', nom: '', plateforme: '', categorie: '', note: undefined as number | undefined,
-    vu: false, dateSortie: '', saison: '', infos: '',
-  })
+  const filmVide = {
+    type: 'Film', nom: '', plateforme: '', plateformeLibre: false, categories: [] as string[],
+    note: undefined as number | undefined, vu: false, dateSortie: '', saison: '', infos: '',
+  }
+  const [filmForm, setFilmForm] = useState(filmVide)
 
   const listeFilms = useMemo(() => {
     const q = recherche.trim().toLowerCase()
@@ -110,30 +254,42 @@ export default function ADeuxPage() {
         if (filtreVu === 'a_voir' && f.vu) return false
         if (filtreVu === 'vus' && !f.vu) return false
         if (filtreType && f.type !== filtreType) return false
-        if (q && !`${f.nom} ${f.categorie ?? ''} ${f.infos ?? ''}`.toLowerCase().includes(q)) return false
+        if (q && !`${f.nom} ${categoriesFilm(f).join(' ')} ${f.infos ?? ''}`.toLowerCase().includes(q)) return false
         return true
       })
       .sort((a, b) => Number(a.vu ?? false) - Number(b.vu ?? false) || a.nom.localeCompare(b.nom))
   }, [films.items, filtreVu, filtreType, recherche])
 
+  /** Catégories proposées : la liste d'origine + celles déjà créées à la main */
+  const categoriesConnues = useMemo(() => {
+    const s = new Set<string>(CATEGORIES_FILM)
+    for (const f of films.items as DuoFilm[]) for (const c of categoriesFilm(f)) s.add(c)
+    return [...s]
+  }, [films.items])
+
   const ouvrirFilm = (f?: DuoFilm) => {
     setFilmEdite(f ?? null)
     setFilmForm(f ? {
-      type: f.type, nom: f.nom, plateforme: f.plateforme ?? '', categorie: f.categorie ?? '',
+      type: f.type, nom: f.nom,
+      // Une plateforme hors liste (ou l'ancien « Autre » d'AppSheet) rouvre le champ libre
+      plateforme: f.plateforme === 'Autre' ? '' : f.plateforme ?? '',
+      plateformeLibre: !!f.plateforme && !(PLATEFORMES as readonly string[]).includes(f.plateforme),
+      categories: categoriesFilm(f),
       note: f.note, vu: !!f.vu, dateSortie: f.dateSortie ? dateInput(f.dateSortie.toDate()) : '',
       saison: f.saison ?? '', infos: f.infos ?? '',
-    } : {
-      type: 'Film', nom: '', plateforme: '', categorie: '', note: undefined,
-      vu: false, dateSortie: '', saison: '', infos: '',
-    })
+    } : filmVide)
     setFilmOuvert(true)
   }
 
   const enregistrerFilm = async () => {
     if (!base || !filmForm.nom.trim()) return
+    const categories = filmForm.categories.map((c) => c.trim()).filter(Boolean)
     const champs = {
-      type: filmForm.type, nom: filmForm.nom.trim(), plateforme: filmForm.plateforme,
-      categorie: filmForm.categorie, note: filmForm.note ?? null, vu: filmForm.vu,
+      type: filmForm.type, nom: filmForm.nom.trim(), plateforme: filmForm.plateforme.trim(),
+      categories,
+      // Champ historique tenu à jour : les fiches importées et les scripts le lisent encore
+      categorie: categories[0] ?? '',
+      note: filmForm.note ?? null, vu: filmForm.vu,
       dateSortie: versTimestamp(filmForm.dateSortie) ?? null,
       saison: filmForm.saison.trim(), infos: filmForm.infos.trim(),
     }
@@ -147,10 +303,27 @@ export default function ADeuxPage() {
   const [filtreTypeAct, setFiltreTypeAct] = useState('')
   const [actOuverte, setActOuverte] = useState(false)
   const [actEditee, setActEditee] = useState<DuoActivite | null>(null)
-  const [actForm, setActForm] = useState({
-    nom: '', type: '', zone: '', gps: '', fait: false, note: undefined as number | undefined,
+  const actVide = {
+    nom: '', type: '', typeLibre: false, zone: '', gps: '', fait: false,
+    note: undefined as number | undefined,
     priorite: '', conseillePar: '', lien: '', gammePrix: '', infos: '',
-  })
+  }
+  const [actForm, setActForm] = useState(actVide)
+  const [gpsEnCours, setGpsEnCours] = useState(false)
+  const [gpsRefuse, setGpsRefuse] = useState(false)
+
+  /** Remplit les coordonnées avec la position du téléphone (droit à demander une fois). */
+  const prendrePositionActuelle = async () => {
+    setGpsEnCours(true)
+    setGpsRefuse(false)
+    try {
+      const p = await positionActuelle()
+      if (p) setActForm((f) => ({ ...f, gps: formatCoords(p) }))
+      else setGpsRefuse(true)
+    } finally {
+      setGpsEnCours(false)
+    }
+  }
 
   const listeActivites = useMemo(() => {
     const q = recherche.trim().toLowerCase()
@@ -167,21 +340,22 @@ export default function ADeuxPage() {
 
   const ouvrirActivite = (a?: DuoActivite) => {
     setActEditee(a ?? null)
+    setGpsRefuse(false)
     setActForm(a ? {
-      nom: a.nom, type: a.type ?? '', zone: a.zone ?? '', gps: a.gps ?? '', fait: !!a.fait,
+      nom: a.nom,
+      type: a.type === 'Autre' ? '' : a.type ?? '',
+      typeLibre: !!a.type && !(TYPES_ACTIVITE as readonly string[]).includes(a.type),
+      zone: a.zone ?? '', gps: a.gps ?? '', fait: !!a.fait,
       note: a.note, priorite: a.priorite ?? '', conseillePar: a.conseillePar ?? '',
       lien: a.lien ?? '', gammePrix: a.gammePrix ?? '', infos: a.infos ?? '',
-    } : {
-      nom: '', type: '', zone: '', gps: '', fait: false, note: undefined,
-      priorite: '', conseillePar: '', lien: '', gammePrix: '', infos: '',
-    })
+    } : actVide)
     setActOuverte(true)
   }
 
   const enregistrerActivite = async () => {
     if (!base || !actForm.nom.trim()) return
     const champs = {
-      nom: actForm.nom.trim(), type: actForm.type, zone: actForm.zone.trim(),
+      nom: actForm.nom.trim(), type: actForm.type.trim(), zone: actForm.zone.trim(),
       gps: actForm.gps.trim(), fait: actForm.fait, note: actForm.note ?? null,
       priorite: actForm.priorite, conseillePar: actForm.conseillePar.trim(),
       lien: actForm.lien.trim(), gammePrix: actForm.gammePrix, infos: actForm.infos.trim(),
@@ -393,7 +567,8 @@ export default function ADeuxPage() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold break-words ${f.vu ? 'text-gray-500' : 'text-gray-800'}`}>{f.nom}</p>
                         <p className="text-xs text-gray-500 flex flex-wrap gap-x-2">
-                          {[f.type, f.plateforme, f.categorie, f.saison].filter(Boolean).map((t, i) => <span key={i}>{t}</span>)}
+                          {[f.type, f.plateforme, categoriesFilm(f).join(', '), f.saison]
+                            .filter(Boolean).map((t, i) => <span key={i}>{t}</span>)}
                           {f.dateSortie && <span>sortie le {f.dateSortie.toDate().toLocaleDateString('fr-FR')}</span>}
                         </p>
                         {f.infos && <p className="text-xs text-gray-500 italic mt-1 break-words">{f.infos}</p>}
@@ -662,30 +837,32 @@ export default function ADeuxPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Plateforme</label>
-            <Chips options={PLATEFORMES} valeur={filmForm.plateforme} onChange={(v) => setFilmForm((f) => ({ ...f, plateforme: v }))} />
+            <ChipsAutre options={PLATEFORMES} valeur={filmForm.plateforme} libre={filmForm.plateformeLibre}
+              placeholder="OCS, Apple TV+, DVD…"
+              onChange={(v, libre) => setFilmForm((f) => ({ ...f, plateforme: v, plateformeLibre: libre }))} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
-            <Chips options={CATEGORIES_FILM} valeur={filmForm.categorie} onChange={(v) => setFilmForm((f) => ({ ...f, categorie: v }))} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Catégories <span className="text-gray-400 font-normal">(plusieurs possibles)</span>
+            </label>
+            <ChipsMulti options={categoriesConnues} valeurs={filmForm.categories} placeholder="Science-fiction, Animation…"
+              onChange={(v) => setFilmForm((f) => ({ ...f, categories: v }))} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de sortie</label>
-              <input type="date" value={filmForm.dateSortie} onChange={(e) => setFilmForm((f) => ({ ...f, dateSortie: e.target.value }))} className={champCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Saison / partie</label>
-              <input value={filmForm.saison} onChange={(e) => setFilmForm((f) => ({ ...f, saison: e.target.value }))} placeholder="Saison 2" className={champCls} />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date de sortie</label>
+            <input type="date" value={filmForm.dateSortie} onChange={(e) => setFilmForm((f) => ({ ...f, dateSortie: e.target.value }))} className={champCls} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Saison / partie</label>
+            <ChampAvecChips valeur={filmForm.saison} options={SAISONS_PARTIES} placeholder="Saison 2, Partie 1…"
+              onChange={(v) => setFilmForm((f) => ({ ...f, saison: v }))} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
             <Etoiles note={filmForm.note} onChange={(n) => setFilmForm((f) => ({ ...f, note: n }))} />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={filmForm.vu} onChange={(e) => setFilmForm((f) => ({ ...f, vu: e.target.checked }))} className="accent-rose-600" />
-            Déjà vu
-          </label>
+          <Interrupteur actif={filmForm.vu} onChange={(v) => setFilmForm((f) => ({ ...f, vu: v }))}
+            titre="Déjà vu" aide="Le titre rejoint la liste des « Vus »." icone={Eye} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Infos</label>
             <AutoTextarea value={filmForm.infos} onChange={(v) => setFilmForm((f) => ({ ...f, infos: v }))} minRows={2}
@@ -709,16 +886,30 @@ export default function ADeuxPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <Chips options={TYPES_ACTIVITE} valeur={actForm.type} onChange={(v) => setActForm((f) => ({ ...f, type: v }))} />
+            <ChipsAutre options={TYPES_ACTIVITE} valeur={actForm.type} libre={actForm.typeLibre}
+              placeholder="Musée, Randonnée, Concert…"
+              onChange={(v, libre) => setActForm((f) => ({ ...f, type: v, typeLibre: libre }))} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Zone / ville</label>
               <input value={actForm.zone} onChange={(e) => setActForm((f) => ({ ...f, zone: e.target.value }))} placeholder="Vannes" className={champCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Coordonnées GPS</label>
-              <input value={actForm.gps} onChange={(e) => setActForm((f) => ({ ...f, gps: e.target.value }))} placeholder="47.6293, -2.7791" className={champCls} />
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="text-sm font-medium text-gray-700">Coordonnées GPS</label>
+                <button type="button" onClick={prendrePositionActuelle} disabled={gpsEnCours}
+                  className="text-xs font-medium text-rose-600 hover:text-rose-700 flex items-center gap-1 disabled:opacity-60 shrink-0">
+                  <LocateFixed size={13} />{gpsEnCours ? 'Localisation…' : 'Ma position'}
+                </button>
+              </div>
+              <input value={actForm.gps} onChange={(e) => setActForm((f) => ({ ...f, gps: e.target.value }))}
+                placeholder="47.6293, -2.7791" className={champCls} />
+              {gpsRefuse && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Position indisponible — autorisez la localisation pour ce site, ou saisissez les coordonnées à la main.
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -743,10 +934,8 @@ export default function ADeuxPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
             <Etoiles note={actForm.note} onChange={(n) => setActForm((f) => ({ ...f, note: n }))} />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={actForm.fait} onChange={(e) => setActForm((f) => ({ ...f, fait: e.target.checked }))} className="accent-rose-600" />
-            Déjà fait
-          </label>
+          <Interrupteur actif={actForm.fait} onChange={(v) => setActForm((f) => ({ ...f, fait: v }))}
+            titre="Déjà fait" aide="L'activité rejoint la liste des « Faits »." icone={Check} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Infos</label>
             <AutoTextarea value={actForm.infos} onChange={(v) => setActForm((f) => ({ ...f, infos: v }))} minRows={2} className={champCls} />

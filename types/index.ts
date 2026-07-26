@@ -1078,9 +1078,14 @@ export interface DuoFilm extends DuoBase {
   /** « Film » ou « Série » */
   type: string
   nom: string
-  /** Netflix, Canal +, Autre… */
+  /** Netflix, Canal +, ou n'importe quoi d'autre saisi en clair */
   plateforme?: string
-  /** Action, Thriller, Comédie… */
+  /** Action, Thriller, Comédie… — plusieurs par titre, et libre à la saisie */
+  categories?: string[]
+  /**
+   * @deprecated Ancien champ unique (import AppSheet), tenu à jour avec la 1ʳᵉ
+   * catégorie pour ne pas casser les fiches existantes. Lire `categoriesFilm()`.
+   */
   categorie?: string
   /** Note de 1 à 5 (l'ancienne app notait en étoiles) */
   note?: number
@@ -1354,6 +1359,12 @@ export interface ArrivalTemplate {
   label: string
   /** Corps avec variables : {prenom} {poids} {taille} {date} {heure} {ne} {sexe} */
   body: string
+  /**
+   * Message destiné à un GROUPE (Messenger, WhatsApp) et non à une personne :
+   * il n'y a pas de numéro à composer, on ouvre l'app et on choisit la
+   * conversation. Met en avant les boutons Messenger / WhatsApp.
+   */
+  groupe?: boolean
 }
 
 /** Document Firestore : babies/{babyId}/contacts/{contactId} */

@@ -3,12 +3,14 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
-  CheckCircle2, RotateCcw, Copy, Check, Share2,
+  CheckCircle2, RotateCcw, Copy, Check, Share2, Users, User, BookUser, CopyPlus,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
 import { copyText } from '@/lib/clipboard'
-import { PhoneInput, buildWhatsAppUrl } from '@/components/ui/PhoneInput'
+import {
+  PhoneInput, buildWhatsAppUrl, carnetDisponible, choisirDansCarnet, separerIndicatif,
+} from '@/components/ui/PhoneInput'
 import { useBebeContacts } from '@/hooks/useBebeContacts'
 import type { Bebe, ArrivalTemplate, BebeContact } from '@/types'
 
@@ -98,6 +100,13 @@ function smsHref(indicatif: string, telephone: string, text: string): string {
   return `sms:${num}?&body=${encodeURIComponent(text)}`
 }
 
+/**
+ * WhatsApp SANS destinataire : ouvre l'app avec le texte prêt et laisse choisir
+ * la conversation — c'est la seule façon d'atteindre un GROUPE (un groupe n'a
+ * pas de numéro, `wa.me/<numéro>` ne peut donc pas le viser).
+ */
+const whatsappGroupeHref = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`
+
 // ─── Composant ─────────────────────────────────────────────────────────────────
 
 export function ArrivalSection({
@@ -140,17 +149,26 @@ export function ArrivalSection({
 
   // ── Modèles de message ──────────────────────────────────────────────────────
   const [tplModal, setTplModal] = useState<{ open: boolean; editing: ArrivalTemplate | null }>({ open: false, editing: null })
-  const [tplForm, setTplForm] = useState({ label: '', body: '' })
+  const [tplForm, setTplForm] = useState({ label: '', body: '', groupe: false })
   const [savingTpl, setSavingTpl] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const openNewTpl = () => {
-    setTplForm({ label: '', body: templates.length === 0 ? DEFAULT_TEMPLATE_BODY : '' })
+    setTplForm({ label: '', body: templates.length === 0 ? DEFAULT_TEMPLATE_BODY : '', groupe: false })
     setTplModal({ open: true, editing: null })
   }
   const openEditTpl = (t: ArrivalTemplate) => {
-    setTplForm({ label: t.label, body: t.body })
+    setTplForm({ label: t.label, body: t.body, groupe: !!t.groupe })
     setTplModal({ open: true, editing: t })
+  }
+  /**
+   * Repartir d'un message existant : on ouvre la modale en création (pas en
+   * édition) avec le texte déjà là — écrire « Amis » à partir de « Famille »
+   * ne demande alors que les retouches, et l'original n'est pas touché.
+   */
+  const dupliquerTpl = (t: ArrivalTemplate) => {
+    setTplForm({ label: `${t.label} (copie)`, body: t.body, groupe: !!t.groupe })
+    setTplModal({ open: true, editing: null })
   }
 
   const insertVar = (token: string) => {
@@ -165,11 +183,12 @@ export function ArrivalSection({
     if (!tplForm.label.trim() || !tplForm.body.trim()) return
     setSavingTpl(true)
     try {
+      const champs = { label: tplForm.label.trim(), body: tplForm.body.trim(), groupe: tplForm.groupe }
       let next: ArrivalTemplate[]
       if (tplModal.editing) {
-        next = templates.map(t => t.id === tplModal.editing!.id ? { ...t, label: tplForm.label.trim(), body: tplForm.body.trim() } : t)
+        next = templates.map(t => t.id === tplModal.editing!.id ? { ...t, ...champs } : t)
       } else {
-        next = [...templates, { id: genId(), label: tplForm.label.trim(), body: tplForm.body.trim() }]
+        next = [...templates, { id: genId(), ...champs }]
       }
       await updateBebe(baby.id, { arrivalTemplates: next })
       setTplModal({ open: false, editing: null })
@@ -197,6 +216,22 @@ export function ArrivalSection({
     try { await navigator.share({ text: texte }) } catch { /* partage annulé */ }
   }
 
+  /**
+   * Messenger n'accepte AUCUN texte pré-rempli (pas d'équivalent de `?text=`) :
+   * on copie le message, puis on ouvre l'app pour n'avoir qu'à coller.
+   * Si l'app n'est pas installée, rien ne se passe → repli sur messenger.com,
+   * annulé si l'app a bien pris la main (la page passe en arrière-plan).
+   */
+  const ouvrirMessenger = async (cle: string, texte: string) => {
+    await copier(cle, texte)
+    const repli = setTimeout(() => {
+      if (!document.hidden) window.open('https://www.messenger.com/', '_blank', 'noopener')
+    }, 1200)
+    const stop = () => { if (document.hidden) clearTimeout(repli) }
+    document.addEventListener('visibilitychange', stop, { once: true })
+    window.location.href = 'fb-messenger://'
+  }
+
   // ── Contacts ────────────────────────────────────────────────────────────────
   const [ctModal, setCtModal] = useState<{ open: boolean; editing: BebeContact | null }>({ open: false, editing: null })
   const [ctForm, setCtForm] = useState({ name: '', indicatif: '+33', telephone: '', templateId: '' })
@@ -210,6 +245,21 @@ export function ArrivalSection({
   const openEditCt = (c: BebeContact) => {
     setCtForm({ name: c.name, indicatif: c.indicatif || '+33', telephone: c.telephone, templateId: c.templateId ?? '' })
     setCtModal({ open: true, editing: c })
+  }
+
+  /** Reprend un contact du téléphone (nom + numéro découpé en indicatif). */
+  const importerDepuisCarnet = async () => {
+    const c = await choisirDansCarnet()
+    if (!c) return
+    setCtForm(f => {
+      const tel = c.tel ? separerIndicatif(c.tel, f.indicatif) : null
+      return {
+        ...f,
+        name: c.nom?.trim() || f.name,
+        indicatif: tel?.indicatif ?? f.indicatif,
+        telephone: tel?.telephone ?? f.telephone,
+      }
+    })
   }
 
   const saveCt = async () => {
@@ -307,25 +357,58 @@ export function ArrivalSection({
         ) : (
           <div className="space-y-2">
             {templates.map(t => (
-              <div key={t.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">{t.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{resolveMessage(t.body, baby)}</p>
+              <div key={t.id} className={`rounded-xl border shadow-sm px-4 py-3 ${t.groupe ? 'bg-indigo-50/50 border-indigo-100' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5 flex-wrap">
+                      {t.label}
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-md ${
+                        t.groupe ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {t.groupe ? <><Users size={11} />Groupe</> : <><User size={11} />Personne</>}
+                      </span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{resolveMessage(t.body, baby)}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => copier(t.id, resolveMessage(t.body, baby))}
+                      title="Copier le message"
+                      className={`p-1.5 rounded-lg transition ${copie === t.id ? 'text-green-600 bg-green-50' : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'}`}>
+                      {copie === t.id ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                    {peutPartager && (
+                      <button onClick={() => partager(resolveMessage(t.body, baby))}
+                        title="Partager le message"
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Share2 size={14} /></button>
+                    )}
+                    <button onClick={() => dupliquerTpl(t)} title="Dupliquer ce modèle"
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition"><CopyPlus size={14} /></button>
+                    <button onClick={() => openEditTpl(t)} className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Pencil size={14} /></button>
+                    <button onClick={() => deleteTpl(t.id)} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => copier(t.id, resolveMessage(t.body, baby))}
-                    title="Copier le message"
-                    className={`p-1.5 rounded-lg transition ${copie === t.id ? 'text-green-600 bg-green-50' : 'text-gray-300 hover:text-blue-500 hover:bg-blue-50'}`}>
-                    {copie === t.id ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                  {peutPartager && (
-                    <button onClick={() => partager(resolveMessage(t.body, baby))}
-                      title="Partager le message"
-                      className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Share2 size={14} /></button>
-                  )}
-                  <button onClick={() => openEditTpl(t)} className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Pencil size={14} /></button>
-                  <button onClick={() => deleteTpl(t.id)} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
-                </div>
+
+                {/* Message de groupe : pas de numéro à composer, on ouvre l'app
+                    et on choisit la conversation. D'où l'envoi ICI, sur le modèle,
+                    et non depuis la liste des personnes. */}
+                {t.groupe && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <a href={whatsappGroupeHref(resolveMessage(t.body, baby))} target="_blank" rel="noopener noreferrer"
+                      className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white py-2 rounded-xl text-sm font-medium transition">
+                      <Send size={15} />WhatsApp
+                    </a>
+                    <button onClick={() => ouvrirMessenger(`msg-${t.id}`, resolveMessage(t.body, baby))}
+                      className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2 rounded-xl text-sm font-medium transition">
+                      {copie === `msg-${t.id}` ? <><Check size={15} />Texte copié</> : <><MessageSquare size={15} />Messenger</>}
+                    </button>
+                  </div>
+                )}
+                {t.groupe && (
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    WhatsApp s&apos;ouvre avec le texte prêt, vous choisissez le groupe. Messenger
+                    n&apos;accepte pas de texte pré-rempli : il est copié, il n&apos;y a plus qu&apos;à coller.
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -472,6 +555,27 @@ export function ArrivalSection({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Destinataire</label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { v: false, l: 'Une personne', aide: 'SMS / WhatsApp au numéro', icone: User },
+                { v: true,  l: 'Un groupe',    aide: 'Messenger / WhatsApp', icone: Users },
+              ] as const).map(o => {
+                const actif = tplForm.groupe === o.v
+                const Icone = o.icone
+                return (
+                  <button key={String(o.v)} type="button" onClick={() => setTplForm(f => ({ ...f, groupe: o.v }))}
+                    className={`px-3 py-2.5 rounded-xl border text-left transition ${
+                      actif ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-700 hover:border-blue-300'
+                    }`}>
+                    <span className="flex items-center gap-1.5 text-sm font-medium"><Icone size={14} />{o.l}</span>
+                    <span className={`block text-[11px] mt-0.5 ${actif ? 'text-blue-100' : 'text-gray-400'}`}>{o.aide}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
             <textarea ref={bodyRef} rows={5} value={tplForm.body}
               onChange={e => setTplForm(f => ({ ...f, body: e.target.value }))}
@@ -499,10 +603,20 @@ export function ArrivalSection({
       {/* ── Modale contact ────────────────────────────────────────────────── */}
       <Modal isOpen={ctModal.open} onClose={() => setCtModal({ open: false, editing: null })} title={ctModal.editing ? 'Modifier la personne' : 'Ajouter une personne'}>
         <div className="space-y-4">
+          {/* Carnet d'adresses : bouton affiché uniquement si le navigateur
+              expose la Contact Picker API (Chrome/Android). Sur iPhone elle
+              n'existe pas — le champ téléphone propose l'autoremplissage iOS. */}
+          {carnetDisponible() && (
+            <button type="button" onClick={importerDepuisCarnet}
+              className="w-full flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
+              <BookUser size={16} />Choisir dans mes contacts
+            </button>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
             <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
               onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
+              autoComplete="name"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
@@ -520,7 +634,9 @@ export function ArrivalSection({
               <select value={ctForm.templateId} onChange={e => setCtForm(f => ({ ...f, templateId: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">— Aucun —</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.label}{t.groupe ? ' (groupe)' : ''}</option>
+                ))}
               </select>
             </div>
           )}

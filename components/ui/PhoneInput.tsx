@@ -37,6 +37,55 @@ export function buildWhatsAppUrl(indicatif: string, telephone: string, message?:
   return message ? `${url}?text=${message}` : url
 }
 
+/**
+ * Découpe un numéro brut (carnet d'adresses, copier-coller) en indicatif + numéro.
+ * On teste les indicatifs du plus long au plus court, sinon « +33 » avalerait « +352 ».
+ */
+export function separerIndicatif(brut: string, defaut = '+33'): { indicatif: string; telephone: string } {
+  const compact = brut.replace(/[\s(). -]/g, '').replace(/^00/, '+')
+  if (compact.startsWith('+')) {
+    const codes = [...INDICATIFS].sort((a, b) => b.code.length - a.code.length)
+    const trouve = codes.find((c) => compact.startsWith(c.code))
+    if (trouve) return { indicatif: trouve.code, telephone: compact.slice(trouve.code.length) }
+    // Indicatif inconnu : on garde les 1 à 3 chiffres qui suivent le « + »
+    const m = compact.match(/^\+(\d{1,3})(\d+)$/)
+    if (m) return { indicatif: `+${m[1]}`, telephone: m[2] }
+  }
+  return { indicatif: defaut, telephone: compact }
+}
+
+// ─── Carnet d'adresses de l'appareil ──────────────────────────────────────────
+// Contact Picker API : Chrome/Android uniquement. iOS (Safari, y compris en PWA)
+// ne l'implémente pas — d'où le bouton affiché seulement si l'API existe, et
+// l'`autoComplete="tel"` sur le champ, seule aide au remplissage sur iPhone.
+
+interface ContactSelectionne { name?: string[]; tel?: string[] }
+interface ContactsManager {
+  select: (props: string[], opts?: { multiple?: boolean }) => Promise<ContactSelectionne[]>
+}
+
+const carnet = (): ContactsManager | undefined => {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return undefined
+  if (!('contacts' in navigator) || !('ContactsManager' in window)) return undefined
+  return (navigator as Navigator & { contacts?: ContactsManager }).contacts
+}
+
+/** Le carnet d'adresses est-il accessible depuis ce navigateur ? */
+export const carnetDisponible = () => !!carnet()
+
+/** Ouvre le sélecteur de contacts du téléphone (null si refusé / indisponible). */
+export async function choisirDansCarnet(): Promise<{ nom?: string; tel?: string } | null> {
+  const api = carnet()
+  if (!api) return null
+  try {
+    const [contact] = await api.select(['name', 'tel'], { multiple: false })
+    if (!contact) return null
+    return { nom: contact.name?.[0], tel: contact.tel?.[0] }
+  } catch {
+    return null // sélection annulée
+  }
+}
+
 interface PhoneInputProps {
   indicatif: string
   telephone: string
@@ -185,9 +234,12 @@ export function PhoneInput({
         )}
       </div>
 
-      {/* Phone number input */}
+      {/* Phone number input — `autoComplete`/`name` déclenchent l'autoremplissage
+          depuis les contacts (seule voie sur iPhone, faute de Contact Picker API) */}
       <input
         type="tel"
+        name="tel"
+        autoComplete="tel"
         value={telephone}
         onChange={(e) => onTelephoneChange(e.target.value)}
         placeholder={placeholder || '06 12 34 56 78'}
