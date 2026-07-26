@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
   CheckCircle2, RotateCcw, Copy, Check, Share2, Users, User, BookUser, CopyPlus,
-  ImagePlus, Camera, X,
+  ImagePlus, Camera, X, Eye,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
@@ -13,7 +13,8 @@ import { copyText } from '@/lib/clipboard'
 import { useAuth } from '@/context/AuthContext'
 import { uploadImage, deleteImage } from '@/lib/uploadImage'
 import {
-  PhoneInput, buildWhatsAppUrl, carnetDisponible, choisirDansCarnet, separerIndicatif,
+  PhoneInput, buildWhatsAppUrl, carnetDisponible, choisirDansCarnet,
+  choisirPlusieursDansCarnet, separerIndicatif, numeroInternational,
 } from '@/components/ui/PhoneInput'
 import { useBebeContacts } from '@/hooks/useBebeContacts'
 import type { Bebe, ArrivalTemplate, BebeContact } from '@/types'
@@ -100,8 +101,8 @@ function resolveMessage(body: string, baby: Bebe): string {
 }
 
 function smsHref(indicatif: string, telephone: string, text: string): string {
-  const num = `${indicatif || '+33'}${telephone.replace(/[\s().+-]/g, '')}`
-  return `sms:${num}?&body=${encodeURIComponent(text)}`
+  // Même règle que WhatsApp : « +33 06… » n'est pas un numéro appelable
+  return `sms:${numeroInternational(indicatif, telephone)}?&body=${encodeURIComponent(text)}`
 }
 
 /**
@@ -110,6 +111,44 @@ function smsHref(indicatif: string, telephone: string, text: string): string {
  * pas de numéro, `wa.me/<numéro>` ne peut donc pas le viser).
  */
 const whatsappGroupeHref = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`
+
+// ─── Ajout en lot par collage ─────────────────────────────────────────────────
+
+interface PersonneCollee { nom: string; indicatif: string; telephone: string }
+
+/** Chiffres seuls, pour comparer deux écritures d'un même numéro. */
+const chiffres = (s: string) => s.replace(/\D/g, '')
+
+/**
+ * Analyse un collage « une personne par ligne » (Contacts, tableur, message…).
+ *
+ * Le numéro retenu est la suite de chiffres la plus longue de la ligne, et le nom
+ * est ce qu'il reste : l'ordre des deux n'a donc aucune importance, et les
+ * séparateurs (virgule, tabulation, tiret…) passent tels quels. Une ligne sans
+ * numéro exploitable est rejetée plutôt que devinée.
+ */
+function analyserCollage(texte: string): { personnes: PersonneCollee[]; rejets: string[] } {
+  const personnes: PersonneCollee[] = []
+  const rejets: string[] = []
+
+  for (const ligne of texte.split(/[\r\n]+/)) {
+    const brut = ligne.trim()
+    if (!brut) continue
+
+    const candidats = brut.match(/\+?\d[\d\s().\-–—]{5,}\d/g) ?? []
+    const numero = candidats
+      .map((c) => c.trim())
+      .sort((a, b) => chiffres(b).length - chiffres(a).length)[0]
+
+    // Moins de 8 chiffres : c'est une année, un poids, un identifiant… pas un numéro
+    if (!numero || chiffres(numero).length < 8) { rejets.push(brut); continue }
+
+    const { indicatif, telephone } = separerIndicatif(numero)
+    const nom = brut.replace(numero, ' ').replace(/[,;:|\t/–—-]+/g, ' ').replace(/\s+/g, ' ').trim()
+    personnes.push({ nom: nom || telephone, indicatif, telephone })
+  }
+  return { personnes, rejets }
+}
 
 // ─── Composant ─────────────────────────────────────────────────────────────────
 
@@ -199,6 +238,9 @@ export function ArrivalSection({
       setTplModal({ open: false, editing: null })
     } finally { setSavingTpl(false) }
   }
+
+  /** Aperçu du message tel qu'il partira (texte entier + photo) */
+  const [apercuTpl, setApercuTpl] = useState<ArrivalTemplate | null>(null)
 
   const deleteTpl = async (id: string) => {
     await updateBebe(baby.id, { arrivalTemplates: templates.filter(t => t.id !== id) })
@@ -326,6 +368,58 @@ export function ArrivalSection({
     })
   }
 
+  // ── Ajout de plusieurs personnes d'un coup ─────────────────────────────────
+  const [lotOuvert, setLotOuvert] = useState(false)
+  const [lotTexte, setLotTexte] = useState('')
+  const [lotTemplateId, setLotTemplateId] = useState('')
+  const [lotEnCours, setLotEnCours] = useState(false)
+
+  const openLot = () => {
+    setLotTexte('')
+    setLotTemplateId(templates[0]?.id ?? '')
+    setLotOuvert(true)
+  }
+
+  /** Sélection multiple dans le carnet : les contacts alimentent la zone de collage. */
+  const importerPlusieursDuCarnet = async () => {
+    const choisis = await choisirPlusieursDansCarnet()
+    if (!choisis.length) return
+    const lignes = choisis.map(c => `${c.nom ?? ''} ${c.tel ?? ''}`.trim()).filter(Boolean).join('\n')
+    setLotTexte(t => (t.trim() ? `${t.trim()}\n${lignes}` : lignes))
+  }
+
+  /** Les 9 derniers chiffres suffisent à reconnaître un même numéro écrit autrement. */
+  const cleNumero = (indicatif: string, telephone: string) => chiffres(`${indicatif}${telephone}`).slice(-9)
+
+  const lot = useMemo(() => {
+    const { personnes, rejets } = analyserCollage(lotTexte)
+    const dejaLa = new Set(contacts.map(c => cleNumero(c.indicatif, c.telephone)))
+    const vus = new Set<string>()
+    const nouveaux: PersonneCollee[] = []
+    let doublons = 0
+    for (const p of personnes) {
+      const cle = cleNumero(p.indicatif, p.telephone)
+      if (dejaLa.has(cle) || vus.has(cle)) { doublons++; continue }
+      vus.add(cle)
+      nouveaux.push(p)
+    }
+    return { nouveaux, doublons, rejets }
+  }, [lotTexte, contacts])
+
+  const ajouterLot = async () => {
+    setLotEnCours(true)
+    try {
+      for (const p of lot.nouveaux) {
+        await addContact({
+          name: p.nom, indicatif: p.indicatif, telephone: p.telephone,
+          templateId: lotTemplateId || undefined,
+        })
+      }
+      setLotTexte('')
+      setLotOuvert(false)
+    } finally { setLotEnCours(false) }
+  }
+
   const saveCt = async () => {
     if (!ctForm.name.trim() || !ctForm.telephone.trim()) return
     setSavingCt(true)
@@ -412,7 +506,9 @@ export function ArrivalSection({
           <strong>4. Personnes à prévenir.</strong> Chaque personne reçoit le modèle qui lui est
           associé. « Envoyer » ouvre la conversation avec le message déjà écrit, modifiable avant
           envoi, puis marque la personne comme prévenue — d&apos;où le compteur « x/y envoyés »
-          et le filtre « À envoyer », pour ne perdre personne.
+          et le filtre « À envoyer », pour ne perdre personne. Le bouton <strong>Plusieurs</strong>
+          {' '}remplit toute une liste d&apos;un coup : collez noms et numéros, un par ligne, et
+          choisissez le modèle appliqué à tout le lot.
         </p>
         <p>
           <strong>5. Envois qu&apos;on ne peut pas détecter</strong> (texte collé dans un groupe,
@@ -488,8 +584,9 @@ export function ArrivalSection({
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Modèles de message</p>
-          <button onClick={openNewTpl} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition">
-            <Plus size={14} /> Nouveau
+          <button onClick={openNewTpl}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition active:scale-[0.98] shrink-0">
+            <Plus size={15} />Nouveau modèle
           </button>
         </div>
         <div className="mb-2">
@@ -510,7 +607,9 @@ export function ArrivalSection({
             {templates.map(t => (
               <div key={t.id} className={`rounded-xl border shadow-sm px-4 py-3 ${t.groupe ? 'bg-indigo-50/50 border-indigo-100' : 'bg-white border-gray-100'}`}>
                 <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
+                  {/* Le bloc texte ouvre l'aperçu : le message est tronqué ici,
+                      et on veut pouvoir le relire en entier, photo comprise. */}
+                  <button onClick={() => setApercuTpl(t)} className="flex-1 min-w-0 text-left group">
                     <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5 flex-wrap">
                       {t.label}
                       <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-md ${
@@ -520,7 +619,10 @@ export function ArrivalSection({
                       </span>
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{resolveMessage(t.body, baby)}</p>
-                  </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 mt-1 group-hover:underline">
+                      <Eye size={12} />Voir le message{baby.annoncePhotoUrl ? ' et la photo' : ''}
+                    </span>
+                  </button>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => copier(t.id, resolveMessage(t.body, baby))}
                       title="Copier le message"
@@ -579,9 +681,16 @@ export function ArrivalSection({
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Personnes à prévenir · {sentCount}/{contacts.length} envoyé{sentCount > 1 ? 's' : ''}
           </p>
-          <button onClick={openNewCt} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition">
-            <Plus size={14} /> Ajouter
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={openLot}
+              className="flex items-center gap-1.5 border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50 text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition active:scale-[0.98]">
+              <Users size={15} />Plusieurs
+            </button>
+            <button onClick={openNewCt}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition active:scale-[0.98]">
+              <Plus size={15} />Ajouter
+            </button>
+          </div>
         </div>
         <div className="mb-2">
           <LigneAide>
@@ -816,6 +925,140 @@ export function ArrivalSection({
         </div>
       </Modal>
 
+      {/* ── Aperçu d'un modèle : le message entier, avec la photo ─────────── */}
+      <Modal isOpen={!!apercuTpl} onClose={() => setApercuTpl(null)} title={apercuTpl ? `Aperçu — ${apercuTpl.label}` : ''}>
+        {apercuTpl && (
+          <div className="space-y-4">
+            {/* Rendu volontairement proche d'une bulle de conversation */}
+            <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 space-y-3">
+              {baby.annoncePhotoUrl && (
+                <img src={baby.annoncePhotoUrl} alt="Photo du faire-part"
+                  className="w-full max-h-72 object-contain rounded-xl bg-white" />
+              )}
+              <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                {resolveMessage(apercuTpl.body, baby)}
+              </p>
+            </div>
+
+            <p className="text-[11px] text-gray-400">
+              {baby.annoncePhotoUrl
+                ? photoPartageable
+                  ? 'La photo ne partira que par « Partager + photo » : les liens SMS et WhatsApp ne transportent que le texte.'
+                  : 'Ce navigateur ne sait pas partager de fichier : depuis l’iPhone, la photo partira avec « Partager + photo ».'
+                : 'Aucune photo pour l’instant — ajoutez-la dans l’encart « Photo du faire-part ».'}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => copier(`apercu-${apercuTpl.id}`, resolveMessage(apercuTpl.body, baby))}
+                className={`flex-1 min-w-[8rem] flex items-center justify-center gap-2 border py-2.5 rounded-xl text-sm font-medium transition ${
+                  copie === `apercu-${apercuTpl.id}` ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}>
+                {copie === `apercu-${apercuTpl.id}` ? <><Check size={16} />Copié</> : <><Copy size={16} />Copier le texte</>}
+              </button>
+              {peutPartager && (
+                <button onClick={() => partager(resolveMessage(apercuTpl.body, baby))}
+                  className={`flex-1 min-w-[8rem] flex items-center justify-center gap-2 border py-2.5 rounded-xl text-sm font-medium transition ${
+                    photoPartageable ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}>
+                  <Share2 size={16} />{photoPartageable ? 'Partager + photo' : 'Partager'}
+                </button>
+              )}
+            </div>
+
+            {apercuTpl.groupe && (
+              <div className="flex flex-wrap gap-2">
+                <a href={whatsappGroupeHref(resolveMessage(apercuTpl.body, baby))} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white py-2.5 rounded-xl text-sm font-medium transition">
+                  <Send size={16} />WhatsApp
+                </a>
+                <button onClick={() => ouvrirMessenger(`apercu-msg-${apercuTpl.id}`, resolveMessage(apercuTpl.body, baby))}
+                  className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2.5 rounded-xl text-sm font-medium transition">
+                  {copie === `apercu-msg-${apercuTpl.id}` ? <><Check size={16} />Texte copié</> : <><MessageSquare size={16} />Messenger</>}
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setApercuTpl(null)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Fermer</button>
+              <button onClick={() => { openEditTpl(apercuTpl); setApercuTpl(null) }}
+                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition">
+                <Pencil size={15} />Modifier
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Modale ajout en lot ───────────────────────────────────────────── */}
+      <Modal isOpen={lotOuvert} onClose={() => setLotOuvert(false)} title="Ajouter plusieurs personnes">
+        <div className="space-y-4">
+          {carnetDisponible() && (
+            <button type="button" onClick={importerPlusieursDuCarnet}
+              className="w-full flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
+              <BookUser size={16} />Choisir plusieurs contacts
+            </button>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Une personne par ligne</label>
+            <textarea rows={7} value={lotTexte} onChange={e => setLotTexte(e.target.value)}
+              placeholder={'Mamie 06 12 34 56 78\nTonton Paul, +33 6 11 22 33 44\nSophie\t0699887766'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            <div className="mt-2">
+              <LigneAide>
+                Collez ce que vous avez : nom et numéro dans n&apos;importe quel ordre, séparés par un
+                espace, une virgule ou une tabulation. Les numéros déjà enregistrés sont ignorés.
+              </LigneAide>
+            </div>
+          </div>
+
+          {templates.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle appliqué à tout le lot</label>
+              <select value={lotTemplateId} onChange={e => setLotTemplateId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">— Aucun —</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.label}{t.groupe ? ' (groupe)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {lotTexte.trim() && (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2">
+              <p className="text-xs text-gray-500">
+                <strong className="text-gray-800">{lot.nouveaux.length}</strong> personne{lot.nouveaux.length > 1 ? 's' : ''} à ajouter
+                {lot.doublons > 0 && <> · {lot.doublons} déjà présente{lot.doublons > 1 ? 's' : ''}</>}
+                {lot.rejets.length > 0 && <> · <span className="text-amber-600">{lot.rejets.length} ligne{lot.rejets.length > 1 ? 's' : ''} sans numéro</span></>}
+              </p>
+              {lot.nouveaux.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {lot.nouveaux.slice(0, 12).map((p, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className="font-medium text-gray-700 truncate flex-1">{p.nom}</span>
+                      <span className="text-gray-400 font-mono shrink-0">{p.indicatif} {p.telephone}</span>
+                    </div>
+                  ))}
+                  {lot.nouveaux.length > 12 && (
+                    <p className="text-[11px] text-gray-400">+ {lot.nouveaux.length - 12} autre{lot.nouveaux.length - 12 > 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              )}
+              {lot.rejets.length > 0 && (
+                <p className="text-[11px] text-amber-600 break-words">
+                  Ignoré : {lot.rejets.slice(0, 3).join(' · ')}{lot.rejets.length > 3 ? '…' : ''}
+                </p>
+              )}
+            </div>
+          )}
+
+          <FooterBtns onCancel={() => setLotOuvert(false)} onSave={ajouterLot} saving={lotEnCours}
+            disabled={lot.nouveaux.length === 0}
+            label={lot.nouveaux.length > 1 ? `Ajouter les ${lot.nouveaux.length} personnes` : 'Ajouter'} />
+        </div>
+      </Modal>
+
       {/* ── Modale envoi ──────────────────────────────────────────────────── */}
       <Modal isOpen={!!sendCt} onClose={() => setSendCt(null)} title={sendCt ? `Annoncer à ${sendCt.name}` : ''}>
         {sendCt && (
@@ -827,6 +1070,15 @@ export function ArrivalSection({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {templates.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                 </select>
+              </div>
+            )}
+            {baby.annoncePhotoUrl && (
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-2">
+                <img src={baby.annoncePhotoUrl} alt="Photo du faire-part"
+                  className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                <p className="text-xs text-gray-500">
+                  Photo du faire-part : elle part avec « Partager&nbsp;+&nbsp;photo », pas avec SMS ni WhatsApp.
+                </p>
               </div>
             )}
             <div>

@@ -51,10 +51,24 @@ function Flag({ iso, emoji, className = 'w-5 h-auto rounded-sm' }: { iso?: strin
   )
 }
 
+/**
+ * Numéro au format international appelable, à partir de l'indicatif et du numéro
+ * tel qu'il est saisi ou affiché (« 06 12 34 56 78 »).
+ *
+ * ⚠️ Le 0 de tête est un préfixe NATIONAL : « +33 06 12 34 56 78 » n'existe pas
+ * et WhatsApp refusait le lien (« numéro invalide »). Il faut le retirer.
+ * ⚠️ Exception l'Italie (+39), qui conserve son 0 sur les numéros fixes — ne pas
+ * généraliser le retrait à tous les pays.
+ */
+export function numeroInternational(indicatif: string, telephone: string): string {
+  const ind = (indicatif || '+33').replace(/[^\d]/g, '')
+  let local = telephone.replace(/\D/g, '')
+  if (ind !== '39' && local.startsWith('0')) local = local.slice(1)
+  return `+${ind}${local}`
+}
+
 export function buildWhatsAppUrl(indicatif: string, telephone: string, message?: string): string {
-  const cleaned = telephone.replace(/[\s().+-]/g, '')
-  const prefix = (indicatif || '+33').replace('+', '')
-  const url = `https://wa.me/${prefix}${cleaned}`
+  const url = `https://wa.me/${numeroInternational(indicatif, telephone).slice(1)}`
   return message ? `${url}?text=${message}` : url
 }
 
@@ -96,14 +110,21 @@ export const carnetDisponible = () => !!carnet()
 
 /** Ouvre le sélecteur de contacts du téléphone (null si refusé / indisponible). */
 export async function choisirDansCarnet(): Promise<{ nom?: string; tel?: string } | null> {
+  const [premier] = await choisirPlusieursDansCarnet(false)
+  return premier ?? null
+}
+
+/** Idem, en sélection multiple (liste vide si refusé / indisponible). */
+export async function choisirPlusieursDansCarnet(multiple = true): Promise<{ nom?: string; tel?: string }[]> {
   const api = carnet()
-  if (!api) return null
+  if (!api) return []
   try {
-    const [contact] = await api.select(['name', 'tel'], { multiple: false })
-    if (!contact) return null
-    return { nom: contact.name?.[0], tel: contact.tel?.[0] }
+    const choisis = await api.select(['name', 'tel'], { multiple })
+    return choisis
+      .map((c) => ({ nom: c.name?.[0], tel: c.tel?.[0] }))
+      .filter((c) => c.nom || c.tel)
   } catch {
-    return null // sélection annulée
+    return [] // sélection annulée
   }
 }
 
