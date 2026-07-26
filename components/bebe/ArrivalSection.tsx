@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
   CheckCircle2, RotateCcw, Copy, Check, Share2, Users, User, BookUser, CopyPlus,
-  ImagePlus, Camera, X, Eye,
+  ImagePlus, Camera, X, Eye, ClipboardPaste, ChevronDown,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
@@ -369,53 +369,106 @@ export function ArrivalSection({
   }
 
   // ── Ajout de plusieurs personnes d'un coup ─────────────────────────────────
+  //
+  // ⚠️ Il n'y a PAS de sélection multiple possible sur iPhone : aucune page web
+  // n'a accès au carnet d'adresses iOS (la Contact Picker API est réservée à
+  // Chrome/Android). Le seul mécanisme disponible est l'autoremplissage iOS, qui
+  // remplit UN contact dans UN formulaire. D'où cette modale en boucle rapide :
+  // on enchaîne les autoremplissages, chacun tombe dans une liste, et on valide
+  // tout d'un coup. Le collage reste là en second, pour une liste déjà écrite.
   const [lotOuvert, setLotOuvert] = useState(false)
-  const [lotTexte, setLotTexte] = useState('')
+  const [lotListe, setLotListe] = useState<PersonneCollee[]>([])
+  const [lotSaisie, setLotSaisie] = useState({ nom: '', indicatif: '+33', telephone: '' })
   const [lotTemplateId, setLotTemplateId] = useState('')
   const [lotEnCours, setLotEnCours] = useState(false)
+  const [lotColleOuvert, setLotColleOuvert] = useState(false)
+  const [lotTexte, setLotTexte] = useState('')
+  const [lotInfo, setLotInfo] = useState<string | null>(null)
+  const lotNomRef = useRef<HTMLInputElement>(null)
 
   const openLot = () => {
-    setLotTexte('')
+    setLotListe([])
+    setLotSaisie({ nom: '', indicatif: '+33', telephone: '' })
     setLotTemplateId(templates[0]?.id ?? '')
+    setLotColleOuvert(false)
+    setLotTexte('')
+    setLotInfo(null)
     setLotOuvert(true)
-  }
-
-  /** Sélection multiple dans le carnet : les contacts alimentent la zone de collage. */
-  const importerPlusieursDuCarnet = async () => {
-    const choisis = await choisirPlusieursDansCarnet()
-    if (!choisis.length) return
-    const lignes = choisis.map(c => `${c.nom ?? ''} ${c.tel ?? ''}`.trim()).filter(Boolean).join('\n')
-    setLotTexte(t => (t.trim() ? `${t.trim()}\n${lignes}` : lignes))
   }
 
   /** Les 9 derniers chiffres suffisent à reconnaître un même numéro écrit autrement. */
   const cleNumero = (indicatif: string, telephone: string) => chiffres(`${indicatif}${telephone}`).slice(-9)
 
-  const lot = useMemo(() => {
-    const { personnes, rejets } = analyserCollage(lotTexte)
-    const dejaLa = new Set(contacts.map(c => cleNumero(c.indicatif, c.telephone)))
-    const vus = new Set<string>()
-    const nouveaux: PersonneCollee[] = []
-    let doublons = 0
-    for (const p of personnes) {
-      const cle = cleNumero(p.indicatif, p.telephone)
-      if (dejaLa.has(cle) || vus.has(cle)) { doublons++; continue }
-      vus.add(cle)
-      nouveaux.push(p)
+  const dejaPresent = (p: PersonneCollee, liste: PersonneCollee[]) => {
+    const cle = cleNumero(p.indicatif, p.telephone)
+    return contacts.some(c => cleNumero(c.indicatif, c.telephone) === cle)
+      || liste.some(x => cleNumero(x.indicatif, x.telephone) === cle)
+  }
+
+  /** Valide la saisie courante et la verse dans la liste, prête pour la suivante. */
+  const verserSaisieDansLot = () => {
+    const telephone = lotSaisie.telephone.trim()
+    if (!telephone) return
+    const p: PersonneCollee = { nom: lotSaisie.nom.trim() || telephone, indicatif: lotSaisie.indicatif || '+33', telephone }
+    if (dejaPresent(p, lotListe)) {
+      setLotInfo(`${p.nom} est déjà dans la liste ou déjà enregistré·e.`)
+      return
     }
-    return { nouveaux, doublons, rejets }
-  }, [lotTexte, contacts])
+    setLotListe(l => [...l, p])
+    setLotSaisie(s => ({ nom: '', indicatif: s.indicatif, telephone: '' }))
+    setLotInfo(null)
+    lotNomRef.current?.focus()
+  }
+
+  /** Sélection multiple du carnet (Android/Chrome) : versée directement dans la liste. */
+  const importerPlusieursDuCarnet = async () => {
+    const choisis = await choisirPlusieursDansCarnet()
+    if (!choisis.length) return
+    setLotListe(l => {
+      const suite = [...l]
+      let ignores = 0
+      for (const c of choisis) {
+        if (!c.tel) { ignores++; continue }
+        const { indicatif, telephone } = separerIndicatif(c.tel)
+        const p: PersonneCollee = { nom: c.nom?.trim() || telephone, indicatif, telephone }
+        if (dejaPresent(p, suite)) { ignores++; continue }
+        suite.push(p)
+      }
+      setLotInfo(ignores > 0 ? `${ignores} contact(s) ignoré(s) : sans numéro ou déjà présent(s).` : null)
+      return suite
+    })
+  }
+
+  /** Intègre une liste collée (une personne par ligne) à la liste en cours. */
+  const integrerCollage = () => {
+    const { personnes, rejets } = analyserCollage(lotTexte)
+    setLotListe(l => {
+      const suite = [...l]
+      let doublons = 0
+      for (const p of personnes) {
+        if (dejaPresent(p, suite)) { doublons++; continue }
+        suite.push(p)
+      }
+      const bilan = [
+        `${suite.length - l.length} ajoutée(s)`,
+        doublons > 0 ? `${doublons} déjà présente(s)` : '',
+        rejets.length > 0 ? `${rejets.length} ligne(s) sans numéro` : '',
+      ].filter(Boolean).join(' · ')
+      setLotInfo(bilan)
+      return suite
+    })
+    setLotTexte('')
+  }
 
   const ajouterLot = async () => {
     setLotEnCours(true)
     try {
-      for (const p of lot.nouveaux) {
+      for (const p of lotListe) {
         await addContact({
           name: p.nom, indicatif: p.indicatif, telephone: p.telephone,
           templateId: lotTemplateId || undefined,
         })
       }
-      setLotTexte('')
       setLotOuvert(false)
     } finally { setLotEnCours(false) }
   }
@@ -507,8 +560,13 @@ export function ArrivalSection({
           associé. « Envoyer » ouvre la conversation avec le message déjà écrit, modifiable avant
           envoi, puis marque la personne comme prévenue — d&apos;où le compteur « x/y envoyés »
           et le filtre « À envoyer », pour ne perdre personne. Le bouton <strong>Plusieurs</strong>
-          {' '}remplit toute une liste d&apos;un coup : collez noms et numéros, un par ligne, et
-          choisissez le modèle appliqué à tout le lot.
+          {' '}sert à remplir une liste d&apos;un coup : pour chaque personne, touchez le champ
+          téléphone et laissez iOS proposer <strong>« Remplir depuis un contact »</strong>, puis
+          « Ajouter à la liste » — et un seul modèle s&apos;applique à toute la liste.
+          {' '}<span className="text-sky-900/60">
+            (Sélectionner plusieurs contacts d&apos;un seul geste n&apos;est pas possible : Apple
+            n&apos;ouvre pas le carnet d&apos;adresses aux pages web.)
+          </span>
         </p>
         <p>
           <strong>5. Envois qu&apos;on ne peut pas détecter</strong> (texte collé dans un groupe,
@@ -999,22 +1057,61 @@ export function ArrivalSection({
               <BookUser size={16} />Choisir plusieurs contacts
             </button>
           )}
+
+          {/* Boucle rapide : autoremplissage iOS → « + » → contact suivant.
+              Les champs sont dans un vrai <form> (c'est ce qui déclenche
+              « Remplir depuis un contact »), le bouton reste dehors. */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Une personne par ligne</label>
-            <textarea rows={7} value={lotTexte} onChange={e => setLotTexte(e.target.value)}
-              placeholder={'Mamie 06 12 34 56 78\nTonton Paul, +33 6 11 22 33 44\nSophie\t0699887766'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Personne à ajouter</label>
+            <form onSubmit={e => { e.preventDefault(); verserSaisieDansLot() }} className="space-y-2">
+              <input ref={lotNomRef} type="text" placeholder="Nom" value={lotSaisie.nom}
+                onChange={e => setLotSaisie(s => ({ ...s, nom: e.target.value }))}
+                name="name" autoComplete="name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <PhoneInput
+                indicatif={lotSaisie.indicatif}
+                telephone={lotSaisie.telephone}
+                onIndicatifChange={v => setLotSaisie(s => ({ ...s, indicatif: v }))}
+                onTelephoneChange={v => setLotSaisie(s => ({ ...s, telephone: v }))}
+              />
+            </form>
+            <button type="button" onClick={verserSaisieDansLot} disabled={!lotSaisie.telephone.trim()}
+              className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-semibold transition">
+              <Plus size={16} />Ajouter à la liste
+            </button>
             <div className="mt-2">
               <LigneAide>
-                Collez ce que vous avez : nom et numéro dans n&apos;importe quel ordre, séparés par un
-                espace, une virgule ou une tabulation. Les numéros déjà enregistrés sont ignorés.
+                Touchez le champ téléphone : iOS propose <strong>« Remplir depuis un contact »</strong>{' '}
+                au-dessus du clavier et remplit le nom et le numéro. Puis « Ajouter à la liste », et on
+                recommence — la liste se construit sans rien taper.
               </LigneAide>
             </div>
           </div>
 
+          {lotInfo && <p className="text-xs text-amber-600">{lotInfo}</p>}
+
+          {/* Liste en cours */}
+          {lotListe.length > 0 && (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Liste · {lotListe.length}
+              </p>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {lotListe.map((p, i) => (
+                  <div key={`${p.telephone}-${i}`} className="flex items-center gap-2 text-xs bg-white rounded-lg px-2 py-1.5">
+                    <span className="font-medium text-gray-700 truncate flex-1">{p.nom}</span>
+                    <span className="text-gray-400 font-mono shrink-0">{p.indicatif} {p.telephone}</span>
+                    <button type="button" onClick={() => setLotListe(l => l.filter((_, k) => k !== i))}
+                      className="p-1 text-gray-300 hover:text-red-500 transition shrink-0"><X size={13} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {templates.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle appliqué à tout le lot</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modèle appliqué à toute la liste</label>
               <select value={lotTemplateId} onChange={e => setLotTemplateId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">— Aucun —</option>
@@ -1025,37 +1122,32 @@ export function ArrivalSection({
             </div>
           )}
 
-          {lotTexte.trim() && (
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-gray-500">
-                <strong className="text-gray-800">{lot.nouveaux.length}</strong> personne{lot.nouveaux.length > 1 ? 's' : ''} à ajouter
-                {lot.doublons > 0 && <> · {lot.doublons} déjà présente{lot.doublons > 1 ? 's' : ''}</>}
-                {lot.rejets.length > 0 && <> · <span className="text-amber-600">{lot.rejets.length} ligne{lot.rejets.length > 1 ? 's' : ''} sans numéro</span></>}
-              </p>
-              {lot.nouveaux.length > 0 && (
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {lot.nouveaux.slice(0, 12).map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className="font-medium text-gray-700 truncate flex-1">{p.nom}</span>
-                      <span className="text-gray-400 font-mono shrink-0">{p.indicatif} {p.telephone}</span>
-                    </div>
-                  ))}
-                  {lot.nouveaux.length > 12 && (
-                    <p className="text-[11px] text-gray-400">+ {lot.nouveaux.length - 12} autre{lot.nouveaux.length - 12 > 1 ? 's' : ''}</p>
-                  )}
-                </div>
-              )}
-              {lot.rejets.length > 0 && (
-                <p className="text-[11px] text-amber-600 break-words">
-                  Ignoré : {lot.rejets.slice(0, 3).join(' · ')}{lot.rejets.length > 3 ? '…' : ''}
-                </p>
-              )}
-            </div>
-          )}
+          {/* Collage — solution de repli, replié par défaut */}
+          <div className="border-t border-dashed border-gray-200 pt-3">
+            <button type="button" onClick={() => setLotColleOuvert(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition">
+              <ClipboardPaste size={14} />Coller une liste déjà écrite
+              <ChevronDown size={14} className={`transition-transform ${lotColleOuvert ? 'rotate-180' : ''}`} />
+            </button>
+            {lotColleOuvert && (
+              <div className="mt-2 space-y-2">
+                <textarea rows={5} value={lotTexte} onChange={e => setLotTexte(e.target.value)}
+                  placeholder={'Mamie 06 12 34 56 78\nTonton Paul, +33 6 11 22 33 44'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                <button type="button" onClick={integrerCollage} disabled={!lotTexte.trim()}
+                  className="w-full border border-gray-300 text-gray-700 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 transition">
+                  Verser dans la liste
+                </button>
+                <LigneAide>
+                  Une personne par ligne, nom et numéro dans n&apos;importe quel ordre.
+                </LigneAide>
+              </div>
+            )}
+          </div>
 
           <FooterBtns onCancel={() => setLotOuvert(false)} onSave={ajouterLot} saving={lotEnCours}
-            disabled={lot.nouveaux.length === 0}
-            label={lot.nouveaux.length > 1 ? `Ajouter les ${lot.nouveaux.length} personnes` : 'Ajouter'} />
+            disabled={lotListe.length === 0}
+            label={lotListe.length > 1 ? `Ajouter les ${lotListe.length} personnes` : 'Ajouter'} />
         </div>
       </Modal>
 
