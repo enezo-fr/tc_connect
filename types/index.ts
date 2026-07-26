@@ -1372,6 +1372,16 @@ export interface ArrivalTemplate {
    * conversation. Met en avant les boutons Messenger / WhatsApp.
    */
   groupe?: boolean
+  /**
+   * Groupes uniquement — date d'envoi. Un groupe n'a pas de contact porteur du
+   * suivi (`BebeContact.sentAt`), il fallait donc le poser sur le modèle.
+   * ⚠️ Posée AU CLIC, donc optimiste : rien ne permet de détecter qu'un message
+   * a réellement été envoyé dans WhatsApp ou Messenger. D'où le « Pas encore
+   * envoyé » toujours réversible.
+   */
+  envoyeLe?: Timestamp | null
+  /** Canal par lequel le groupe a été prévenu */
+  envoyeVia?: 'whatsapp' | 'messenger' | 'autre' | null
 }
 
 /** Document Firestore : babies/{babyId}/contacts/{contactId} */

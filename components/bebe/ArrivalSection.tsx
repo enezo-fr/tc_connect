@@ -242,6 +242,25 @@ export function ArrivalSection({
   /** Aperçu du message tel qu'il partira (texte entier + photo) */
   const [apercuTpl, setApercuTpl] = useState<ArrivalTemplate | null>(null)
 
+  /**
+   * Suivi d'envoi d'un modèle de GROUPE : un groupe n'a pas de contact pour
+   * porter le `sentAt`, on marque donc le modèle lui-même. Optimiste (posé au
+   * clic) — l'envoi réel dans WhatsApp/Messenger n'est pas détectable —, donc
+   * toujours annulable d'un bouton.
+   */
+  const marquerTplEnvoye = (t: ArrivalTemplate, via: 'whatsapp' | 'messenger' | 'autre' | null) =>
+    updateBebe(baby.id, {
+      arrivalTemplates: templates.map(x => x.id === t.id
+        ? { ...x, envoyeLe: via ? Timestamp.now() : null, envoyeVia: via ?? null }
+        : x),
+    })
+
+  const nomCanal = (via?: ArrivalTemplate['envoyeVia']) =>
+    via === 'whatsapp' ? ' · WhatsApp' : via === 'messenger' ? ' · Messenger' : ''
+
+  const groupes = templates.filter(t => t.groupe)
+  const groupesEnvoyes = groupes.filter(t => t.envoyeLe).length
+
   const deleteTpl = async (id: string) => {
     await updateBebe(baby.id, { arrivalTemplates: templates.filter(t => t.id !== id) })
   }
@@ -397,7 +416,15 @@ export function ArrivalSection({
   const [lotColleOuvert, setLotColleOuvert] = useState(false)
   const [lotTexte, setLotTexte] = useState('')
   const [lotInfo, setLotInfo] = useState<string | null>(null)
-  const lotNomRef = useRef<HTMLInputElement>(null)
+  /**
+   * ⚠️ Clé de remontage des champs de saisie. iOS ne propose « Remplir depuis un
+   * contact » qu'UNE FOIS par champ : dès qu'il a été rempli, la proposition ne
+   * revient plus. Une modale classique s'en sort parce qu'elle est démontée à la
+   * fermeture (`Modal` renvoie null) ; ici on reste dans la même modale pour
+   * enchaîner, donc on incrémente cette clé après chaque ajout → React remplace
+   * les `<input>` par des neufs, et iOS repropose le remplissage.
+   */
+  const [lotCle, setLotCle] = useState(0)
 
   const openLot = () => {
     setLotListe([])
@@ -438,7 +465,7 @@ export function ArrivalSection({
     setLotListe(l => [...l, p])
     setLotSaisie(s => ({ nom: '', indicatif: s.indicatif, telephone: '' }))
     setLotInfo(null)
-    lotNomRef.current?.focus()
+    setLotCle(k => k + 1) // champs neufs = iOS repropose le remplissage auto
   }
 
   /** Sélection multiple du carnet (Android/Chrome) : versée directement dans la liste. */
@@ -594,8 +621,13 @@ export function ArrivalSection({
           </span>
         </p>
         <p>
-          <strong>5. Envois qu&apos;on ne peut pas détecter</strong> (texte collé dans un groupe,
-          message par un autre canal) : marquez-les à la main avec « Marquer comme envoyé ».
+          <strong>5. Suivi des groupes.</strong> Un groupe n&apos;est pas une personne de la liste,
+          son état d&apos;envoi vit donc sur son modèle : badge <strong>« À envoyer »</strong> puis
+          <strong> « Envoyé le … »</strong>, et un compteur « x/y groupes prévenus » au-dessus des
+          modèles. Le marquage se fait dès que vous touchez WhatsApp, Messenger ou Partager :
+          aucun canal ne permet de vérifier qu&apos;un message est vraiment parti, donc c&apos;est
+          déclaratif et toujours corrigible (« Pas encore envoyé »). Même principe pour une
+          personne prévenue autrement : « Marquer comme envoyé ».
         </p>
       </NoteAide>
 
@@ -666,7 +698,10 @@ export function ArrivalSection({
       {/* Modèles de message */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Modèles de message</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Modèles de message
+            {groupes.length > 0 && ` · ${groupesEnvoyes}/${groupes.length} groupe${groupes.length > 1 ? 's' : ''} prévenu${groupesEnvoyes > 1 ? 's' : ''}`}
+          </p>
           <button onClick={openNewTpl}
             className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition active:scale-[0.98] shrink-0">
             <Plus size={15} />Nouveau modèle
@@ -743,29 +778,61 @@ export function ArrivalSection({
                     et on choisit la conversation. D'où l'envoi ICI, sur le modèle,
                     et non depuis la liste des personnes. */}
                 {t.groupe && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <a href={whatsappGroupeHref(resolveMessage(t.body, baby))} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white py-2 rounded-xl text-sm font-medium transition">
-                      <Send size={15} />WhatsApp
-                    </a>
-                    <button onClick={() => ouvrirMessenger(`msg-${t.id}`, resolveMessage(t.body, baby))}
-                      className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2 rounded-xl text-sm font-medium transition">
-                      {copie === `msg-${t.id}` ? <><Check size={15} />Texte copié</> : <><MessageSquare size={15} />Messenger</>}
-                    </button>
-                    {photoPartageable && (
-                      <button onClick={() => partager(resolveMessage(t.body, baby))}
-                        className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
-                        <Share2 size={15} />Partager + photo
+                  <>
+                    {/* État d'envoi du groupe — le seul endroit où il peut vivre */}
+                    <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                      {t.envoyeLe ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 rounded-lg px-2 py-1">
+                            <CheckCircle2 size={13} />
+                            Envoyé{nomCanal(t.envoyeVia)} le {t.envoyeLe.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            {' '}à {t.envoyeLe.toDate().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button onClick={() => marquerTplEnvoye(t, null)}
+                            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-amber-600 transition">
+                            <RotateCcw size={12} />Pas encore envoyé
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                          <Clock size={12} />À envoyer
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <a href={whatsappGroupeHref(resolveMessage(t.body, baby))} target="_blank" rel="noopener noreferrer"
+                        onClick={() => marquerTplEnvoye(t, 'whatsapp')}
+                        className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white py-2 rounded-xl text-sm font-medium transition">
+                        <Send size={15} />WhatsApp
+                      </a>
+                      <button onClick={() => { ouvrirMessenger(`msg-${t.id}`, resolveMessage(t.body, baby)); marquerTplEnvoye(t, 'messenger') }}
+                        className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2 rounded-xl text-sm font-medium transition">
+                        {copie === `msg-${t.id}` ? <><Check size={15} />Texte copié</> : <><MessageSquare size={15} />Messenger</>}
+                      </button>
+                      {photoPartageable && (
+                        <button onClick={() => { partager(resolveMessage(t.body, baby)); marquerTplEnvoye(t, 'autre') }}
+                          className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
+                          <Share2 size={15} />Partager + photo
+                        </button>
+                      )}
+                    </div>
+
+                    {!t.envoyeLe && (
+                      <button onClick={() => marquerTplEnvoye(t, 'autre')}
+                        className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-green-600 py-2 transition">
+                        <CheckCircle2 size={14} />Marquer comme envoyé
                       </button>
                     )}
-                  </div>
-                )}
-                {t.groupe && (
-                  <p className="text-[11px] text-gray-400 mt-1.5">
-                    WhatsApp s&apos;ouvre avec le texte prêt, vous choisissez le groupe. Messenger
-                    n&apos;accepte pas de texte pré-rempli : il est copié, il n&apos;y a plus qu&apos;à coller.
-                    {photoPartageable && ' Pour envoyer la photo, passez par « Partager + photo ».'}
-                  </p>
+
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      WhatsApp s&apos;ouvre avec le texte prêt, vous choisissez le groupe. Messenger
+                      n&apos;accepte pas de texte pré-rempli : il est copié, il n&apos;y a plus qu&apos;à coller.
+                      {photoPartageable && ' Pour envoyer la photo, passez par « Partager + photo ».'}
+                      {' '}Le groupe est marqué comme prévenu dès que vous touchez un de ces boutons —
+                      l&apos;envoi réel n&apos;est pas détectable, corrigez-le si besoin.
+                    </p>
+                  </>
                 )}
               </div>
             ))}
@@ -1085,10 +1152,11 @@ export function ArrivalSection({
             {apercuTpl.groupe && (
               <div className="flex flex-wrap gap-2">
                 <a href={whatsappGroupeHref(resolveMessage(apercuTpl.body, baby))} target="_blank" rel="noopener noreferrer"
+                  onClick={() => marquerTplEnvoye(apercuTpl, 'whatsapp')}
                   className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white py-2.5 rounded-xl text-sm font-medium transition">
                   <Send size={16} />WhatsApp
                 </a>
-                <button onClick={() => ouvrirMessenger(`apercu-msg-${apercuTpl.id}`, resolveMessage(apercuTpl.body, baby))}
+                <button onClick={() => { ouvrirMessenger(`apercu-msg-${apercuTpl.id}`, resolveMessage(apercuTpl.body, baby)); marquerTplEnvoye(apercuTpl, 'messenger') }}
                   className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2.5 rounded-xl text-sm font-medium transition">
                   {copie === `apercu-msg-${apercuTpl.id}` ? <><Check size={16} />Texte copié</> : <><MessageSquare size={16} />Messenger</>}
                 </button>
@@ -1122,17 +1190,25 @@ export function ArrivalSection({
               « Remplir depuis un contact »), le bouton reste dehors. */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Personne à ajouter</label>
-            <div className="space-y-2">
-              <input ref={lotNomRef} type="text" placeholder="Nom" value={lotSaisie.nom}
+            {/* `key` = champs neufs après chaque ajout (cf. lotCle).
+                Ici on ANNOTE les champs et on les met dans un même <form> : c'est
+                la seule façon pour iOS de remplir nom ET téléphone d'un coup.
+                La modale « Ajouter » (une personne) reste volontairement sans
+                annotation — les deux variantes sont livrées ensemble pour que
+                Teddy tranche sur son iPhone. */}
+            <form key={lotCle} onSubmit={e => { e.preventDefault(); verserSaisieDansLot() }} className="space-y-2">
+              <input type="text" placeholder="Nom" value={lotSaisie.nom}
                 onChange={e => setLotSaisie(s => ({ ...s, nom: e.target.value }))}
+                name="name" autoComplete="name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <PhoneInput
+                autoCompleteTel
                 indicatif={lotSaisie.indicatif}
                 telephone={lotSaisie.telephone}
                 onIndicatifChange={v => setLotSaisie(s => ({ ...s, indicatif: v }))}
                 onTelephoneChange={v => setLotSaisie(s => ({ ...s, telephone: v }))}
               />
-            </div>
+            </form>
             <button type="button" onClick={verserSaisieDansLot}
               disabled={!lotSaisie.nom.trim() && !lotSaisie.telephone.trim()}
               className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-semibold transition">
@@ -1140,9 +1216,11 @@ export function ArrivalSection({
             </button>
             <div className="mt-2">
               <LigneAide>
-                Touchez le champ téléphone : iOS propose <strong>« Remplir depuis un contact »</strong>{' '}
-                au-dessus du clavier. Puis « Ajouter à la liste », et on recommence — la liste se
-                construit sans rien taper. Le numéro peut rester vide si vous ne l&apos;avez pas encore.
+                Touchez un champ : iOS propose <strong>« Remplissage auto. »</strong> et vous
+                choisissez un contact. Puis « Ajouter à la liste » — les champs sont
+                <strong> remis à neuf</strong>, donc la proposition revient pour la personne
+                suivante. Si iOS ne remplit qu&apos;un seul champ, touchez l&apos;autre et
+                refaites-le. Le numéro peut rester vide si vous ne l&apos;avez pas encore.
               </LigneAide>
             </div>
           </div>

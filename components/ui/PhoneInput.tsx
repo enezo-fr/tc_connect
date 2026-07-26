@@ -136,6 +136,14 @@ interface PhoneInputProps {
   inputClassName?: string
   selectClassName?: string
   placeholder?: string
+  /**
+   * Annote le champ pour l'autoremplissage (`name="tel" autocomplete="tel"`).
+   * ⚠️ **Opt-in volontaire, JAMAIS par défaut** : posé partout, ça avait fait
+   * disparaître la proposition « Remplir depuis un contact » sur l'iPhone de
+   * Teddy. À n'activer que là où on veut qu'iOS remplisse nom + téléphone
+   * ensemble (le champ doit alors être dans le même `<form>` que le nom).
+   */
+  autoCompleteTel?: boolean
 }
 
 export function PhoneInput({
@@ -145,6 +153,7 @@ export function PhoneInput({
   onTelephoneChange,
   inputClassName,
   placeholder,
+  autoCompleteTel = false,
 }: PhoneInputProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -276,13 +285,15 @@ export function PhoneInput({
         )}
       </div>
 
-      {/* ⚠️ NE PAS ajouter `autoComplete`/`name` ici, et ne pas envelopper ce champ
-          dans un <form> : essayé le 2026-07-26 pour « aider » l'autoremplissage iOS,
-          ça l'a au contraire fait DISPARAÎTRE (Teddy ne pouvait plus pré-remplir
-          depuis un contact). Safari propose « Remplir depuis un contact » tout seul
-          sur un simple `type="tel"` — on ne touche pas. */}
+      {/* ⚠️ Par défaut AUCUNE annotation ici : ajoutée partout le 2026-07-26 pour
+          « aider » l'autoremplissage iOS, elle l'avait fait DISPARAÎTRE. Safari
+          propose « Remplir depuis un contact » tout seul sur un simple `type="tel"`,
+          mais ne remplit alors QUE le champ touché. L'annotation (+ un <form> commun
+          avec le nom) est ce qui permet de remplir les deux d'un coup : réservée aux
+          endroits qui la demandent explicitement, via `autoCompleteTel`. */}
       <input
         type="tel"
+        {...(autoCompleteTel ? { name: 'tel', autoComplete: 'tel' as const } : {})}
         value={telephone}
         onChange={(e) => onTelephoneChange(e.target.value)}
         placeholder={placeholder || '06 12 34 56 78'}
