@@ -24,10 +24,31 @@ export const INDICATIFS = [
 ]
 
 // Drapeau en IMAGE (les emojis-drapeaux ne s'affichent pas sur Windows → « FR » au lieu de 🇫🇷).
-// Fallback : l'emoji si pas d'ISO (code personnalisé).
+//
+// ⚠️ L'image vient d'un CDN externe : elle peut ne jamais arriver (hors-ligne,
+// bloqueur DNS, réseau filtré) et laissait alors une icône « image cassée ».
+// D'où le repli SANS RÉSEAU en cas d'échec : l'emoji là où il s'affiche
+// (iOS/Android/macOS), le code pays en lettres sur Windows.
+const emojiDrapeauRendu = () =>
+  typeof navigator === 'undefined' || !/Windows/i.test(navigator.userAgent)
+
 function Flag({ iso, emoji, className = 'w-5 h-auto rounded-sm' }: { iso?: string; emoji: string; className?: string }) {
-  if (!iso) return <span className="text-lg leading-none">{emoji}</span>
-  return <img src={`https://flagcdn.com/${iso}.svg`} alt={emoji} className={className} loading="lazy" />
+  const [echec, setEchec] = useState(false)
+
+  if (!iso || echec) {
+    if (iso && !emojiDrapeauRendu()) {
+      return (
+        <span className="text-[10px] font-semibold tracking-wide text-gray-500 bg-gray-100 rounded px-1 py-0.5 leading-none">
+          {iso.toUpperCase()}
+        </span>
+      )
+    }
+    return <span className="text-lg leading-none">{emoji}</span>
+  }
+  return (
+    <img src={`https://flagcdn.com/${iso}.svg`} alt={emoji} className={className} loading="lazy"
+      onError={() => setEchec(true)} />
+  )
 }
 
 export function buildWhatsAppUrl(indicatif: string, telephone: string, message?: string): string {

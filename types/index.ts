@@ -1311,6 +1311,13 @@ export interface Bebe {
   birthTime?: string
   /** Modèles de message d'annonce, assignables aux contacts */
   arrivalTemplates?: ArrivalTemplate[]
+  /**
+   * Photo jointe à l'annonce (URL Firebase Storage).
+   * ⚠️ Elle ne peut partir QUE par la feuille de partage du téléphone
+   * (`navigator.share` avec fichier) : un lien `sms:` ou `wa.me?text=` ne
+   * transporte que du texte, aucune pièce jointe.
+   */
+  annoncePhotoUrl?: string
 
   /** Valeurs pré-sélectionnées dans les modales de saisie (propres à ce bébé) */
   defauts?: BebeDefauts

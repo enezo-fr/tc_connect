@@ -1,13 +1,17 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Plus, Pencil, Trash2, MessageSquare, Send, Weight, Ruler, Clock, Baby as BabyIcon, Tag,
   CheckCircle2, RotateCcw, Copy, Check, Share2, Users, User, BookUser, CopyPlus,
+  ImagePlus, Camera, X,
 } from 'lucide-react'
 import { Timestamp } from 'firebase/firestore'
 import Modal from '@/components/ui/Modal'
+import { NoteAide, LigneAide } from '@/components/ui/NoteAide'
 import { copyText } from '@/lib/clipboard'
+import { useAuth } from '@/context/AuthContext'
+import { uploadImage, deleteImage } from '@/lib/uploadImage'
 import {
   PhoneInput, buildWhatsAppUrl, carnetDisponible, choisirDansCarnet, separerIndicatif,
 } from '@/components/ui/PhoneInput'
@@ -116,6 +120,7 @@ export function ArrivalSection({
   baby: Bebe
   updateBebe: (id: string, data: Partial<Omit<Bebe, 'id'>>) => Promise<void>
 }) {
+  const { currentUser } = useAuth()
   const { contacts, addContact, updateContact, deleteContact } = useBebeContacts(baby.id)
   const templates = baby.arrivalTemplates ?? []
 
@@ -212,8 +217,67 @@ export function ArrivalSection({
 
   const peutPartager = typeof navigator !== 'undefined' && 'share' in navigator
 
-  const partager = async (texte: string) => {
-    try { await navigator.share({ text: texte }) } catch { /* partage annulé */ }
+  // ── Photo du faire-part ────────────────────────────────────────────────────
+  const [photoEnCours, setPhotoEnCours] = useState(false)
+  const [fichierPhoto, setFichierPhoto] = useState<File | null>(null)
+
+  /**
+   * La photo est téléchargée À L'AVANCE en `File`.
+   *
+   * ⚠️ Indispensable : `navigator.share` exige d'être appelé dans la foulée du
+   * geste de l'utilisateur. Un `await fetch(...)` avant l'appel fait perdre ce
+   * geste sur iOS et le partage est refusé — d'où le pré-chargement ici.
+   */
+  useEffect(() => {
+    const url = baby.annoncePhotoUrl
+    if (!url) { setFichierPhoto(null); return }
+    let annule = false
+    ;(async () => {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return
+        const blob = await res.blob()
+        const type = blob.type || 'image/jpeg'
+        const ext = type.split('/')[1] || 'jpg'
+        if (!annule) setFichierPhoto(new File([blob], `${baby.name || 'bebe'}.${ext}`, { type }))
+      } catch { /* photo indisponible : on partagera le texte seul */ }
+    })()
+    return () => { annule = true }
+  }, [baby.annoncePhotoUrl, baby.name])
+
+  const photoPartageable = !!fichierPhoto
+    && typeof navigator !== 'undefined'
+    && !!navigator.canShare?.({ files: [fichierPhoto] })
+
+  const choisirPhotoAnnonce = async (file: File) => {
+    if (!currentUser) return
+    setPhotoEnCours(true)
+    try {
+      const ancienne = baby.annoncePhotoUrl
+      const url = await uploadImage(file, `users/${currentUser.uid}/bebe_photos/annonce_${Date.now()}_${file.name}`)
+      await updateBebe(baby.id, { annoncePhotoUrl: url })
+      // On ne supprime pas la photo du bébé : elle sert ailleurs (fiche, en-tête)
+      if (ancienne && ancienne !== baby.photoUrl) await deleteImage(ancienne)
+    } finally { setPhotoEnCours(false) }
+  }
+
+  const reprendrePhotoBebe = () => updateBebe(baby.id, { annoncePhotoUrl: baby.photoUrl })
+
+  const retirerPhotoAnnonce = async () => {
+    const ancienne = baby.annoncePhotoUrl
+    await updateBebe(baby.id, { annoncePhotoUrl: '' })
+    if (ancienne && ancienne !== baby.photoUrl) await deleteImage(ancienne)
+  }
+
+  /**
+   * Partage natif : la feuille de partage du téléphone est le SEUL canal qui
+   * emporte la photo avec le texte. Appel sans `await` préalable (cf. plus haut).
+   */
+  const partager = (texte: string) => {
+    const contenu = photoPartageable && fichierPhoto
+      ? { text: texte, files: [fichierPhoto] }
+      : { text: texte }
+    navigator.share(contenu).catch(() => { /* partage annulé */ })
   }
 
   /**
@@ -323,6 +387,39 @@ export function ArrivalSection({
   return (
     <div className="space-y-5">
 
+      {/* Mode d'emploi — replié par défaut */}
+      <NoteAide titre="Comment fonctionne l'annonce d'arrivée ?">
+        <p>
+          <strong>1. Infos de naissance.</strong> Sexe, poids, taille et heure remplissent
+          automatiquement les messages : vous les saisissez une fois ici, jamais dans le texte.
+        </p>
+        <p>
+          <strong>2. Modèles de message.</strong> Un modèle par public (Famille, Amis…).
+          Dans le texte, les étiquettes <span className="font-mono text-[11px]">{'{prenom}'}</span>,{' '}
+          <span className="font-mono text-[11px]">{'{poids}'}</span>… sont remplacées par les vraies
+          valeurs. Chaque modèle s&apos;adresse soit à <strong>une personne</strong> (SMS/WhatsApp
+          au numéro), soit à <strong>un groupe</strong> (Messenger/WhatsApp, sans numéro).
+          Le bouton <strong>dupliquer</strong> permet d&apos;écrire « Amis » à partir de « Famille ».
+        </p>
+        <p>
+          <strong>3. Photo.</strong> Elle ne peut partir que par le bouton <strong>Partager</strong>,
+          qui ouvre la fenêtre de partage du téléphone (WhatsApp, Messages, Messenger, mail…) avec
+          la photo ET le texte. Les boutons SMS et WhatsApp, eux, marchent avec un lien : un lien ne
+          transporte que du texte, jamais d&apos;image. Ce n&apos;est pas un réglage, c&apos;est une
+          limite d&apos;Apple et de WhatsApp.
+        </p>
+        <p>
+          <strong>4. Personnes à prévenir.</strong> Chaque personne reçoit le modèle qui lui est
+          associé. « Envoyer » ouvre la conversation avec le message déjà écrit, modifiable avant
+          envoi, puis marque la personne comme prévenue — d&apos;où le compteur « x/y envoyés »
+          et le filtre « À envoyer », pour ne perdre personne.
+        </p>
+        <p>
+          <strong>5. Envois qu&apos;on ne peut pas détecter</strong> (texte collé dans un groupe,
+          message par un autre canal) : marquez-les à la main avec « Marquer comme envoyé ».
+        </p>
+      </NoteAide>
+
       {/* Infos de naissance */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="flex items-center justify-between mb-3">
@@ -339,6 +436,52 @@ export function ArrivalSection({
           <InfoCell icon={Ruler}    label="Taille" value={baby.birthHeightCm ? `${baby.birthHeightCm} cm` : '—'} />
           <InfoCell icon={Clock}    label="Heure" value={baby.birthTime || '—'} />
         </div>
+
+        {/* Photo du faire-part — partagée avec le texte via la feuille de partage */}
+        <div className="mt-4 pt-4 border-t border-dashed border-gray-100 flex items-start gap-3">
+          <label className={`relative shrink-0 ${photoEnCours ? 'opacity-60' : 'cursor-pointer'}`}>
+            <div className="w-20 h-20 rounded-xl overflow-hidden bg-sky-50 border border-gray-100 flex items-center justify-center">
+              {baby.annoncePhotoUrl
+                ? <img src={baby.annoncePhotoUrl} alt="Photo du faire-part" className="w-full h-full object-cover" />
+                : <ImagePlus size={22} className="text-sky-400" />}
+            </div>
+            <span className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-md">
+              <Camera size={13} />
+            </span>
+            <input type="file" accept="image/*" className="hidden" disabled={photoEnCours}
+              onChange={e => { const f = e.target.files?.[0]; if (f) choisirPhotoAnnonce(f); e.target.value = '' }} />
+          </label>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-800">Photo du faire-part</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {photoEnCours
+                ? 'Envoi de la photo…'
+                : baby.annoncePhotoUrl
+                  ? 'Elle part avec le bouton « Partager » (les liens SMS et WhatsApp ne peuvent pas emporter d’image).'
+                  : 'Ajoutez-la pour l’envoyer avec le message via « Partager ».'}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {!baby.annoncePhotoUrl && baby.photoUrl && (
+                <button onClick={reprendrePhotoBebe}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 transition">
+                  Reprendre la photo du bébé
+                </button>
+              )}
+              {baby.annoncePhotoUrl && (
+                <button onClick={retirerPhotoAnnonce}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600 transition">
+                  <X size={12} />Retirer la photo
+                </button>
+              )}
+            </div>
+            {baby.annoncePhotoUrl && !photoPartageable && (
+              <p className="text-[11px] text-amber-600 mt-1.5">
+                Ce navigateur ne sait pas partager de fichier : le texte partira seul.
+                Depuis l&apos;iPhone, ça fonctionne.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Modèles de message */}
@@ -348,6 +491,14 @@ export function ArrivalSection({
           <button onClick={openNewTpl} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition">
             <Plus size={14} /> Nouveau
           </button>
+        </div>
+        <div className="mb-2">
+          <LigneAide>
+            Les étiquettes du texte (<span className="font-mono">{'{prenom}'}</span>,{' '}
+            <span className="font-mono">{'{poids}'}</span>…) sont remplacées par les infos de naissance.
+            Un modèle <strong>Personne</strong> s&apos;envoie au numéro ; un modèle <strong>Groupe</strong>
+            {' '}ouvre WhatsApp ou Messenger pour choisir la conversation.
+          </LigneAide>
         </div>
         {templates.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
@@ -401,12 +552,19 @@ export function ArrivalSection({
                       className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 bg-[#0084FF] hover:bg-[#0072dd] text-white py-2 rounded-xl text-sm font-medium transition">
                       {copie === `msg-${t.id}` ? <><Check size={15} />Texte copié</> : <><MessageSquare size={15} />Messenger</>}
                     </button>
+                    {photoPartageable && (
+                      <button onClick={() => partager(resolveMessage(t.body, baby))}
+                        className="flex-1 min-w-[8rem] flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
+                        <Share2 size={15} />Partager + photo
+                      </button>
+                    )}
                   </div>
                 )}
                 {t.groupe && (
                   <p className="text-[11px] text-gray-400 mt-1.5">
                     WhatsApp s&apos;ouvre avec le texte prêt, vous choisissez le groupe. Messenger
                     n&apos;accepte pas de texte pré-rempli : il est copié, il n&apos;y a plus qu&apos;à coller.
+                    {photoPartageable && ' Pour envoyer la photo, passez par « Partager + photo ».'}
                   </p>
                 )}
               </div>
@@ -424,6 +582,13 @@ export function ArrivalSection({
           <button onClick={openNewCt} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition">
             <Plus size={14} /> Ajouter
           </button>
+        </div>
+        <div className="mb-2">
+          <LigneAide>
+            « Envoyer » ouvre la conversation avec le message déjà écrit (modifiable avant envoi),
+            puis coche la personne comme prévenue — le compteur et le filtre « À envoyer » évitent
+            d&apos;oublier quelqu&apos;un.
+          </LigneAide>
         </div>
 
         {/* Filtres */}
@@ -612,22 +777,28 @@ export function ArrivalSection({
               <BookUser size={16} />Choisir dans mes contacts
             </button>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-            <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
-              onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
-              autoComplete="name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-            <PhoneInput
-              indicatif={ctForm.indicatif}
-              telephone={ctForm.telephone}
-              onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
-              onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
-            />
-          </div>
+          {/* Les deux champs dans un vrai <form> : c'est ce qui permet à iOS de
+              proposer « Remplir depuis un contact » au-dessus du clavier, faute
+              d'accès direct au carnet d'adresses. Boutons laissés HORS du form
+              pour qu'aucun clic ne le soumette. */}
+          <form onSubmit={e => e.preventDefault()} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+              <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
+                onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
+                name="name" autoComplete="name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <PhoneInput
+                indicatif={ctForm.indicatif}
+                telephone={ctForm.telephone}
+                onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
+                onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
+              />
+            </div>
+          </form>
           {templates.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modèle de message</label>
@@ -683,8 +854,10 @@ export function ArrivalSection({
               </button>
               {peutPartager && (
                 <button onClick={() => partager(sendText)}
-                  className="flex-1 flex items-center justify-center gap-2 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
-                  <Share2 size={16} />Partager
+                  className={`flex-1 flex items-center justify-center gap-2 border py-2.5 rounded-xl text-sm font-medium transition ${
+                    photoPartageable ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}>
+                  <Share2 size={16} />{photoPartageable ? 'Partager + photo' : 'Partager'}
                 </button>
               )}
             </div>
@@ -695,7 +868,8 @@ export function ArrivalSection({
               </button>
             )}
             <p className="text-[11px] text-gray-400 text-center">
-              SMS / WhatsApp ouvrent la conversation avec le message pré-rempli.
+              SMS / WhatsApp ouvrent la conversation avec le message pré-rempli, mais ne peuvent pas
+              emporter la photo{photoPartageable ? ' : pour l’envoyer, passez par « Partager + photo »' : ''}.
               « Copier » sert pour un groupe (Messenger, WhatsApp…) : l&apos;envoi n&apos;étant pas
               détectable, marquez-le à la main.
             </p>
