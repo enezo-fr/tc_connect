@@ -41,7 +41,7 @@ const PERIOD_LABEL: Record<StoreApp["periodicite"], string> = {
 };
 
 const COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
-const EMOJIS = ["🃏", "📊", "🏃", "💪", "🧠", "🎯", "📅", "📆", "⚡", "🔥", "🏆", "📱", "🎮", "🚴", "🍼", "📋"];
+const EMOJIS = ["🃏", "📊", "🏃", "💪", "🧠", "🎯", "📅", "📆", "⚡", "🔥", "🏆", "📱", "🎮", "🚴", "🍼", "📋", "🍻", "🍺", "👥", "🥂"];
 
 function toDateStr(ts?: { seconds: number } | null) {
   if (!ts) return "";
