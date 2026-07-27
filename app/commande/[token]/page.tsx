@@ -9,8 +9,10 @@ import {
 import Modal from '@/components/ui/Modal'
 import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/AjoutBoissonModal'
 import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
+import { MoiPicker } from '@/components/commandes/MoiPicker'
+import { LA_TABLE, lireMoi, ecrireMoi, suivreMoi } from '@/lib/commandeMoi'
 import type { Commande, LigneCommande } from '@/types'
-import { Plus, Trash2, Beer, ClipboardList, Users, Wallet, Check, Minus, Pencil } from 'lucide-react'
+import { Plus, Trash2, Beer, ClipboardList, Users, Wallet, Check, Minus, Pencil, UserRound } from 'lucide-react'
 
 const idLigne = () =>
   (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -103,6 +105,33 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
     })
   }
 
+  // ── Qui suis-je ─────────────────────────────────────────────────────────────
+  //
+  // Chacun arrive ici avec SON téléphone : on demande son prénom une fois (à la
+  // première ouverture), on le retient localement, et ses boissons sont ensuite
+  // pré-affectées. C'est ce qui permet à toute la tablée de saisir en parallèle.
+  const [moi, setMoi] = useState<string | null>(null)
+  const [moiOuvert, setMoiOuvert] = useState(false)
+  const [premiereFois, setPremiereFois] = useState(false)
+  const moiDemande = useRef(false)
+
+  useEffect(() => {
+    if (!cmd || moiDemande.current) return
+    moiDemande.current = true
+    const { repondu, nom } = lireMoi(cmd.id)
+    setMoi(nom)
+    if (!repondu) { setPremiereFois(true); modalRef.current = true; setMoiOuvert(true) }
+  }, [cmd])
+
+  const choisirMoi = (nom: string | null) => { ecrireMoi(cmd?.id, nom); setMoi(nom) }
+  const fermerMoi = () => { modalRef.current = false; setPremiereFois(false); setMoiOuvert(false) }
+
+  /** Un invité absent de la liste s'ajoute lui-même à la tablée. */
+  const ajouterPersonne = (nom: string) => {
+    if (!cmd || cmd.participants.some((p) => p.trim().toLowerCase() === nom.toLowerCase())) return
+    persist({ ...cmd, participants: [...cmd.participants, nom] })
+  }
+
   // ── Ajout / édition d'une boisson ─────────────────────────────────────────
   const [ajoutPour, setAjoutPour] = useState<string | null>(null)
   const [ligneEdit, setLigneEdit] = useState<LigneCommande | null>(null)
@@ -140,6 +169,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
         if (l.id !== id) return l
         const nl: LigneCommande = { ...l, boisson: b.boisson, quantite: b.quantite }
         if (b.prix != null) nl.prix = b.prix; else delete nl.prix
+        if (b.pour) nl.pour = b.pour; else delete nl.pour
         return nl
       })
       setLigneEdit(null)
@@ -147,7 +177,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
       const t = typeof tourneeVue === 'number' ? tourneeVue : tourneeCouranteDe(cmd as unknown as Commande)
       const ligne: LigneCommande = { id: idLigne(), boisson: b.boisson, quantite: b.quantite, tournee: t }
       if (b.prix != null) ligne.prix = b.prix
-      if (ajoutPour && ajoutPour !== 'La table') ligne.pour = ajoutPour
+      if (b.pour) ligne.pour = b.pour
       lignes = [...lignes, ligne]
       setAjoutPour(null)
     }
@@ -180,6 +210,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const enregistrerInfos = (r: InfosResult) => {
     if (!cmd) return
     modalRef.current = false
+    setMoi(suivreMoi(cmd.id, r.renames, r.removed))
     persist({
       ...cmd, lieu: r.lieu, date: r.date, participants: r.participants,
       lignes: remapLignesParticipants(cmd.lignes, r.renames, r.removed),
@@ -211,7 +242,7 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
   const addition = additionParPersonne(cmd as unknown as Commande)
   const total = totalCommande(cmd as unknown as Commande)
   const partiel = totalPartiel(cmd as unknown as Commande)
-  const colonnes = ['La table', ...cmd.participants]
+  const colonnes = [LA_TABLE, ...cmd.participants]
   const nbT = nbTournees(cmd as unknown as Commande)
   const round: number | 'all' = tourneeVue == null ? tourneeCouranteDe(cmd as unknown as Commande) : tourneeVue
   const toutes = round === 'all'
@@ -237,6 +268,13 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
               {' · '}{nbVerres(cmd as unknown as Commande)} verre{nbVerres(cmd as unknown as Commande) > 1 ? 's' : ''}
               {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
             </p>
+            {/* Qui tient ce téléphone — demandé à la première ouverture, changeable ici */}
+            <button onClick={() => { modalRef.current = true; setMoiOuvert(true) }}
+              className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                moi ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' : 'border-dashed border-gray-300 text-gray-500 hover:border-sky-300 hover:text-sky-600'
+              }`}>
+              <UserRound size={13} />{moi ? `Moi · ${moi}` : 'Dire qui je suis'}
+            </button>
           </div>
           <button onClick={() => persist({ ...cmd, terminee: !cmd.terminee })}
             className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition shrink-0">
@@ -302,13 +340,23 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
         {/* Vue TABLE (tournée sélectionnée) */}
         {vue === 'table' && (
           <div className="space-y-3">
+            {/* Chemin court : chacun ajoute ce qu'il boit sans chercher sa carte */}
+            {moi && (
+              <button onClick={() => openAjout(moi)}
+                className="w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-sm transition active:scale-[0.99]">
+                <Plus size={16} />Ajouter ma boisson
+              </button>
+            )}
             {colonnes.map((p) => {
-              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || 'La table') === p && (toutes || numeroTournee(l) === round))
+              const lignes = cmd.lignes.filter((l) => (l.pour?.trim() || LA_TABLE) === p && (toutes || numeroTournee(l) === round))
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
+              const estMoi = !!moi && p === moi
               return (
-                <div key={p} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="px-4 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-800">{p}</p>
+                <div key={p} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${estMoi ? 'border-sky-300 ring-1 ring-sky-100' : 'border-gray-100'}`}>
+                  <div className={`px-4 py-2.5 flex items-center justify-between gap-2 ${estMoi ? 'bg-sky-50/70' : 'bg-gray-50/70'}`}>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {p}{estMoi && <span className="ml-1.5 text-xs font-medium text-sky-600">moi</span>}
+                    </p>
                     <span className="text-xs text-gray-500">
                       {lignes.reduce((s, l) => s + l.quantite, 0)} verre(s)
                       {sous > 0 && ` · ${euros(sous)}`}
@@ -430,9 +478,13 @@ export default function CommandePubliquePage({ params }: { params: Promise<{ tok
 
       {/* Ajout d'une boisson (contenance + nom) */}
       <AjoutBoissonModal isOpen={!!ajoutPour || !!ligneEdit} onClose={closeBoisson} pour={ajoutPour}
-        boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite } : null}
+        participants={cmd.participants} boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
+        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite, pour: ligneEdit.pour ?? null } : null}
         prixConnu={(b) => (cmd ? (barPrix[b.trim().toLowerCase()] ?? prixConnus([cmd as unknown as Commande], b)) : null)} onAdd={handleBoisson} />
+
+      {/* Qui êtes-vous ? — posé d'office à la première ouverture du lien */}
+      <MoiPicker isOpen={moiOuvert} onClose={fermerMoi} participants={cmd.participants}
+        moi={moi} onChoisir={choisirMoi} onAjouterPersonne={ajouterPersonne} premiere={premiereFois} />
 
       <InfosCommandeModal isOpen={infosOuvert} onClose={() => { modalRef.current = false; setInfosOuvert(false) }}
         initial={{ lieu: cmd.lieu, date: cmd.date, participants: cmd.participants }}

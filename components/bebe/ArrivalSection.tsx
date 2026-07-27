@@ -119,6 +119,26 @@ interface PersonneCollee { nom: string; indicatif: string; telephone: string }
 /** Chiffres seuls, pour comparer deux écritures d'un même numéro. */
 const chiffres = (s: string) => s.replace(/\D/g, '')
 
+// ─── Nom : deux champs à la saisie, une seule chaîne en base ──────────────────
+//
+// ⚠️ L'autoremplissage iOS ne connaît que des RÔLES de champ (`given-name`,
+// `family-name`, `tel`). Devant un champ unique intitulé « Nom », il n'y verse
+// que le NOM DE FAMILLE et ignore le reste du contact. Pour qu'il remplisse
+// prénom + nom + téléphone d'un seul geste, il faut les trois champs annotés
+// DANS LE MÊME `<form>` — d'où la saisie en deux champs. Le modèle
+// (`BebeContact.name`) garde une seule chaîne : on rejoint à l'enregistrement.
+
+/** « Paul » + « Durand » → « Paul Durand » (un seul des deux suffit). */
+const nomComplet = (prenom: string, nom: string) =>
+  [prenom.trim(), nom.trim()].filter(Boolean).join(' ')
+
+/** Découpe inverse pour rouvrir une fiche : 1er mot = prénom, le reste = nom. */
+const separerNomComplet = (valeur: string) => {
+  const t = (valeur || '').trim()
+  const i = t.indexOf(' ')
+  return i === -1 ? { prenom: t, nom: '' } : { prenom: t.slice(0, i), nom: t.slice(i + 1).trim() }
+}
+
 /**
  * Analyse un collage « une personne par ligne » (Contacts, tableur, message…).
  *
@@ -372,16 +392,18 @@ export function ArrivalSection({
 
   // ── Contacts ────────────────────────────────────────────────────────────────
   const [ctModal, setCtModal] = useState<{ open: boolean; editing: BebeContact | null }>({ open: false, editing: null })
-  const [ctForm, setCtForm] = useState({ name: '', indicatif: '+33', telephone: '', templateId: '' })
+  // `prenom` + `nom` à la saisie (autoremplissage iOS), rejoints en un seul `name` en base.
+  const [ctForm, setCtForm] = useState({ prenom: '', nom: '', indicatif: '+33', telephone: '', templateId: '' })
   const [savingCt, setSavingCt] = useState(false)
   const [deleteCt, setDeleteCt] = useState<string | null>(null)
+  const ctNom = nomComplet(ctForm.prenom, ctForm.nom)
 
   const openNewCt = () => {
-    setCtForm({ name: '', indicatif: '+33', telephone: '', templateId: templates[0]?.id ?? '' })
+    setCtForm({ prenom: '', nom: '', indicatif: '+33', telephone: '', templateId: templates[0]?.id ?? '' })
     setCtModal({ open: true, editing: null })
   }
   const openEditCt = (c: BebeContact) => {
-    setCtForm({ name: c.name, indicatif: c.indicatif || '+33', telephone: c.telephone, templateId: c.templateId ?? '' })
+    setCtForm({ ...separerNomComplet(c.name), indicatif: c.indicatif || '+33', telephone: c.telephone, templateId: c.templateId ?? '' })
     setCtModal({ open: true, editing: c })
   }
 
@@ -391,9 +413,11 @@ export function ArrivalSection({
     if (!c) return
     setCtForm(f => {
       const tel = c.tel ? separerIndicatif(c.tel, f.indicatif) : null
+      const decoupe = c.nom?.trim() ? separerNomComplet(c.nom) : null
       return {
         ...f,
-        name: c.nom?.trim() || f.name,
+        prenom: decoupe?.prenom ?? f.prenom,
+        nom: decoupe?.nom ?? f.nom,
         indicatif: tel?.indicatif ?? f.indicatif,
         telephone: tel?.telephone ?? f.telephone,
       }
@@ -410,7 +434,7 @@ export function ArrivalSection({
   // tout d'un coup. Le collage reste là en second, pour une liste déjà écrite.
   const [lotOuvert, setLotOuvert] = useState(false)
   const [lotListe, setLotListe] = useState<PersonneCollee[]>([])
-  const [lotSaisie, setLotSaisie] = useState({ nom: '', indicatif: '+33', telephone: '' })
+  const [lotSaisie, setLotSaisie] = useState({ prenom: '', nom: '', indicatif: '+33', telephone: '' })
   const [lotTemplateId, setLotTemplateId] = useState('')
   const [lotEnCours, setLotEnCours] = useState(false)
   const [lotColleOuvert, setLotColleOuvert] = useState(false)
@@ -428,7 +452,7 @@ export function ArrivalSection({
 
   const openLot = () => {
     setLotListe([])
-    setLotSaisie({ nom: '', indicatif: '+33', telephone: '' })
+    setLotSaisie({ prenom: '', nom: '', indicatif: '+33', telephone: '' })
     setLotTemplateId(templates[0]?.id ?? '')
     setLotColleOuvert(false)
     setLotTexte('')
@@ -454,7 +478,7 @@ export function ArrivalSection({
   /** Valide la saisie courante et la verse dans la liste, prête pour la suivante. */
   const verserSaisieDansLot = () => {
     const telephone = lotSaisie.telephone.trim()
-    const nom = lotSaisie.nom.trim()
+    const nom = nomComplet(lotSaisie.prenom, lotSaisie.nom)
     // Le numéro peut manquer (on l'attend), mais il faut au moins de quoi nommer la personne
     if (!nom && !telephone) return
     const p: PersonneCollee = { nom: nom || telephone, indicatif: lotSaisie.indicatif || '+33', telephone }
@@ -463,7 +487,7 @@ export function ArrivalSection({
       return
     }
     setLotListe(l => [...l, p])
-    setLotSaisie(s => ({ nom: '', indicatif: s.indicatif, telephone: '' }))
+    setLotSaisie(s => ({ prenom: '', nom: '', indicatif: s.indicatif, telephone: '' }))
     setLotInfo(null)
     setLotCle(k => k + 1) // champs neufs = iOS repropose le remplissage auto
   }
@@ -523,11 +547,11 @@ export function ArrivalSection({
 
   const saveCt = async () => {
     // Numéro facultatif : on enregistre une personne « en attente de numéro »
-    if (!ctForm.name.trim()) return
+    if (!ctNom) return
     setSavingCt(true)
     try {
       const data = {
-        name: ctForm.name.trim(),
+        name: ctNom,
         indicatif: ctForm.indicatif || '+33',
         telephone: ctForm.telephone.trim(),
         templateId: ctForm.templateId || undefined,
@@ -611,8 +635,9 @@ export function ArrivalSection({
           envoi, puis marque la personne comme prévenue — d&apos;où le compteur « x/y envoyés »
           et le filtre « À envoyer », pour ne perdre personne. Le bouton <strong>Plusieurs</strong>
           {' '}sert à remplir une liste d&apos;un coup : pour chaque personne, touchez le champ
-          téléphone et laissez iOS proposer <strong>« Remplir depuis un contact »</strong>, puis
-          « Ajouter à la liste » — et un seul modèle s&apos;applique à toute la liste.
+          <strong> Prénom</strong> et laissez iOS proposer <strong>« Remplissage auto. »</strong>
+          {' '}— prénom, nom et numéro arrivent ensemble — puis « Ajouter à la liste ». Un seul
+          modèle s&apos;applique à toute la liste.
           {' '}Une personne peut être enregistrée <strong>sans numéro</strong> (« Numéro à
           compléter ») : l&apos;envoi se débloque dès que vous l&apos;ajoutez.
           {' '}<span className="text-sky-900/60">
@@ -1069,29 +1094,51 @@ export function ArrivalSection({
               <BookUser size={16} />Choisir dans mes contacts
             </button>
           )}
-          {/* ⚠️ Pas de <form> autour de ces champs : l'ajouter a fait disparaître
-              l'autoremplissage iOS « Remplir depuis un contact » (cf. PhoneInput). */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-            <input type="text" placeholder="Mamie, Tonton Paul…" value={ctForm.name}
-              onChange={e => setCtForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Téléphone <span className="text-gray-400 font-normal">(facultatif)</span>
-            </label>
-            <PhoneInput
-              indicatif={ctForm.indicatif}
-              telephone={ctForm.telephone}
-              onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
-              onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Laissez vide si vous ne l&apos;avez pas encore : la personne est enregistrée,
-              l&apos;envoi se débloquera une fois le numéro ajouté.
-            </p>
-          </div>
+          {/* ⚠️ Prénom + nom + téléphone ANNOTÉS dans un même <form> : c'est le seul
+              montage qu'iOS remplit d'un coup. Devant un champ « Nom » unique, il ne
+              versait que le nom de famille et laissait le numéro vide. Le bouton
+              d'enregistrement reste HORS du formulaire (pas de soumission parasite). */}
+          <form onSubmit={e => e.preventDefault()} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                <input type="text" placeholder="Mamie, Paul…" value={ctForm.prenom}
+                  onChange={e => setCtForm(f => ({ ...f, prenom: e.target.value }))}
+                  name="given-name" autoComplete="given-name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom <span className="text-gray-400 font-normal">(facultatif)</span>
+                </label>
+                <input type="text" placeholder="Durand" value={ctForm.nom}
+                  onChange={e => setCtForm(f => ({ ...f, nom: e.target.value }))}
+                  name="family-name" autoComplete="family-name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Téléphone <span className="text-gray-400 font-normal">(facultatif)</span>
+              </label>
+              <PhoneInput
+                autoCompleteTel
+                indicatif={ctForm.indicatif}
+                telephone={ctForm.telephone}
+                onIndicatifChange={v => setCtForm(f => ({ ...f, indicatif: v }))}
+                onTelephoneChange={v => setCtForm(f => ({ ...f, telephone: v }))}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Laissez vide si vous ne l&apos;avez pas encore : la personne est enregistrée,
+                l&apos;envoi se débloquera une fois le numéro ajouté.
+              </p>
+            </div>
+          </form>
+          <LigneAide>
+            Touchez le <strong>Prénom</strong> et laissez iOS proposer
+            {' '}<strong>« Remplissage auto. »</strong> : prénom, nom et numéro se remplissent
+            ensemble depuis le contact choisi.
+          </LigneAide>
           {templates.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modèle de message</label>
@@ -1105,7 +1152,7 @@ export function ArrivalSection({
             </div>
           )}
           <FooterBtns onCancel={() => setCtModal({ open: false, editing: null })} onSave={saveCt} saving={savingCt}
-            disabled={!ctForm.name.trim()} label={ctModal.editing ? 'Enregistrer' : 'Ajouter'} />
+            disabled={!ctNom} label={ctModal.editing ? 'Enregistrer' : 'Ajouter'} />
         </div>
       </Modal>
 
@@ -1191,16 +1238,20 @@ export function ArrivalSection({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Personne à ajouter</label>
             {/* `key` = champs neufs après chaque ajout (cf. lotCle).
-                Ici on ANNOTE les champs et on les met dans un même <form> : c'est
-                la seule façon pour iOS de remplir nom ET téléphone d'un coup.
-                La modale « Ajouter » (une personne) reste volontairement sans
-                annotation — les deux variantes sont livrées ensemble pour que
-                Teddy tranche sur son iPhone. */}
+                Prénom / nom / téléphone annotés dans un même <form> : c'est la seule
+                façon pour iOS de remplir les trois d'un coup (un champ « Nom » seul
+                ne reçoit que le nom de famille, sans le numéro). */}
             <form key={lotCle} onSubmit={e => { e.preventDefault(); verserSaisieDansLot() }} className="space-y-2">
-              <input type="text" placeholder="Nom" value={lotSaisie.nom}
-                onChange={e => setLotSaisie(s => ({ ...s, nom: e.target.value }))}
-                name="name" autoComplete="name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" placeholder="Prénom" value={lotSaisie.prenom}
+                  onChange={e => setLotSaisie(s => ({ ...s, prenom: e.target.value }))}
+                  name="given-name" autoComplete="given-name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" placeholder="Nom" value={lotSaisie.nom}
+                  onChange={e => setLotSaisie(s => ({ ...s, nom: e.target.value }))}
+                  name="family-name" autoComplete="family-name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
               <PhoneInput
                 autoCompleteTel
                 indicatif={lotSaisie.indicatif}
@@ -1210,17 +1261,17 @@ export function ArrivalSection({
               />
             </form>
             <button type="button" onClick={verserSaisieDansLot}
-              disabled={!lotSaisie.nom.trim() && !lotSaisie.telephone.trim()}
+              disabled={!nomComplet(lotSaisie.prenom, lotSaisie.nom) && !lotSaisie.telephone.trim()}
               className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-2.5 rounded-xl text-sm font-semibold transition">
               <Plus size={16} />Ajouter à la liste
             </button>
             <div className="mt-2">
               <LigneAide>
-                Touchez un champ : iOS propose <strong>« Remplissage auto. »</strong> et vous
-                choisissez un contact. Puis « Ajouter à la liste » — les champs sont
-                <strong> remis à neuf</strong>, donc la proposition revient pour la personne
-                suivante. Si iOS ne remplit qu&apos;un seul champ, touchez l&apos;autre et
-                refaites-le. Le numéro peut rester vide si vous ne l&apos;avez pas encore.
+                Touchez le <strong>Prénom</strong> : iOS propose
+                {' '}<strong>« Remplissage auto. »</strong> et remplit prénom, nom et numéro
+                d&apos;un coup avec le contact choisi. Puis « Ajouter à la liste » — les champs
+                sont <strong>remis à neuf</strong>, donc la proposition revient pour la personne
+                suivante. Le numéro peut rester vide si vous ne l&apos;avez pas encore.
               </LigneAide>
             </div>
           </div>

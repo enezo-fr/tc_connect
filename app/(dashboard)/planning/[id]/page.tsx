@@ -21,6 +21,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { formatDate, formatHeure } from '@/lib/planningUtils'
 import { useAuth } from '@/context/AuthContext'
+import { useBrand } from '@/context/BrandContext'
+import { publicLinkOrigin } from '@/lib/brand'
 import { useClients } from '@/hooks/useClients'
 import type { Client, PainPoint } from '@/types'
 import ClientEditModal from '@/components/ui/ClientEditModal'
@@ -179,6 +181,7 @@ export default function DetailPlanningPage({ params }: { params: Promise<{ id: s
   const searchParams = useSearchParams()
   const backDate = searchParams.get('date')
   const { currentUser, userProfile } = useAuth()
+  const { brand } = useBrand() // espace actif (sélecteur) → domaine des liens envoyés au client
   const isAdmin = userProfile?.role_app === 'Admin'
   const droits = userProfile?.droits
   const { plannings, updatePlanning, deletePlanning } = usePlanning()
@@ -836,7 +839,11 @@ export default function DetailPlanningPage({ params }: { params: Promise<{ id: s
     let message = `Bonjour,\n\nRappel de ton rendez-vous aujourd'hui${heure ? ` à ${heure}` : ''}.`
     if (adresse) message += `\nLieu de séance : ${adresse}.`
     if (isSeance) {
-      const lien = `${window.location.origin}/questionnaire/${id}`
+      // Le lien part chez le client : il doit porter le domaine de l'ESPACE ACTIF
+      // (sélecteur de marque), pas celui depuis lequel on navigue. Enezo → app.enezo.fr,
+      // coaching → l'origine courante (pas de domaine coaching dédié pour l'instant).
+      const origin = publicLinkOrigin(brand, window.location.origin)
+      const lien = `${origin}/questionnaire/${id}`
       message += `\n\nMerci de remplir ton questionnaire de forme avant la séance :\n${lien}`
     }
     message += `\n\nBonne journée\n\nTeddy`

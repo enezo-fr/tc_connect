@@ -9,12 +9,14 @@ import { CommandeShareModal } from '@/components/commandes/CommandeShareModal'
 import { AjoutBoissonModal, type BoissonAjout } from '@/components/commandes/AjoutBoissonModal'
 import { InfosCommandeModal, type InfosResult } from '@/components/commandes/InfosCommandeModal'
 import { ParticipantsEditor, pRowId, type PRow } from '@/components/commandes/ParticipantsEditor'
+import { MoiPicker } from '@/components/commandes/MoiPicker'
+import { LA_TABLE, lireMoi, ecrireMoi, suivreMoi } from '@/lib/commandeMoi'
 import { Timestamp } from 'firebase/firestore'
 import dynamic from 'next/dynamic'
 import { resoudreBar, chargerBarProche, enregistrerPrix, enregistrerBar, chargerTousBars, type BarComplet } from '@/lib/barPrix'
 import { BarLocationField } from '@/components/commandes/BarLocationField'
 import {
-  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin, History, ChevronDown,
+  Plus, Trash2, ChevronLeft, Beer, ClipboardList, Users, Wallet, Check, Minus, Share2, Pencil, MapPin, History, ChevronDown, UserRound,
 } from 'lucide-react'
 
 // Leaflet touche `window` dès l'import → carte en client uniquement.
@@ -90,6 +92,8 @@ export default function CommandesPage() {
   const [nouvelleOuverte, setNouvelleOuverte] = useState(false)
   const [form, setForm] = useState({ lieu: '', date: '' })
   const [partRows, setPartRows] = useState<PRow[]>([])
+  // Qui tient le téléphone (pré-sélection du destinataire des boissons) — null = personne.
+  const [newMoi, setNewMoi] = useState<string | null>(null)
   // Position du bar choisie sur la carte à la création (plus de capture auto).
   const [newLoc, setNewLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [newEphemere, setNewEphemere] = useState(false)
@@ -97,10 +101,21 @@ export default function CommandesPage() {
   const ouvrirNouvelle = () => {
     setForm({ lieu: '', date: dateInput(new Date()) })
     setPartRows([])
+    setNewMoi(null)
     setNewLoc(null)
     setNewEphemere(false)
     setNouvelleOuverte(true)
   }
+
+  // Prénoms saisis à la création, pour proposer « qui êtes-vous ? » au fil de la frappe.
+  const newNoms = useMemo(
+    () => Array.from(new Set(partRows.map((r) => r.name.trim()).filter(Boolean))),
+    [partRows],
+  )
+  // La personne choisie vient d'être renommée / retirée → on ne garde pas un fantôme.
+  useEffect(() => {
+    if (newMoi && !newNoms.includes(newMoi)) setNewMoi(null)
+  }, [newNoms, newMoi])
 
   const creer = async () => {
     if (!uid) return
@@ -125,9 +140,20 @@ export default function CommandesPage() {
       lignes: [], terminee: false,
       ...geo,
     })
+    // Identité de CET appareil (jamais en base) : le créateur ne se la redemande plus.
+    ecrireMoi(id, newMoi)
+    setMoi(newMoi)
     setNouvelleOuverte(false)
     setOuverteId(id)
   }
+
+  // ── Qui suis-je (pré-sélection du destinataire) ─────────────────────────────
+  const [moi, setMoi] = useState<string | null>(null)
+  const [moiOuvert, setMoiOuvert] = useState(false)
+  // Relu à chaque commande ouverte : l'identité est mémorisée par commande.
+  useEffect(() => { setMoi(lireMoi(ouverteId).nom) }, [ouverteId])
+
+  const choisirMoi = (nom: string | null) => { ecrireMoi(ouverteId, nom); setMoi(nom) }
 
   // ── Catalogue de prix par bar (partagé, géolocalisé) ────────────────────────
   const [barPrix, setBarPrix] = useState<Record<string, number>>({})
@@ -167,6 +193,8 @@ export default function CommandesPage() {
         setBarPrix({})
       }
     }
+    // Le prénom que je me suis attribué suit un renommage, et disparaît si on me retire.
+    setMoi(suivreMoi(ouverte.id, r.renames, r.removed))
     await modifier(ouverte.id, patch)
   }
 
@@ -196,6 +224,8 @@ export default function CommandesPage() {
         if (l.id !== id) return l
         const nl: LigneCommande = { ...l, boisson: b.boisson, quantite: b.quantite }
         if (b.prix != null) nl.prix = b.prix; else delete nl.prix
+        // Le destinataire est modifiable dans la modale : « La table » = pas de clé.
+        if (b.pour) nl.pour = b.pour; else delete nl.pour
         return nl
       })
       setLigneEdit(null)
@@ -203,7 +233,7 @@ export default function CommandesPage() {
       const t = typeof tourneeVue === 'number' ? tourneeVue : tourneeCouranteDe(ouverte)
       const ligne: LigneCommande = { id: idLigne(), boisson: b.boisson, quantite: b.quantite, tournee: t }
       if (b.prix != null) ligne.prix = b.prix
-      if (ajoutPour && ajoutPour !== 'La table') ligne.pour = ajoutPour
+      if (b.pour) ligne.pour = b.pour
       lignes = [...lignes, ligne]
       setAjoutPour(null)
     }
@@ -409,6 +439,31 @@ export default function CommandesPage() {
               <ParticipantsEditor rows={partRows} onChange={setPartRows} gensConnus={gensConnus} />
             </div>
 
+            {/* Qui tient le téléphone : pré-sélectionne le destinataire des boissons.
+                Facultatif — « Personne » reste possible (on note pour la table). */}
+            {newNoms.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Et vous, qui êtes-vous ? <span className="text-gray-400 font-normal">(facultatif)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {newNoms.map((n) => (
+                    <button key={n} type="button" onClick={() => setNewMoi((c) => (c === n ? null : n))}
+                      className={`px-3 py-1.5 rounded-xl text-sm border transition ${newMoi === n ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'}`}>
+                      {n}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setNewMoi(null)}
+                    className={`px-3 py-1.5 rounded-xl text-sm border transition ${newMoi === null ? 'bg-gray-700 text-white border-gray-700' : 'border-gray-200 text-gray-500 hover:border-gray-400'}`}>
+                    Personne
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Vos boissons seront pré-affectées à ce prénom.
+                </p>
+              </div>
+            )}
+
             <BarLocationField lat={newLoc?.lat ?? null} lng={newLoc?.lng ?? null}
               onChange={(lat, lng) => setNewLoc({ lat, lng })}
               ephemere={newEphemere} onEphemere={setNewEphemere} />
@@ -433,7 +488,7 @@ export default function CommandesPage() {
   const addition = additionParPersonne(ouverte)
   const total = totalCommande(ouverte)
   const partiel = totalPartiel(ouverte)
-  const colonnes = ['La table', ...ouverte.participants]
+  const colonnes = [LA_TABLE, ...ouverte.participants]
   // Tournée en cours d'affichage (Table + Au bar s'y limitent ; l'Addition reste globale).
   // `round` = numéro, ou 'all' pour tout voir d'un coup.
   const nbT = nbTournees(ouverte)
@@ -455,6 +510,13 @@ export default function CommandesPage() {
               {' · '}{nbVerres(ouverte)} verre{nbVerres(ouverte) > 1 ? 's' : ''}
               {' · '}{total !== null ? euros(total) : `${euros(partiel)} connus`}
             </p>
+            {/* Qui tient ce téléphone : pré-sélection du destinataire, réglable à tout moment */}
+            <button onClick={() => setMoiOuvert(true)}
+              className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                moi ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' : 'border-dashed border-gray-300 text-gray-500 hover:border-sky-300 hover:text-sky-600'
+              }`}>
+              <UserRound size={13} />{moi ? `Moi · ${moi}` : 'Dire qui je suis'}
+            </button>
           </div>
           {/* Actions — sous le titre sur mobile, à droite sur desktop */}
           <div className="flex items-center gap-2 shrink-0">
@@ -535,15 +597,25 @@ export default function CommandesPage() {
         {/* ── Vue TABLE : on fait le tour, personne par personne (tournée sélectionnée) ── */}
         {vue === 'table' && (
           <div className="space-y-3">
+            {/* Chemin court : ma boisson en deux gestes, sans chercher ma carte */}
+            {moi && (
+              <button onClick={() => setAjoutPour(moi)}
+                className="w-full flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-sm transition active:scale-[0.99]">
+                <Plus size={16} />Ajouter ma boisson
+              </button>
+            )}
             {colonnes.map((p) => {
               const lignes = (ouverte.lignes ?? []).filter(
-                (l) => (l.pour?.trim() || 'La table') === p && (toutes || numeroTournee(l) === round),
+                (l) => (l.pour?.trim() || LA_TABLE) === p && (toutes || numeroTournee(l) === round),
               )
               const sous = lignes.reduce((s, l) => s + (l.prix != null ? l.prix * l.quantite : 0), 0)
+              const estMoi = !!moi && p === moi
               return (
-                <div key={p} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="px-4 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-800">{p}</p>
+                <div key={p} className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${estMoi ? 'border-sky-300 ring-1 ring-sky-100' : 'border-gray-100'}`}>
+                  <div className={`px-4 py-2.5 flex items-center justify-between gap-2 ${estMoi ? 'bg-sky-50/70' : 'bg-gray-50/70'}`}>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {p}{estMoi && <span className="ml-1.5 text-xs font-medium text-sky-600">moi</span>}
+                    </p>
                     <span className="text-xs text-gray-500">
                       {lignes.reduce((s, l) => s + l.quantite, 0)} verre(s)
                       {sous > 0 && ` · ${euros(sous)}`}
@@ -679,9 +751,17 @@ export default function CommandesPage() {
 
       {/* ── Ajout d'une boisson (contenance + nom) ─────────────────────────── */}
       <AjoutBoissonModal isOpen={!!ajoutPour || !!ligneEdit} onClose={() => { setAjoutPour(null); setLigneEdit(null) }} pour={ajoutPour}
+        participants={ouverte.participants ?? []}
         boissonsConnues={boissonsConnues} formatDefaut={dernierFormat}
-        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite } : null}
+        initial={ligneEdit ? { boisson: ligneEdit.boisson, prix: ligneEdit.prix, quantite: ligneEdit.quantite, pour: ligneEdit.pour ?? null } : null}
         prixConnu={(b) => barPrix[b.trim().toLowerCase()] ?? prixConnus(commandes, b)} onAdd={handleBoisson} />
+
+      {/* Qui suis-je — sur cet appareil, pour cette commande */}
+      <MoiPicker isOpen={moiOuvert} onClose={() => setMoiOuvert(false)}
+        participants={ouverte.participants ?? []} moi={moi} onChoisir={choisirMoi}
+        onAjouterPersonne={async (nom) => {
+          await modifier(ouverte.id, { participants: [...(ouverte.participants ?? []), nom] })
+        }} />
 
       <Modal isOpen={!!aSupprimer} onClose={() => setASupprimer(null)} title="Supprimer la commande" size="sm">
         <div className="space-y-4">

@@ -141,7 +141,10 @@ interface PhoneInputProps {
    * ⚠️ **Opt-in volontaire, JAMAIS par défaut** : posé partout, ça avait fait
    * disparaître la proposition « Remplir depuis un contact » sur l'iPhone de
    * Teddy. À n'activer que là où on veut qu'iOS remplisse nom + téléphone
-   * ensemble (le champ doit alors être dans le même `<form>` que le nom).
+   * ensemble — le champ doit alors être dans le **même `<form>`** que deux
+   * champs annotés `given-name` et `family-name`. Un champ « Nom » unique
+   * (annoté `name` ou non) ne reçoit que le NOM DE FAMILLE, sans le numéro :
+   * l'autoremplissage iOS raisonne par rôle de champ, pas par libellé.
    */
   autoCompleteTel?: boolean
 }

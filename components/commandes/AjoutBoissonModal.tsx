@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import { FORMATS_BOISSON, composerBoisson } from '@/lib/commandeModel'
+import { LA_TABLE } from '@/lib/commandeMoi'
 import { Plus, Minus } from 'lucide-react'
 
 const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500'
@@ -13,13 +14,17 @@ export interface BoissonAjout {
   prix?: number
   /** Contenance choisie — remontée pour la mémoriser par défaut sur la commande. */
   format: string
+  /** Destinataire choisi dans la modale ; `null` = « La table ». */
+  pour: string | null
 }
 
 interface Props {
   isOpen: boolean
   onClose: () => void
-  /** Pour qui (titre de la modale). */
+  /** Destinataire présélectionné (carte touchée, ou « moi ») ; null = « La table ». */
   pour: string | null
+  /** Personnes présentes — le destinataire se change dans la modale. */
+  participants: string[]
   /** Boissons déjà commandées (noms complets, sans re-préfixer de format). */
   boissonsConnues: string[]
   /** Contenance présélectionnée (mémorisée de la dernière saisie). */
@@ -27,7 +32,7 @@ interface Props {
   /** Dernier prix connu pour un nom de boisson complet. */
   prixConnu: (boisson: string) => number | null
   /** Édition d'une ligne existante (pré-remplissage) ; absent = ajout. */
-  initial?: { boisson: string; prix?: number; quantite: number } | null
+  initial?: { boisson: string; prix?: number; quantite: number; pour?: string | null } | null
   onAdd: (b: BoissonAjout) => void
 }
 
@@ -36,11 +41,14 @@ interface Props {
  * nom — le format se colle devant. La contenance par défaut est mémorisée pour
  * enchaîner vite quand toute la tablée est au même format.
  */
-export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, formatDefaut, prixConnu, initial = null, onAdd }: Props) {
+export function AjoutBoissonModal({ isOpen, onClose, pour, participants, boissonsConnues, formatDefaut, prixConnu, initial = null, onAdd }: Props) {
   const [format, setFormat] = useState('')
   const [nom, setNom] = useState('')
   const [prix, setPrix] = useState('')
   const [quantite, setQuantite] = useState(1)
+  // Destinataire : '' = La table. Modifiable ici, pour ne pas avoir à ressortir
+  // de la modale quand on commande pour le voisin.
+  const [pourSel, setPourSel] = useState('')
 
   useEffect(() => {
     if (!isOpen) return
@@ -49,8 +57,10 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
       setFormat(''); setNom(initial.boisson)
       setPrix(initial.prix != null ? String(initial.prix) : '')
       setQuantite(Math.max(1, initial.quantite))
+      setPourSel(initial.pour ?? '')
     } else {
       setFormat(formatDefaut || ''); setNom(''); setPrix(''); setQuantite(1)
+      setPourSel(pour && pour !== LA_TABLE ? pour : '')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
@@ -85,12 +95,28 @@ export function AjoutBoissonModal({ isOpen, onClose, pour, boissonsConnues, form
       quantite: Math.max(1, quantite),
       prix: prix ? Number(prix.replace(',', '.')) : (p ?? undefined),
       format,
+      pour: pourSel || null,
     })
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={initial ? 'Modifier la boisson' : (pour ? `Pour ${pour}` : 'Ajouter une boisson')}>
+    <Modal isOpen={isOpen} onClose={onClose} title={initial ? 'Modifier la boisson' : 'Ajouter une boisson'}>
       <div className="space-y-4">
+        {/* Pour qui — pré-sélectionné (moi, ou la carte touchée), changeable ici */}
+        {participants.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Pour qui ?</label>
+            <div className="flex flex-wrap gap-1.5">
+              {[{ v: '', l: LA_TABLE }, ...participants.map((p) => ({ v: p, l: p }))].map((o) => (
+                <button key={o.v || '__table'} type="button" onClick={() => setPourSel(o.v)}
+                  className={`px-3 py-1.5 rounded-xl text-sm border transition ${pourSel === o.v ? 'bg-sky-600 text-white border-sky-600' : 'border-gray-200 text-gray-700 hover:border-sky-300'}`}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Contenance d'abord */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Contenance</label>
