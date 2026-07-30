@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Timestamp } from 'firebase/firestore'
 import { useAuth } from '@/context/AuthContext'
+import { useBrand } from '@/context/BrandContext'
+import { publicLinkOrigin } from '@/lib/brand'
 import { usePilotageContrats } from '@/hooks/usePilotageContrats'
 import { useClients } from '@/hooks/useClients'
 import { useCompanies } from '@/hooks/useCompanies'
@@ -197,6 +199,7 @@ export default function ContratPage() {
   const id = String(params?.id ?? '')
   const { userProfile, currentUser } = useAuth()
   const isAdmin = userProfile?.role_app === 'Admin'
+  const { brand } = useBrand()
 
   const { contrats, loading, updateContrat } = usePilotageContrats()
   const { clients } = useClients()
@@ -255,8 +258,9 @@ export default function ContratPage() {
   const [editing, setEditing] = useState(false)
   // Espace client (portail public par lien)
   const [portalCopied, setPortalCopied] = useState(false)
+  // Lien remis au client → domaine de l'ESPACE ACTIF (cf. publicLinkOrigin), pas celui de navigation.
   const portalLink = (typeof window !== 'undefined' && contrat?.portalToken)
-    ? `${window.location.origin}/espace/${contrat.portalToken}` : ''
+    ? `${publicLinkOrigin(brand, window.location.origin)}/espace/${contrat.portalToken}` : ''
   const activatePortal = () => {
     if (!contrat) return
     updateContrat(contrat.id, { portalToken: randomUUID().replace(/-/g, '') } as Partial<PilotageContrat>)

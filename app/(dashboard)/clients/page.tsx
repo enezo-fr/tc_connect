@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
+import { publicLinkOrigin } from "@/lib/brand";
 import { useClients } from "@/hooks/useClients";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useClientNotes } from "@/hooks/useClientNotes";
@@ -1273,6 +1275,7 @@ function ClientRow({ client, isAdmin, abonnements, aboLoading, collapseAllTick, 
   onViewAbo: (a: Abonnement, linkedUserId: string | undefined) => void;
 }) {
   const router = useRouter();
+  const { brand } = useBrand();
   const [open, setOpen] = useState(false);
   const highlightRef = useRef<HTMLDivElement>(null);
 
@@ -1387,14 +1390,17 @@ function ClientRow({ client, isAdmin, abonnements, aboLoading, collapseAllTick, 
         <div className="px-5 pb-4 ml-14 space-y-4">
           {/* Envoyer l'accès app */}
           {isAdmin && (client.email || client.telephone) && (() => {
-            const appUrl = typeof window !== "undefined" ? window.location.origin : "https://tc-connect.app";
-            const msg = encodeURIComponent(`Bonjour ${client.prenom || client.nom}, voici votre accès à l'application TC Connect : ${appUrl}\nConnectez-vous avec votre adresse email${client.email ? ` : ${client.email}` : ""}.`);
+            // Lien envoyé au client → domaine de l'ESPACE ACTIF (cf. publicLinkOrigin), jamais
+            // le domaine de navigation (une PWA installée sur app.enezo.fr donnerait un lien Enezo).
+            const appUrl = publicLinkOrigin(brand, typeof window !== "undefined" ? window.location.origin : "");
+            const appNom = brand === "enezo" ? "Enezo" : "TC Connect";
+            const msg = encodeURIComponent(`Bonjour ${client.prenom || client.nom}, voici votre accès à l'application ${appNom} : ${appUrl}\nConnectez-vous avec votre adresse email${client.email ? ` : ${client.email}` : ""}.`);
             return (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Envoyer l'accès app</p>
                 <div className="flex flex-wrap gap-2">
                   {client.email && (
-                    <a href={`mailto:${client.email}?subject=${encodeURIComponent("Votre accès TC Connect")}&body=${msg}`}
+                    <a href={`mailto:${client.email}?subject=${encodeURIComponent(`Votre accès ${appNom}`)}&body=${msg}`}
                       className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition">
                       <EnvelopeIcon className="w-3.5 h-3.5" /> Email
                     </a>

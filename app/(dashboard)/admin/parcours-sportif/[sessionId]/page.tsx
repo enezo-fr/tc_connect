@@ -10,6 +10,8 @@ import { copyText } from '@/lib/clipboard'
 import { randomUUID } from '@/lib/uuid'
 import { addParcoursActivite, removeParcoursActivite, removeParcoursActivitesForSession } from '@/lib/parcoursPlanning'
 import { useAuth } from '@/context/AuthContext'
+import { useBrand } from '@/context/BrandContext'
+import { publicLinkOrigin } from '@/lib/brand'
 import { useUsers } from '@/hooks/useUsers'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -94,8 +96,9 @@ Bonne journée\n\n
 Teddy`
 
 // Message d'annulation par défaut (modèle). {reason} optionnel ; lien d'inscription public inclus.
-function defaultCancelMessage(reason: string) {
-  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/parcours-sportif` : ''
+// `origin` = origine publique de l'ESPACE ACTIF (cf. publicLinkOrigin), pas le domaine de navigation.
+function defaultCancelMessage(reason: string, origin: string) {
+  const publicUrl = origin ? `${origin}/parcours-sportif` : ''
   const reasonLine = reason ? `\n\nRaison : ${reason}.` : ''
   return `Bonjour,
 
@@ -149,6 +152,15 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ s
   const { users } = useUsers()
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightId)
 
+  // Les liens qui partent chez un participant (rappel SMS, annulation) portent le domaine de
+  // l'ESPACE ACTIF, pas celui d'où l'on navigue : depuis la PWA installée sur app.enezo.fr,
+  // basculer en espace coaching doit produire un lien coaching. Cf. publicLinkOrigin.
+  const { brand } = useBrand()
+  const publicOrigin = useMemo(
+    () => publicLinkOrigin(brand, typeof window !== 'undefined' ? window.location.origin : ''),
+    [brand]
+  )
+
   // Notes participant (paiements anticipés, etc.)
   const { notes: parcoursNotes, addNote: addParcoursNote, updateNote: updateParcoursNote, deleteNote: deleteParcoursNote } = useParcoursNotes()
   const [notesTarget, setNotesTarget] = useState<{ key: string; name: string } | null>(null)
@@ -185,9 +197,9 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ s
     getDoc(doc(db, 'settings', 'parcours_sportif')).then((snap) => {
       const d = snap.exists() ? snap.data() : {}
       setParcoursSettings({ iban: d.iban ?? '', bic: d.bic ?? '', contactPhone: d.contactPhone ?? '' })
-      setCancelMessage(d.cancelMessage || defaultCancelMessage(''))
-    }).catch(() => setCancelMessage(defaultCancelMessage('')))
-  }, [])
+      setCancelMessage(d.cancelMessage || defaultCancelMessage('', publicOrigin))
+    }).catch(() => setCancelMessage(defaultCancelMessage('', publicOrigin)))
+  }, [publicOrigin])
   // Valeurs prêtes à l'emploi pour les SMS (avec repli si non configuré)
   const ribPhone = parcoursSettings.contactPhone || '+33 6 79 40 82 54'
   const ribIban = parcoursSettings.iban
@@ -837,7 +849,7 @@ export default function AdminSessionDetailPage({ params }: { params: Promise<{ s
     markReminderSent(reg)
     const heure = fmtHeure(session.date)
     const locationDisplay = session.locationLabel || session.location || session.locationCoords || ''
-    const link = `${window.location.origin}/parcours-sportif`
+    const link = `${publicOrigin}/parcours-sportif`
 
     // Rappel d'impayé d'un parcours précédent (pré-calculé au chargement → disponible instantanément)
     const unpaidDate = reg.email ? pastUnpaidByEmail[reg.email.toLowerCase()] : undefined
@@ -1641,7 +1653,7 @@ Teddy`
               <div className="flex flex-wrap gap-2">
                 {CANCEL_REASON_PRESETS.map((preset) => (
                   <button key={preset} type="button"
-                    onClick={() => { const r = cancelReason === preset ? '' : preset; setCancelReason(r); setCancelMessage(defaultCancelMessage(r)) }}
+                    onClick={() => { const r = cancelReason === preset ? '' : preset; setCancelReason(r); setCancelMessage(defaultCancelMessage(r, publicOrigin)) }}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${cancelReason === preset ? 'bg-red-600 text-white border-red-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                     {preset}
                   </button>

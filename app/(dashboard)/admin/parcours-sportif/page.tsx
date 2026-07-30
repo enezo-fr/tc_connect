@@ -12,6 +12,8 @@ import { randomUUID } from '@/lib/uuid'
 import { addParcoursActivite } from '@/lib/parcoursPlanning'
 import { participantKey } from '@/lib/parcoursNotes'
 import { useAuth } from '@/context/AuthContext'
+import { useBrand } from '@/context/BrandContext'
+import { publicLinkOrigin } from '@/lib/brand'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
@@ -73,6 +75,7 @@ export default function AdminParcoursPage() {
   const highlightId = searchParams.get('highlight')
   const { userProfile } = useAuth()
   const isAdmin = userProfile?.role_app === 'Admin'
+  const { brand } = useBrand()
   const { indications } = useParcoursIndications()
 
   const [sessions, setSessions] = useState<Session[]>([])
@@ -242,7 +245,9 @@ export default function AdminParcoursPage() {
     setDeleteReviewConfirm(null)
   }
 
-  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/parcours-sportif` : ''
+  // Lien partagé à l'extérieur → domaine de l'ESPACE ACTIF (cf. publicLinkOrigin), pas celui
+  // depuis lequel on navigue (une PWA installée sur app.enezo.fr donnerait un lien Enezo).
+  const publicUrl = `${publicLinkOrigin(brand, typeof window !== 'undefined' ? window.location.origin : '')}/parcours-sportif`
   const shareMessage = `Inscris-toi aux Parcours Sportifs de Teddy Coaching ! 🏃\n${publicUrl}`
 
   const copyLink = async () => {

@@ -20,6 +20,13 @@ export interface BrandConfig {
   logo: string
   /** Hosts qui ouvrent cette marque (sans port). */
   domaines: string[]
+  /**
+   * Origine PUBLIQUE canonique (scheme + host) des liens qui sortent de l'app vers un
+   * client/prospect. Distincte de `domaines` : `domaines` sert à reconnaître un host
+   * entrant (routage/thème), `origine` sert à FABRIQUER un lien sortant.
+   * Doit toujours pointer sur un domaine VIVANT (cf. publicLinkOrigin).
+   */
+  origine: string
 }
 
 export const BRANDS: Record<Brand, BrandConfig> = {
@@ -30,7 +37,11 @@ export const BRANDS: Record<Brand, BrandConfig> = {
     nom: 'Teddy Coaching',
     couleurPrimaire: '#737374',
     logo: '/logo.PNG',
-    domaines: ['espace.teddycoaching.fr'],
+    // ⚠️ `espace.teddycoaching.fr` est DÉCLARÉ mais pas encore branché (DNS mort au 30/07/2026) :
+    // il reste ici pour le jour où il sera connecté, mais il ne doit JAMAIS servir à fabriquer
+    // un lien sortant — c'est le rôle de `origine`.
+    domaines: ['espace.teddycoaching.fr', 'tc-connect-two.vercel.app'],
+    origine: 'https://tc-connect-two.vercel.app',
   },
   enezo: {
     id: 'enezo',
@@ -42,6 +53,7 @@ export const BRANDS: Record<Brand, BrandConfig> = {
     // L'APP tourne sur le sous-domaine `app.enezo.fr` (Vercel). `enezo.fr` seul =
     // site vitrine (autre hébergement), il ne touche jamais cette app.
     domaines: ['app.enezo.fr'],
+    origine: 'https://app.enezo.fr',
   },
 }
 
@@ -84,15 +96,20 @@ export function brandConfig(brand: Brand | undefined | null): BrandConfig {
 
 /**
  * Origine (scheme + host) à utiliser pour un LIEN PUBLIC envoyé à un client, selon la marque.
- * Enezo → son domaine dédié (`app.enezo.fr`) : on n'expose jamais une URL « tc-connect » à un client Enezo.
- * Coaching (ou marque absente) → l'origine courante (le domaine coaching dédié n'est pas encore branché).
+ * Enezo → `app.enezo.fr` ; coaching → son origine de prod (`tc-connect-two.vercel.app`).
+ *
+ * Les DEUX marques sont résolues explicitement (et non « enezo forcé, le reste au hasard du
+ * domaine courant ») : sinon, depuis une PWA installée sur `app.enezo.fr`, basculer en espace
+ * coaching continuerait de produire des liens `app.enezo.fr`. La marque passée ici est celle
+ * de l'ESPACE ACTIF (sélecteur de marque) : changer d'espace change le lien.
+ *
+ * ⚠️ Volontairement absolu, y compris depuis localhost ou une preview Vercel : ces liens partent
+ * chez un client, ils ne doivent jamais porter une adresse que lui ne peut pas ouvrir. Même parti
+ * pris que `boutiqueLinkOrigin`. `currentOrigin` ne sert donc que de filet si une marque n'a pas
+ * d'origine configurée.
  */
 export function publicLinkOrigin(brand: Brand | null | undefined, currentOrigin: string): string {
-  if (brand === 'enezo') {
-    const domain = BRANDS.enezo.domaines[0]
-    if (domain) return `https://${domain}`
-  }
-  return currentOrigin
+  return brandConfig(brand).origine || currentOrigin
 }
 
 /**
