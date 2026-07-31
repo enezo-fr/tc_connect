@@ -8,7 +8,7 @@ import {
   getFacture, updateFacture, deleteFacture, convertDevisToFacture, generateNextEcheanceFacture,
 } from "@/lib/facturationService";
 import { getCompany, listenCompanies } from "@/lib/companyService";
-import { publicLinkOrigin } from "@/lib/brand";
+import { publicLinkOrigin, brandConfig } from "@/lib/brand";
 import { getClient, updateClient } from "@/lib/clientService";
 import { downloadInvoicePDF, generateInvoicePDFBlob, itemNetTotal } from "@/lib/invoicePdf";
 import { uploadBlob, deleteImage } from "@/lib/uploadImage";
@@ -787,11 +787,18 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
                   const clientName = client
                     ? `${(client.nom ?? "").toUpperCase()} ${client.prenom ?? ""}`.trim()
                     : (facture.clientName || "");
-                  const dateEnvoi = fmtDate((facture.dateEcheance ?? facture.date ?? facture.createdAt) ?? null);
-                  const subject = encodeURIComponent(`${docLabel} ${facture.number} — Enezo`);
+                  const dateEcheance = fmtDate((facture.dateEcheance ?? facture.date ?? facture.createdAt) ?? null);
+                  // Émetteur = la société du document (une facture coaching ne doit pas s'annoncer « Enezo »)
+                  const emetteur = company?.nom?.trim() || brandConfig(company?.marque).nom;
+                  // Devis : on joint le lien de signature en ligne s'il a été activé
+                  const signLink = isDevis && facture.signToken
+                    ? `${publicLinkOrigin(company?.marque, typeof window !== "undefined" ? window.location.origin : "")}/signer-devis/${facture.signToken}`
+                    : undefined;
+                  const subject = encodeURIComponent(`${docLabel} ${facture.number} — ${emetteur}`);
                   const body = encodeURIComponent(buildInvoiceEmailText({
-                    clientName, docLabel, number: facture.number,
-                    dateEnvoi, pdfUrl: facture.pdfUrl,
+                    clientName, docLabel, number: facture.number, isDevis,
+                    montant: fmtMoney(total), dateEcheance,
+                    ...(isDevis ? { validiteJours, signLink } : {}),
                   }));
                   const params: string[] = [`subject=${subject}`, `body=${body}`];
                   const cleanList = (s: string) => s.split(",").map((e) => e.trim()).filter(Boolean).join(",");

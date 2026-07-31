@@ -1,23 +1,57 @@
 // Template d'email pour l'envoi d'une facture / devis.
 // La version HTML est prête pour un envoi serveur (SendGrid / Resend) — voir lib/sendInvoice.ts.
 // La version texte est utilisée par le bouton "Email" (mailto:) en attendant.
+//
+// Parti pris (2026-07-31) : le document part TOUJOURS en pièce jointe manuelle → aucun lien
+// vers le PDF dans le corps. Pas non plus de bloc de coordonnées ni de nom en signature :
+// la signature du client mail (logo + Teddy) s'en charge, sinon on fait doublon.
 
 export interface InvoiceEmailVars {
-  clientName: string;   // "NOM Prénom"
-  docLabel: string;     // "Facture" | "Devis"
-  number: string;       // ex: FAC_001_010126
-  dateEnvoi: string;    // date formatée fr-FR
-  pdfUrl?: string;      // lien vers le PDF stocké
+  clientName: string;      // "NOM Prénom"
+  docLabel: string;        // "Facture" | "Devis"
+  number: string;          // ex: FAC_001_010126
+  isDevis?: boolean;
+  montant?: string;        // total formaté, ex "1 200,00 €" (pas de mention TTC : TVA non applicable, art. 293 B)
+  dateEcheance?: string;   // facture : date d'échéance formatée fr-FR
+  validiteJours?: number;  // devis : durée de validité
+  signLink?: string;       // devis : lien de signature en ligne
 }
 
 const TEL = "+33 6 79 40 82 54";
 const MAIL = "contact@enezo.fr";
 
-export function buildInvoiceEmailHtml({ clientName, docLabel, number, dateEnvoi, pdfUrl }: InvoiceEmailVars): string {
-  const label = docLabel.toLowerCase();
-  const pdfBlock = pdfUrl
-    ? `<div class="section">Vous pouvez consulter votre ${label} en cliquant ici : <a href="${pdfUrl}" style="color:#1a73e8;">${docLabel} ${number}</a>.</div>`
-    : "";
+const hasValue = (s?: string) => !!s && s.trim() !== "" && s.trim() !== "—";
+
+/** « Vous trouverez ci-joint la facture FAC_001, d'un montant de 1 200,00 €, à régler pour le 01 août 2026. » */
+function phraseDocument({ isDevis, docLabel, number, montant, dateEcheance }: InvoiceEmailVars): string {
+  let p = `Vous trouverez ci-joint ${isDevis ? "le" : "la"} ${docLabel.toLowerCase()} ${number}`;
+  if (hasValue(montant)) p += `, d'un montant de ${montant}`;
+  if (!isDevis && hasValue(dateEcheance)) p += `, à régler pour le ${dateEcheance}`;
+  return `${p}.`;
+}
+
+/**
+ * Paragraphes qui suivent la phrase d'accroche (validité + signature en ligne pour un devis,
+ * rappel de règlement pour une facture). Un paragraphe peut tenir sur deux lignes (`\n`).
+ */
+function paragraphesSuite({ isDevis, validiteJours, signLink }: InvoiceEmailVars): string[] {
+  if (!isDevis) {
+    return ["Si le règlement a déjà été effectué, merci de ne pas tenir compte de ce message."];
+  }
+  const validite = validiteJours ? `Il est valable ${validiteJours} jours.` : "";
+  if (hasValue(signLink)) {
+    return [`${validite}${validite ? " " : ""}Vous pouvez le consulter et le signer en ligne :\n${signLink}`];
+  }
+  return validite ? [validite] : [];
+}
+
+export function buildInvoiceEmailHtml(vars: InvoiceEmailVars): string {
+  const suite = paragraphesSuite(vars)
+    .map((p) => {
+      const lignes = p.split("\n").map((l) => (l === vars.signLink ? `<a href="${l}" style="color:#1a73e8;">${l}</a>` : l));
+      return `<div class="section">${lignes.join("<br>")}</div>`;
+    })
+    .join("\n");
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -29,29 +63,18 @@ export function buildInvoiceEmailHtml({ clientName, docLabel, number, dateEnvoi,
     table { border-collapse: collapse !important; }
     body { font-family: Arial, sans-serif; padding: 40px; color: black; background-color: #ffffff; font-size: 13px; }
     .section { margin-top:10px; margin-bottom:10px; }
-    .traitnoir { width: 100%; height: 1px; background-color: black; }
   </style>
 </head>
 <body>
 
-<div class="section">Bonjour ${clientName},</div>
+<div class="section">Bonjour ${vars.clientName},</div>
 
-<div class="section">Voici, ci-joint, la ${label} ${number} pour l'échéance : ${dateEnvoi}.</div>
-<br>
-<div class="section">Dans le cas où le paiement n'est pas encore réalisé, cette ${label} est à régler dès réception.</div>
-${pdfBlock}
-<br>
+<div class="section">${phraseDocument(vars)}</div>
+${suite}
 
-<div class="traitnoir"></div>
+<div class="section">Je reste à votre disposition.</div>
 
-<div class="section">
-Pour toute question ou assistance, n'hésitez pas à revenir vers nous :<br>
-<b>📞 ${TEL}</b><br>
-<b>📧 ${MAIL}</b>
-</div>
-<br>
-
-<p>Cordialement</p>
+<div class="section">Cordialement,</div>
 <br>
 
 <table cellpadding="0" cellspacing="0" border="0" style="vertical-align: middle; font-size: medium; font-family: Arial; min-width: 375px; width: 100%;">
@@ -116,24 +139,16 @@ Pour toute question ou assistance, n'hésitez pas à revenir vers nous :<br>
 </html>`;
 }
 
-// Version texte (mailto:) — reprend la structure du template, sans HTML
-export function buildInvoiceEmailText({ clientName, docLabel, number, dateEnvoi, pdfUrl }: InvoiceEmailVars): string {
-  const label = docLabel.toLowerCase();
+// Version texte (mailto:) — même structure, sans HTML
+export function buildInvoiceEmailText(vars: InvoiceEmailVars): string {
   return [
-    `Bonjour ${clientName},`,
+    `Bonjour ${vars.clientName},`,
     ``,
-    `Voici, ci-joint, la ${label} ${number} pour l'échéance : ${dateEnvoi}.`,
+    phraseDocument(vars),
+    ...paragraphesSuite(vars).flatMap((p) => [``, p]),
     ``,
-    `Dans le cas où le paiement n'est pas encore réalisé, cette ${label} est à régler dès réception.`,
-    ...(pdfUrl ? [``, `${docLabel} ${number} : ${pdfUrl}`] : []),
-    ``,
-    `————————————————————`,
-    ``,
-    `Pour toute question ou assistance, n'hésitez pas à revenir vers nous :`,
-    `📞 ${TEL}`,
-    `📧 ${MAIL}`,
+    `Je reste à votre disposition.`,
     ``,
     `Cordialement,`,
-    `Enezo`,
   ].join("\n");
 }
