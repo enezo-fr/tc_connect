@@ -34,12 +34,33 @@ export interface BeloteGame {
   team2Id: string
   team1Name: string            // dénormalisé pour affichage rapide
   team2Name: string
+  /**
+   * Joueurs dénormalisés depuis `belote_teams`. Indispensable au PARTAGE : les
+   * équipes restent privées à leur créateur (`createdBy`), une personne invitée
+   * ne peut donc pas les lire — sans cette copie, elle ne pourrait pas choisir
+   * le preneur d'atout. Recopiés à la création, et rattrapés à l'ouverture d'une
+   * partie ancienne par son propriétaire.
+   */
+  team1Players?: BelotePlayer[]
+  team2Players?: BelotePlayer[]
   endCondition: BeloteEndCondition
   endValue: number             // nombre de tours OU score cible
   status: BeloteGameStatus
   winnerId: string | null
   totalScore: Score
   createdBy?: string           // UID du créateur (pour nettoyage des données à l'archivage)
+
+  /** UID ayant accès à la partie (le créateur en fait toujours partie). */
+  members?: string[]
+  /** Jeton du lien public / QR : donne accès SANS COMPTE (lecture + modification). */
+  shareToken?: string
+  /** Adresses à qui le lien a été envoyé — mémo d'envoi, aucun droit en soi. */
+  sharedEmails?: string[]
+
+  /** Parties liées (revanche…) : même `serieId` = même série. */
+  serieId?: string | null
+  serieName?: string | null
+
   createdAt: Timestamp
   finishedAt: Timestamp | null
 }

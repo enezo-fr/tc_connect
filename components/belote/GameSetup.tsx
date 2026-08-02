@@ -30,6 +30,10 @@ export default function GameSetup({ onCreated, onError }: Props) {
         team2Id: team2.id,
         team1Name: team1.name,
         team2Name: team2.name,
+        // Recopiés pour le partage : les équipes restent privées à leur auteur.
+        team1Players: team1.players ?? [],
+        team2Players: team2.players ?? [],
+        members: currentUser ? [currentUser.uid] : [],
         endCondition,
         endValue: Number(endValue) || (endCondition === 'rounds' ? 10 : 1000),
         status: 'in_progress',

@@ -1,23 +1,75 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
 import { useBeloteGame } from '@/hooks/useBeloteGame'
+import { useBeloteGames } from '@/hooks/useBeloteGames'
+import { createBeloteGame, lierPartieASerie } from '@/lib/belote/firebase'
+import { cumulSerie, ecartSerie, nomSerieParDefaut, nouvelleSerieId, partiesDeSerie } from '@/lib/belote/serie'
 import ScoreBoard from '@/components/belote/ScoreBoard'
 import RoundHistory from '@/components/belote/RoundHistory'
+import { BeloteShareModal } from '@/components/belote/BeloteShareModal'
+import { LierPartieModal } from '@/components/belote/LierPartieModal'
 import Modal from '@/components/ui/Modal'
-import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, ShareIcon, LinkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import type { BeloteEndCondition } from '@/lib/belote/types'
 
 export default function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
   const router = useRouter()
-  const { game, rounds, loading, removeRound, updateGameSettings, deleteGame } = useBeloteGame(gameId)
+  const { currentUser } = useAuth()
+  const { game, rounds, loading, removeRound, updateGameSettings, deleteGame, estAuteur } = useBeloteGame(gameId)
+  const { games } = useBeloteGames()
 
   const [showEdit, setShowEdit] = useState(false)
   const [editForm, setEditForm] = useState<{ endCondition: BeloteEndCondition; endValue: string }>({ endCondition: 'score', endValue: '1000' })
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showShare, setShowShare] = useState(false)
+  const [showLier, setShowLier] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  // ── Série (parties liées) ────────────────────────────────────────────────
+  const serie = useMemo(
+    () => (game?.serieId ? partiesDeSerie(games, game.serieId) : []),
+    [games, game],
+  )
+  const ecart = useMemo(() => (serie.length > 1 ? ecartSerie(cumulSerie(serie)) : null), [serie])
+
+  /**
+   * Revanche : nouvelle partie avec les mêmes équipes et les mêmes réglages,
+   * rattachée à la même série (créée au besoin). Les accès de la partie d'origine
+   * sont recopiés, sinon les invités perdraient la revanche.
+   */
+  const lancerRevanche = async () => {
+    if (!game || !currentUser) return
+    setBusy(true)
+    try {
+      const serieId = game.serieId ?? nouvelleSerieId()
+      const serieName = game.serieName ?? nomSerieParDefaut(game)
+      if (!game.serieId) await lierPartieASerie(game.id, serieId, serieName)
+
+      const ref = await createBeloteGame({
+        team1Id: game.team1Id,
+        team2Id: game.team2Id,
+        team1Name: game.team1Name,
+        team2Name: game.team2Name,
+        team1Players: game.team1Players ?? [],
+        team2Players: game.team2Players ?? [],
+        endCondition: game.endCondition,
+        endValue: game.endValue,
+        status: 'in_progress',
+        winnerId: null,
+        totalScore: { team1: 0, team2: 0 },
+        createdBy: currentUser.uid,
+        members: Array.from(new Set([...(game.members ?? []), game.createdBy, currentUser.uid].filter(Boolean) as string[])),
+        serieId,
+        serieName,
+        finishedAt: null,
+      })
+      router.push(`/belote/${(ref as { id: string }).id}`)
+    } finally { setBusy(false) }
+  }
 
   const capots = rounds.filter(r => r.capot).length
   const dedans = rounds.filter(r => r.dedans).length
@@ -56,17 +108,56 @@ export default function GameDetailPage() {
         </h1>
         {game && (
           <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setShowShare(true)}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">
+              <ShareIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Partager</span>
+            </button>
+            <button onClick={() => setShowLier(true)} aria-label="Lier à une autre partie"
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
+              <LinkIcon className="w-4 h-4" />
+            </button>
             <button onClick={openEdit} aria-label="Modifier la partie"
               className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
               <PencilIcon className="w-4 h-4" />
             </button>
-            <button onClick={() => setConfirmDelete(true)} aria-label="Supprimer la partie"
-              className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
-              <TrashIcon className="w-4 h-4" />
-            </button>
+            {estAuteur && (
+              <button onClick={() => setConfirmDelete(true)} aria-label="Supprimer la partie"
+                className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Série : cumul et écart de points sur les parties liées */}
+      {game?.serieId && serie.length > 1 && (
+        <button onClick={() => router.push(`/belote/serie/${game.serieId}`)}
+          className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:shadow-md transition text-left">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+              Série · {serie.length} parties liées
+            </p>
+            <p className="text-sm font-semibold text-gray-800 truncate">{game.serieName || 'Sans nom'}</p>
+            {ecart && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {ecart.ecart === 0
+                  ? `${ecart.enTete.name} et ${ecart.second.name} à égalité`
+                  : `${ecart.enTete.name} devant ${ecart.second.name}`}
+              </p>
+            )}
+          </div>
+          {ecart && (
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-bold text-blue-600 tabular-nums">
+                {ecart.ecart === 0 ? '—' : `+${ecart.ecart}`}
+              </p>
+              <p className="text-xs text-gray-400">d&apos;écart</p>
+            </div>
+          )}
+        </button>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -87,8 +178,18 @@ export default function GameDetailPage() {
                 <PlusIcon className="w-5 h-5" /> Nouveau tour
               </button>
             ) : (
-              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center text-sm font-medium text-green-700">
-                Partie terminée
+              <div className="space-y-2">
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center text-sm font-medium text-green-700">
+                  Partie terminée
+                </div>
+                <button onClick={lancerRevanche} disabled={busy}
+                  className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-60 font-medium py-2.5 rounded-xl transition">
+                  <ArrowPathIcon className="w-4 h-4" />
+                  {busy ? 'Création…' : 'Revanche'}
+                </button>
+                <p className="text-xs text-gray-400 text-center">
+                  La revanche reprend les mêmes équipes et se lie à cette partie : les points se cumulent.
+                </p>
               </div>
             )}
 
@@ -123,6 +224,16 @@ export default function GameDetailPage() {
             />
           </div>
         </div>
+      )}
+
+      {/* Partage : lien + QR, email, comptes */}
+      {game && (
+        <BeloteShareModal isOpen={showShare} onClose={() => setShowShare(false)} game={game} estAuteur={estAuteur} />
+      )}
+
+      {/* Lier à une autre partie (revanche, belle…) */}
+      {game && (
+        <LierPartieModal isOpen={showLier} onClose={() => setShowLier(false)} game={game} toutes={games} />
       )}
 
       {/* Modale modifier la partie */}

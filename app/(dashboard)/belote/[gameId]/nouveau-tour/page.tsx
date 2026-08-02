@@ -2,7 +2,6 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useBeloteGame } from '@/hooks/useBeloteGame'
-import { useBeloteTeams } from '@/hooks/useBeloteTeams'
 import RoundForm from '@/components/belote/RoundForm'
 import ScoreBoard from '@/components/belote/ScoreBoard'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
@@ -12,13 +11,9 @@ export default function NouveauTourPage() {
   const router = useRouter()
   const sp = useSearchParams()
   const roundId = sp.get('roundId')
-  const { game, rounds, loading, addRound, updateRound } = useBeloteGame(gameId)
-  const { teams, loading: loadingTeams } = useBeloteTeams()
+  const { game, rounds, loading, addRound, updateRound, team1Players, team2Players } = useBeloteGame(gameId)
 
   const back = () => router.push(`/belote/${gameId}`)
-
-  const team1 = teams.find(t => t.id === game?.team1Id)
-  const team2 = teams.find(t => t.id === game?.team2Id)
 
   const editing = roundId ? rounds.find(r => r.id === roundId) : undefined
   const initial = editing ? {
@@ -45,7 +40,7 @@ export default function NouveauTourPage() {
         <h1 className="text-lg font-bold text-gray-800">{editing ? `Modifier le tour ${editing.roundNumber}` : 'Nouveau tour'}</h1>
       </div>
 
-      {loading || loadingTeams ? (
+      {loading ? (
         <div className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
       ) : !game ? (
         <div className="text-center py-20 text-gray-400 text-sm">Partie introuvable.</div>
@@ -60,8 +55,8 @@ export default function NouveauTourPage() {
           <RoundForm
             key={roundId ?? 'new'}
             game={game}
-            team1Players={team1?.players ?? []}
-            team2Players={team2?.players ?? []}
+            team1Players={team1Players}
+            team2Players={team2Players}
             initial={initial}
             submitLabel={editing ? 'Enregistrer les modifications' : 'Valider le tour'}
             onSubmit={async (input, meta) => {

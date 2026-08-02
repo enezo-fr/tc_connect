@@ -203,11 +203,25 @@ service cloud.firestore {
       );
       allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
     }
+    // Partie : l'auteur, l'admin, ET les personnes avec qui elle est partagée (`members`).
     match /belote_games/{document} {
-      allow read, update, delete: if request.auth != null && (
-        resource.data.createdBy == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role_app == 'Admin'
+      function estAuteurOuAdmin() {
+        return resource.data.createdBy == request.auth.uid || isAdmin();
+      }
+      function estMembrePartie() {
+        return request.auth.uid in resource.data.get('members', []);
+      }
+      // Un membre invité joue la partie (score, tours, paramètres, lien de partage)
+      // mais ne peut ni se l'attribuer ni toucher à la liste des accès.
+      function partageIntact() {
+        return request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+          && request.resource.data.get('members', []) == resource.data.get('members', []);
+      }
+      allow read: if request.auth != null && (estAuteurOuAdmin() || estMembrePartie());
+      allow update: if request.auth != null && (
+        estAuteurOuAdmin() || (estMembrePartie() && partageIntact())
       );
+      allow delete: if request.auth != null && estAuteurOuAdmin();
       allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
     }
     // Tours : liés à une partie ; accès authentifié (toujours consultés via une partie possédée)

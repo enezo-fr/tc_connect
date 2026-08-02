@@ -1,17 +1,46 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { StoreGate } from '@/components/ui/StoreGate'
+import { useStoreAccess } from '@/hooks/useStoreAccess'
 import { useBeloteGames } from '@/hooks/useBeloteGames'
 import CardsLogo from '@/components/belote/CardsLogo'
-import { PlusIcon, ClockIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { cumulSerie, ecartSerie } from '@/lib/belote/serie'
+import type { BeloteGame } from '@/lib/belote/types'
+import { PlusIcon, ClockIcon, ChevronRightIcon, UsersIcon, LinkIcon } from '@heroicons/react/24/outline'
+
+/** Séries visibles, de la plus récemment jouée à la plus ancienne. */
+function seriesDe(games: BeloteGame[]) {
+  const map = new Map<string, BeloteGame[]>()
+  games.forEach((g) => {
+    if (!g.serieId) return
+    map.set(g.serieId, [...(map.get(g.serieId) ?? []), g])
+  })
+  return [...map.entries()]
+    .filter(([, parties]) => parties.length > 1)
+    .map(([serieId, parties]) => ({
+      serieId,
+      nom: parties.find((p) => p.serieName)?.serieName ?? 'Série',
+      parties,
+      ecart: ecartSerie(cumulSerie(parties)),
+      dernier: Math.max(...parties.map((p) => p.createdAt?.seconds ?? 0)),
+    }))
+    .sort((a, b) => b.dernier - a.dernier)
+}
 
 export default function BelotePage() {
   const router = useRouter()
-  const { inProgress, finished, loading } = useBeloteGames()
+  const { inProgress, finished, games, partagees, aDesPartagees, loading } = useBeloteGames()
+  const { hasAccess } = useStoreAccess('/belote')
+
+  const partageeIds = useMemo(() => new Set(partagees.map((g) => g.id)), [partagees])
+  const series = useMemo(() => seriesDe(games), [games])
 
   return (
-    <StoreGate appRoute="/belote">
+    // Une partie partagée avec moi reste accessible même sans abonnement :
+    // le partage est inclus dans celui de la personne qui invite.
+    <StoreGate appRoute="/belote" bypass={aDesPartagees}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
@@ -28,11 +57,42 @@ export default function BelotePage() {
           </button>
         </div>
 
-        {/* Nouvelle partie */}
-        <button onClick={() => router.push('/belote/nouvelle-partie')}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition">
-          <PlusIcon className="w-5 h-5" /> Nouvelle partie
-        </button>
+        {/* Nouvelle partie — réservée aux comptes ayant l'app (le partage n'ouvre pas la création) */}
+        {hasAccess ? (
+          <button onClick={() => router.push('/belote/nouvelle-partie')}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition">
+            <PlusIcon className="w-5 h-5" /> Nouvelle partie
+          </button>
+        ) : (
+          <p className="text-xs text-gray-400 text-center bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+            Vous suivez des parties partagées. Pour créer les vôtres, activez la Belote depuis la boutique.
+          </p>
+        )}
+
+        {/* Séries (parties liées) */}
+        {series.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Séries</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {series.map((s) => (
+                <button key={s.serieId} onClick={() => router.push(`/belote/serie/${s.serieId}`)}
+                  className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:shadow-md transition text-left">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate flex items-center gap-1.5">
+                      <LinkIcon className="w-3.5 h-3.5 text-gray-300 shrink-0" />{s.nom}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {s.parties.length} parties
+                      {s.ecart && s.ecart.ecart !== 0 && ` · ${s.ecart.enTete.name} +${s.ecart.ecart}`}
+                      {s.ecart && s.ecart.ecart === 0 && ' · à égalité'}
+                    </p>
+                  </div>
+                  <ChevronRightIcon className="w-5 h-5 text-gray-300 shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Parties en cours */}
         <div>
@@ -59,6 +119,18 @@ export default function BelotePage() {
                       {g.totalScore.team1} · {g.totalScore.team2}
                       {' — '}{g.endCondition === 'score' ? `objectif ${g.endValue}` : `${g.endValue} tours`}
                     </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {partageeIds.has(g.id) && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-1.5 py-0.5">
+                          <UsersIcon className="w-3 h-3" />Partagée avec moi
+                        </span>
+                      )}
+                      {g.shareToken && !partageeIds.has(g.id) && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-1.5 py-0.5">
+                          <LinkIcon className="w-3 h-3" />Lien actif
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <ChevronRightIcon className="w-5 h-5 text-gray-300 shrink-0" />
                 </button>
