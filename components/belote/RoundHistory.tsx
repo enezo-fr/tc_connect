@@ -57,7 +57,7 @@ export default function RoundHistory({ game, rounds, onDelete, onEdit }: Props) 
             {r.litige && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Litige</span>}
             {!!r.potRecu && r.potRecu > 0 && (
               <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                +{r.potRecu} de litige
+                {`+${r.potRecu} de litige`}
               </span>
             )}
             {r.beloteRebelote && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Belote</span>}

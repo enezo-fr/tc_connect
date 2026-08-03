@@ -38,7 +38,7 @@ export default function ScoreBoard({ game, rounds, pot = 0 }: {
           const isLeader = leader === slot
           return (
             <div key={slot} className={`p-4 text-center ${isLeader ? 'bg-blue-50/50' : ''}`}>
-              <p className="text-xs font-medium text-gray-500 truncate mb-1">{name}</p>
+              <p className="text-xs font-medium text-gray-500 break-words mb-1">{name}</p>
               <p className={`text-3xl font-bold tabular-nums ${isLeader ? 'text-blue-600' : 'text-gray-800'}`}>
                 {val}
               </p>

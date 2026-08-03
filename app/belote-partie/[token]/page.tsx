@@ -204,7 +204,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
           <div className="flex items-center gap-3 min-w-0">
             <CardsLogo className="w-11 h-11 shrink-0" />
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-gray-800 truncate">
+              <h1 className="text-xl font-bold text-gray-800 break-words">
                 {partie.team1Name} <span className="text-gray-300">vs</span> {partie.team2Name}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">

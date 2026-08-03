@@ -107,12 +107,14 @@ export default function GameDetailPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      {/* Titre sur toute la largeur : les noms d'équipes ne tiennent pas sur une
+          ligne de téléphone, ils passent à la ligne plutôt que d'être coupés. */}
+      <div className="flex items-start gap-3">
         <button onClick={() => router.push('/belote')} aria-label="Retour"
-          className="p-2 rounded-lg hover:bg-gray-100 transition">
+          className="p-2 rounded-lg hover:bg-gray-100 transition shrink-0">
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-lg font-bold text-gray-800 truncate flex-1">
+        <h1 className="text-lg font-bold text-gray-800 flex-1 min-w-0 break-words pt-1.5">
           {game ? `${game.team1Name} vs ${game.team2Name}` : 'Partie'}
         </h1>
         {game && (
@@ -148,7 +150,7 @@ export default function GameDetailPage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
               Série · {serie.length} parties liées
             </p>
-            <p className="text-sm font-semibold text-gray-800 truncate">{game.serieName || 'Sans nom'}</p>
+            <p className="text-sm font-semibold text-gray-800 break-words">{game.serieName || 'Sans nom'}</p>
             {ecart && (
               <p className="text-xs text-gray-500 mt-0.5">
                 {ecart.ecart === 0

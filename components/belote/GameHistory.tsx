@@ -25,7 +25,7 @@ export default function GameHistory({ games }: { games: BeloteGame[] }) {
           <button key={g.id} onClick={() => router.push(`/belote/${g.id}`)}
             className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:shadow-md transition text-left">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800 truncate">
+              <p className="text-sm font-semibold text-gray-800 break-words">
                 {g.team1Name} <span className="text-gray-300">vs</span> {g.team2Name}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">

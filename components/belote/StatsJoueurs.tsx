@@ -12,6 +12,15 @@ interface Props {
   avecAide?: boolean
 }
 
+/**
+ * Libellé « 2 capots » construit d'un seul tenant.
+ *
+ * ⚠️ Ne PAS écrire `{n} belote{n > 1 ? 's' : ''} d'équipe` en JSX : l'espace qui
+ * suit une expression saute au rendu (« 1 beloted'équipe »).
+ */
+const libelle = (n: number, singulier: string, pluriel = `${singulier}s`) =>
+  `${n} ${n > 1 ? pluriel : singulier}`
+
 /** Petit chiffre légendé, réutilisé dans les deux tableaux. */
 function Chiffre({ valeur, legende, couleur = 'text-gray-800' }: {
   valeur: string | number
@@ -61,12 +70,12 @@ export default function StatsJoueurs({ parties, titre = 'Statistiques', avecAide
               <div className="flex flex-wrap items-center gap-1.5 mt-3">
                 {e.capots > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-                    {e.capots} capot{e.capots > 1 ? 's' : ''}
+                    {libelle(e.capots, 'capot')}
                   </span>
                 )}
                 {e.belotes > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-                    {e.belotes} belote{e.belotes > 1 ? 's' : ''}
+                    {libelle(e.belotes, 'belote')}
                   </span>
                 )}
               </div>
@@ -100,30 +109,30 @@ export default function StatsJoueurs({ parties, titre = 'Statistiques', avecAide
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 {j.capots > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-                    {j.capots} capot{j.capots > 1 ? 's' : ''}
+                    {libelle(j.capots, 'capot')}
                   </span>
                 )}
                 {j.capotsSubis > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">
-                    {j.capotsSubis} encaissé{j.capotsSubis > 1 ? 's' : ''}
+                    {libelle(j.capotsSubis, 'encaissé')}
                   </span>
                 )}
                 {j.belotes > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-                    {j.belotes} belote{j.belotes > 1 ? 's' : ''} annoncée{j.belotes > 1 ? 's' : ''}
+                    {libelle(j.belotes, 'belote annoncée', 'belotes annoncées')}
                   </span>
                 )}
                 {j.belotesEquipe > j.belotes && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
-                    {j.belotesEquipe - j.belotes} belote{j.belotesEquipe - j.belotes > 1 ? 's' : ''} d&apos;équipe
+                    {libelle(j.belotesEquipe - j.belotes, "belote d'équipe", "belotes d'équipe")}
                   </span>
                 )}
               </div>
             )}
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-400">
-              {j.moyenne != null && <span>{j.moyenne} pts en moyenne par prise</span>}
-              {j.distributions > 0 && <span>{j.distributions} distribution{j.distributions > 1 ? 's' : ''}</span>}
+              {j.moyenne != null && <span>{`${j.moyenne} pts en moyenne par prise`}</span>}
+              {j.distributions > 0 && <span>{libelle(j.distributions, 'distribution')}</span>}
               {j.prises === 0 && <span className="italic">n&apos;a jamais pris</span>}
             </div>
           </div>

@@ -43,13 +43,13 @@ export default function SeriePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button onClick={() => router.push('/belote')} aria-label="Retour"
-          className="p-2 rounded-lg hover:bg-gray-100 transition">
+          className="p-2 rounded-lg hover:bg-gray-100 transition shrink-0">
           <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
         </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold text-gray-800 truncate">{nom}</h1>
+        <div className="min-w-0 flex-1 pt-1">
+          <h1 className="text-xl font-bold text-gray-800 break-words">{nom}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {parties.length} partie{parties.length > 1 ? 's' : ''} liée{parties.length > 1 ? 's' : ''}
           </p>
@@ -117,7 +117,7 @@ export default function SeriePage() {
                     i === 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-400'
                   }`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{l.name}</p>
+                    <p className="text-sm font-semibold text-gray-800 break-words">{l.name}</p>
                     <p className="text-xs text-gray-400">
                       {l.parties} partie{l.parties > 1 ? 's' : ''} · {l.victoires} victoire{l.victoires > 1 ? 's' : ''}
                     </p>
@@ -142,7 +142,7 @@ export default function SeriePage() {
                     className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:shadow-md transition text-left">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-gray-400 mb-0.5">Partie {i + 1}</p>
-                      <p className="text-sm font-semibold text-gray-800 truncate">
+                      <p className="text-sm font-semibold text-gray-800 break-words">
                         {g.team1Name} <span className="text-gray-300">vs</span> {g.team2Name}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
