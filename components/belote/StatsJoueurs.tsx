@@ -114,7 +114,7 @@ export default function StatsJoueurs({ parties, titre = 'Statistiques', avecAide
                 )}
                 {j.capotsSubis > 0 && (
                   <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">
-                    {libelle(j.capotsSubis, 'encaissé')}
+                    {libelle(j.capotsSubis, 'capot encaissé', 'capots encaissés')}
                   </span>
                 )}
                 {j.belotes > 0 && (
