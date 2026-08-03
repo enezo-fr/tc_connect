@@ -11,7 +11,7 @@ export default function NouveauTourPage() {
   const router = useRouter()
   const sp = useSearchParams()
   const roundId = sp.get('roundId')
-  const { game, rounds, loading, addRound, updateRound, team1Players, team2Players } = useBeloteGame(gameId)
+  const { game, rounds, pot, regles, loading, addRound, updateRound, team1Players, team2Players } = useBeloteGame(gameId)
 
   const back = () => router.push(`/belote/${gameId}`)
 
@@ -25,9 +25,9 @@ export default function NouveauTourPage() {
       rawScoreEux: editing.rawScoreEux,
       capot: editing.capot,
       capotTeam: editing.capotTeam,
-      dedans: editing.dedans,
       beloteRebelote: editing.beloteRebelote,
       beloteRebeloteTeam: editing.beloteRebeloteTeam,
+      ...(editing.dedansForce !== undefined ? { dedansForce: editing.dedansForce } : {}),
     },
   } : undefined
 
@@ -51,10 +51,11 @@ export default function NouveauTourPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-          <ScoreBoard game={game} rounds={rounds} />
+          <ScoreBoard game={game} rounds={rounds} pot={pot} />
           <RoundForm
             key={roundId ?? 'new'}
             game={game}
+            regles={regles}
             team1Players={team1Players}
             team2Players={team2Players}
             initial={initial}

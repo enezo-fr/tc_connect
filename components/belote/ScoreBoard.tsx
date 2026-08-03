@@ -3,7 +3,12 @@
 import { sumRounds } from '@/lib/belote/rules'
 import type { BeloteGame, BeloteRound } from '@/lib/belote/types'
 
-export default function ScoreBoard({ game, rounds }: { game: BeloteGame; rounds: BeloteRound[] }) {
+export default function ScoreBoard({ game, rounds, pot = 0 }: {
+  game: BeloteGame
+  rounds: BeloteRound[]
+  /** Points en litige, en attente de la prochaine donne gagnée. */
+  pot?: number
+}) {
   const totals = sumRounds(rounds)
   const finished = game.status === 'finished'
   const winnerName = game.winnerId === game.team1Id ? game.team1Name
@@ -47,6 +52,15 @@ export default function ScoreBoard({ game, rounds }: { game: BeloteGame; rounds:
           )
         })}
       </div>
+
+      {/* Litige en cours */}
+      {pot > 0 && (
+        <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 text-center">
+          <p className="text-xs font-medium text-amber-800">
+            {pot} points en attente — ils reviendront à l&apos;équipe qui gagnera la prochaine donne.
+          </p>
+        </div>
+      )}
 
       {/* Infos partie */}
       <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-center">

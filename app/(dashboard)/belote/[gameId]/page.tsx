@@ -12,19 +12,22 @@ import RoundHistory from '@/components/belote/RoundHistory'
 import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { BeloteShareModal } from '@/components/belote/BeloteShareModal'
 import { LierPartieModal } from '@/components/belote/LierPartieModal'
+import ReglesSelector from '@/components/belote/ReglesSelector'
 import Modal from '@/components/ui/Modal'
+import { REGLES_DEFAUT } from '@/lib/belote/rules'
 import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, ShareIcon, LinkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
-import type { BeloteEndCondition } from '@/lib/belote/types'
+import type { BeloteEndCondition, BeloteRegles } from '@/lib/belote/types'
 
 export default function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
   const router = useRouter()
   const { currentUser } = useAuth()
-  const { game, rounds, loading, removeRound, updateGameSettings, deleteGame, estAuteur } = useBeloteGame(gameId)
+  const { game, rounds, pot, regles, loading, removeRound, updateGameSettings, deleteGame, estAuteur } = useBeloteGame(gameId)
   const { games } = useBeloteGames()
 
   const [showEdit, setShowEdit] = useState(false)
-  const [editForm, setEditForm] = useState<{ endCondition: BeloteEndCondition; endValue: string }>({ endCondition: 'score', endValue: '1000' })
+  const [editForm, setEditForm] = useState<{ endCondition: BeloteEndCondition; endValue: string; regles: BeloteRegles }>(
+    { endCondition: 'score', endValue: '1000', regles: REGLES_DEFAUT })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showShare, setShowShare] = useState(false)
   const [showLier, setShowLier] = useState(false)
@@ -57,6 +60,7 @@ export default function GameDetailPage() {
         team2Name: game.team2Name,
         team1Players: game.team1Players ?? [],
         team2Players: game.team2Players ?? [],
+        regles,
         endCondition: game.endCondition,
         endValue: game.endValue,
         status: 'in_progress',
@@ -78,14 +82,18 @@ export default function GameDetailPage() {
 
   const openEdit = () => {
     if (!game) return
-    setEditForm({ endCondition: game.endCondition, endValue: String(game.endValue) })
+    setEditForm({ endCondition: game.endCondition, endValue: String(game.endValue), regles })
     setShowEdit(true)
   }
 
   const handleSaveSettings = async () => {
     setBusy(true)
     try {
-      await updateGameSettings({ endCondition: editForm.endCondition, endValue: Number(editForm.endValue) || 1 })
+      await updateGameSettings({
+        endCondition: editForm.endCondition,
+        endValue: Number(editForm.endValue) || 1,
+        regles: editForm.regles,
+      })
       setShowEdit(false)
     } finally { setBusy(false) }
   }
@@ -171,7 +179,7 @@ export default function GameDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           {/* Colonne gauche : score + actions + bilan */}
           <div className="space-y-4">
-            <ScoreBoard game={game} rounds={rounds} />
+            <ScoreBoard game={game} rounds={rounds} pot={pot} />
 
             {game.status === 'in_progress' ? (
               <button onClick={() => router.push(`/belote/${gameId}/nouveau-tour`)}
@@ -241,7 +249,7 @@ export default function GameDetailPage() {
       )}
 
       {/* Modale modifier la partie */}
-      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="Modifier la partie" size="sm">
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="Modifier la partie">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Fin de partie</label>
@@ -262,6 +270,13 @@ export default function GameDetailPage() {
               onChange={e => setEditForm(f => ({ ...f, endValue: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
+
+          <div className="border-t border-dashed border-gray-200 pt-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Règles de la table</h3>
+            <ReglesSelector valeur={editForm.regles} avertirRecalcul={rounds.length > 0}
+              onChange={(r) => setEditForm(f => ({ ...f, regles: r }))} />
+          </div>
+
           <div className="flex gap-3 pt-1">
             <button onClick={() => setShowEdit(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
             <button onClick={handleSaveSettings} disabled={busy} className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">Enregistrer</button>

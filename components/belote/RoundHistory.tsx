@@ -54,7 +54,16 @@ export default function RoundHistory({ game, rounds, onDelete, onEdit }: Props) 
             )}
             {r.capot && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Capot</span>}
             {r.dedans && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">Dedans</span>}
+            {r.litige && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Litige</span>}
+            {!!r.potRecu && r.potRecu > 0 && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                +{r.potRecu} de litige
+              </span>
+            )}
             {r.beloteRebelote && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Belote</span>}
+            {r.dedansForce !== undefined && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Corrigé</span>
+            )}
           </div>
           {r.dealer && <p className="text-[11px] text-gray-400 mt-0.5">Distribution : {r.dealer}</p>}
         </div>

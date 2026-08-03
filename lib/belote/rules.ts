@@ -1,4 +1,9 @@
-import type { RoundInput, Score, BeloteGame, BeloteRound } from './types'
+import type {
+  BeloteGame, BeloteRegles, BeloteRound, RoundInput, Score, TeamSlot,
+} from './types'
+
+/** Règles retenues par défaut (choix de la maison) quand la partie n'en porte pas. */
+export const REGLES_DEFAUT: BeloteRegles = { egalite: 'litige', beloteDansContrat: false }
 
 /** Total des points d'un tour de belote (dont 10 pour le dernier pli) */
 export const BELOTE_TOTAL = 162
@@ -19,49 +24,176 @@ export function roundToNearestTen(n: number): number {
 
 /**
  * Vérifie que la somme des points bruts vaut 162.
- * (Utilisé hors capot / dedans où la saisie brute n'a pas lieu d'être.)
+ * (Utilisé hors capot où la saisie brute n'a pas lieu d'être.)
  */
 export function validateRoundPoints(nous: number, eux: number): boolean {
   return nous + eux === BELOTE_TOTAL
 }
 
+export const reglesDe = (game?: Pick<BeloteGame, 'regles'> | null): BeloteRegles =>
+  game?.regles ?? REGLES_DEFAUT
+
+const autre = (t: TeamSlot): TeamSlot => (t === 'team1' ? 'team2' : 'team1')
+
+/** Bonus belote revenant à une équipe sur ce tour. */
+function bonusBelote(input: Pick<RoundInput, 'beloteRebelote' | 'beloteRebeloteTeam'>, t: TeamSlot): number {
+  return input.beloteRebelote && input.beloteRebeloteTeam === t ? BELOTE_BONUS : 0
+}
+
 /**
- * Calcule le score final d'un tour en appliquant toutes les règles :
- * capot, dedans, belote/rebelote, puis arrondi à la dizaine.
- * Fonction pure, sans dépendance Firebase.
+ * Points aux cartes que le preneur doit atteindre pour tenir son contrat.
+ *
+ * Sans belote au contrat, c'est toujours 82 (la moitié de 162, plus un). Quand la
+ * belote compte, elle déplace le seuil : 72 si le preneur la détient, 92 si ce
+ * sont ses adversaires — d'où les « litiges » de table. Et si la règle donne
+ * l'égalité au preneur, un point de moins suffit.
  */
-export function calculateRoundScore(round: RoundInput): Score {
-  // Par défaut on conserve les points exacts saisis (pas d'arrondi)
-  const rounding = round.rounding ?? false
-  let team1 = 0
-  let team2 = 0
+export function seuilContrat(
+  input: Pick<RoundInput, 'teamTaker' | 'beloteRebelote' | 'beloteRebeloteTeam'>,
+  regles: BeloteRegles = REGLES_DEFAUT,
+): number {
+  let seuil = BELOTE_CONTRAT
+  if (regles.beloteDansContrat) {
+    const preneur = bonusBelote(input, input.teamTaker)
+    const adverse = bonusBelote(input, autre(input.teamTaker))
+    // cartesPreneur > 81 + (bonusAdverse - bonusPreneur) / 2
+    seuil = Math.floor(81 + (adverse - preneur) / 2) + 1
+  }
+  return regles.egalite === 'preneur' ? seuil - 1 : seuil
+}
 
-  if (round.capot && round.capotTeam) {
-    // Capot : l'équipe qui fait tous les plis marque 252, l'autre 0
-    if (round.capotTeam === 'team1') { team1 = BELOTE_CAPOT; team2 = 0 }
-    else { team1 = 0; team2 = BELOTE_CAPOT }
-  } else if (round.dedans) {
-    // Dedans : l'équipe preneuse rate son contrat → 0, l'adversaire prend 162
-    if (round.teamTaker === 'team1') { team1 = 0; team2 = BELOTE_TOTAL }
-    else { team1 = BELOTE_TOTAL; team2 = 0 }
+export type IssueTour = 'contrat' | 'dedans' | 'litige' | 'capot'
+
+export interface ResultatTour {
+  finalScore: Score
+  dedans: boolean
+  litige: boolean
+  /** Points de litige encaissés sur ce tour (déjà compris dans `finalScore`). */
+  potRecu: number
+  /** Points partis en attente sur ce tour. */
+  potAjoute: number
+  issue: IssueTour
+  /** Ce qu'il fallait faire aux cartes (indication affichée à la saisie). */
+  seuil: number
+  /** Le verdict vient d'une correction manuelle. */
+  force: boolean
+}
+
+/**
+ * Résultat d'UN tour, hors report de litige (celui-ci se règle sur la séquence
+ * complète, cf. `calculerPartie`). Fonction pure.
+ */
+export function calculerTour(input: RoundInput, regles: BeloteRegles = REGLES_DEFAUT): ResultatTour {
+  const rounding = input.rounding ?? false
+  const preneur = input.teamTaker
+  const adverse = autre(preneur)
+  const seuil = seuilContrat(input, regles)
+
+  const score: Score = { team1: 0, team2: 0 }
+  const poser = (t: TeamSlot, v: number) => { score[t] = v }
+
+  // ── Capot : tous les plis, le contrat ne se discute pas ────────────────────
+  if (input.capot && input.capotTeam) {
+    poser(input.capotTeam, BELOTE_CAPOT)
+    poser(autre(input.capotTeam), 0)
+    score.team1 += bonusBelote(input, 'team1')
+    score.team2 += bonusBelote(input, 'team2')
+    // Un capot encaissé par le preneur est une chute, comme un dedans.
+    const dedans = input.dedansForce ?? (input.capotTeam !== preneur)
+    return {
+      finalScore: arrondir(score, rounding),
+      dedans, litige: false, potRecu: 0, potAjoute: 0,
+      issue: 'capot', seuil, force: input.dedansForce !== undefined,
+    }
+  }
+
+  // ── Cas normal : on compare les deux totaux « de contrat » ─────────────────
+  const cartes: Score = { team1: input.rawScoreNous || 0, team2: input.rawScoreEux || 0 }
+  const compte = (t: TeamSlot) => cartes[t] + (regles.beloteDansContrat ? bonusBelote(input, t) : 0)
+
+  const totalPreneur = compte(preneur)
+  const totalAdverse = compte(adverse)
+
+  let issue: IssueTour
+  if (input.dedansForce !== undefined) issue = input.dedansForce ? 'dedans' : 'contrat'
+  else if (totalPreneur > totalAdverse) issue = 'contrat'
+  else if (totalPreneur < totalAdverse) issue = 'dedans'
+  else issue = regles.egalite === 'preneur' ? 'contrat'
+    : regles.egalite === 'dedans' ? 'dedans'
+    : 'litige'
+
+  let potAjoute = 0
+  if (issue === 'contrat') {
+    // Chacun ses points, plus sa belote.
+    poser(preneur, cartes[preneur] + bonusBelote(input, preneur))
+    poser(adverse, cartes[adverse] + bonusBelote(input, adverse))
+  } else if (issue === 'dedans') {
+    // Le preneur chute : l'adversaire empoche toute la donne. La belote reste
+    // acquise à qui la détient, même dans la chute.
+    poser(preneur, bonusBelote(input, preneur))
+    poser(adverse, BELOTE_TOTAL + bonusBelote(input, adverse))
   } else {
-    // Cas normal : points bruts saisis
-    team1 = round.rawScoreNous || 0
-    team2 = round.rawScoreEux || 0
+    // Litige : le preneur ne marque rien, ses points aux cartes attendent la
+    // donne suivante. La belote, elle, est acquise tout de suite.
+    poser(preneur, bonusBelote(input, preneur))
+    poser(adverse, cartes[adverse] + bonusBelote(input, adverse))
+    potAjoute = cartes[preneur]
   }
 
-  // Belote & rebelote : +20 à l'équipe qui la détient (s'ajoute au score final)
-  if (round.beloteRebelote && round.beloteRebeloteTeam) {
-    if (round.beloteRebeloteTeam === 'team1') team1 += BELOTE_BONUS
-    else team2 += BELOTE_BONUS
+  return {
+    finalScore: arrondir(score, rounding),
+    dedans: issue === 'dedans',
+    litige: issue === 'litige',
+    potRecu: 0,
+    potAjoute,
+    issue,
+    seuil,
+    force: input.dedansForce !== undefined,
   }
+}
 
-  if (rounding) {
-    team1 = roundToNearestTen(team1)
-    team2 = roundToNearestTen(team2)
-  }
+function arrondir(s: Score, rounding: boolean): Score {
+  return rounding
+    ? { team1: roundToNearestTen(s.team1), team2: roundToNearestTen(s.team2) }
+    : s
+}
 
-  return { team1, team2 }
+export interface ResultatPartie {
+  tours: ResultatTour[]
+  /** Points encore en attente d'attribution à la fin de la séquence. */
+  pot: number
+  totaux: Score
+}
+
+/**
+ * Calcule TOUTE la partie, dans l'ordre des tours.
+ *
+ * Le report de litige impose cette lecture séquentielle : les points mis de côté
+ * reviennent à l'équipe qui remporte la donne SUIVANTE. Tant qu'aucune donne
+ * n'est remportée (litiges enchaînés, ou donne à égalité parfaite), la cagnotte
+ * s'empile.
+ */
+export function calculerPartie(inputs: RoundInput[], regles: BeloteRegles = REGLES_DEFAUT): ResultatPartie {
+  let pot = 0
+  const tours = inputs.map((input) => {
+    const r = calculerTour(input, regles)
+    if (r.litige) { pot += r.potAjoute; return r }
+
+    if (pot > 0) {
+      const gagnant: TeamSlot | null =
+        r.finalScore.team1 > r.finalScore.team2 ? 'team1'
+        : r.finalScore.team2 > r.finalScore.team1 ? 'team2'
+        : null
+      if (gagnant) {
+        r.finalScore[gagnant] += pot
+        r.potRecu = pot
+        pot = 0
+      }
+    }
+    return r
+  })
+
+  return { tours, pot, totaux: sumRounds(tours.map((t) => ({ finalScore: t.finalScore }))) }
 }
 
 /** Cumule les scores finaux d'une liste de tours */
@@ -73,6 +205,32 @@ export function sumRounds(rounds: Pick<BeloteRound, 'finalScore'>[]): Score {
     }),
     { team1: 0, team2: 0 },
   )
+}
+
+/** Remet un tour enregistré sous la forme attendue par le moteur. */
+export function inputDeTour(r: Pick<BeloteRound,
+  'teamTaker' | 'rawScoreNous' | 'rawScoreEux' | 'capot' | 'capotTeam' |
+  'beloteRebelote' | 'beloteRebeloteTeam' | 'dedansForce'>): RoundInput {
+  return {
+    teamTaker: r.teamTaker,
+    rawScoreNous: r.rawScoreNous,
+    rawScoreEux: r.rawScoreEux,
+    capot: r.capot,
+    capotTeam: r.capotTeam,
+    beloteRebelote: r.beloteRebelote,
+    beloteRebeloteTeam: r.beloteRebeloteTeam,
+    // `typeof` et pas `!== undefined` : Firestore rend `null` pour un champ vidé,
+    // et un `null` serait pris pour un verdict imposé « contrat tenu ».
+    ...(typeof r.dedansForce === 'boolean' ? { dedansForce: r.dedansForce } : {}),
+  }
+}
+
+/**
+ * Score final d'un tour isolé — conservé pour les appels qui n'ont pas besoin du
+ * report de litige (aperçu à la saisie).
+ */
+export function calculateRoundScore(round: RoundInput, regles: BeloteRegles = REGLES_DEFAUT): Score {
+  return calculerTour(round, regles).finalScore
 }
 
 /**

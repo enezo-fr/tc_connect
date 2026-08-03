@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
+import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebaseAdmin'
 import {
-  ROUNDS, calculateRoundScore, cleanRoundInput, partieDuJeton,
-  publicGame, resyncPartie, roundsDePartie,
+  ROUNDS, cleanRoundInput, partieDuJeton, potDePartie,
+  publicGame, reglesValides, resyncPartie, roundsDePartie,
 } from '@/lib/beloteShare'
 
 /**
@@ -11,6 +12,9 @@ import {
  * C'est TOUT ce que le porteur du lien peut faire, avec les paramètres de fin de
  * partie : il ne crée aucune partie, n'en supprime aucune, et ne touche jamais à
  * `members`, `createdBy` ni `shareToken`.
+ *
+ * Le verdict du tour (contrat tenu, dedans, litige) n'est jamais pris tel quel :
+ * `resyncPartie` recalcule toute la partie d'après les règles enregistrées.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -32,11 +36,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       return NextResponse.json({ error: 'Tour introuvable.' }, { status: 404 })
     }
     await ref.delete()
-    // Renumérotation : sans ça, « Tour 3 » resterait après suppression du tour 2.
-    const restants = await roundsDePartie(gameId)
-    await Promise.all(restants.map((r, i) =>
-      r.view.roundNumber === i + 1 ? null : r.ref.update({ roundNumber: i + 1 }),
-    ))
   } else {
     const { input, dealer, trumpTaker } = cleanRoundInput(body)
     if (!trumpTaker) return NextResponse.json({ error: "Sélectionnez le preneur d'atout." }, { status: 400 })
@@ -50,10 +49,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       rawScoreEux: input.rawScoreEux,
       capot: input.capot,
       capotTeam: input.capotTeam,
-      dedans: input.dedans,
       beloteRebelote: input.beloteRebelote,
       beloteRebeloteTeam: input.beloteRebeloteTeam,
-      finalScore: calculateRoundScore(input),
     }
 
     if (action === 'update') {
@@ -63,21 +60,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       if (!snap.exists || snap.data()?.gameId !== gameId) {
         return NextResponse.json({ error: 'Tour introuvable.' }, { status: 404 })
       }
-      await ref.update(champs)
+      // Repasser en automatique doit EFFACER le champ, pas le laisser en place.
+      await ref.update({
+        ...champs,
+        dedansForce: input.dedansForce ?? FieldValue.delete(),
+      })
     } else {
       const dejaJoues = await roundsDePartie(gameId)
       await db.collection(ROUNDS).add({
         ...champs,
+        ...(typeof input.dedansForce === 'boolean' ? { dedansForce: input.dedansForce } : {}),
         roundNumber: dejaJoues.length + 1,
+        // Valeurs provisoires : `resyncPartie` tranche juste après, séquence complète.
+        finalScore: { team1: 0, team2: 0 },
+        dedans: false,
+        litige: false,
+        potRecu: 0,
         createdAt: new Date(),
       })
     }
   }
 
+  // Recalcule verdicts, reports de litige, renumérotation et cumul.
   const fraiche = await resyncPartie(gameId)
+  const rounds = (await roundsDePartie(gameId)).map((r) => r.view)
+
   return NextResponse.json({
     ok: true,
     partie: fraiche ? publicGame(gameId, fraiche) : null,
-    rounds: (await roundsDePartie(gameId)).map((r) => r.view),
+    rounds,
+    pot: potDePartie(rounds, reglesValides(fraiche?.regles)),
   })
 }

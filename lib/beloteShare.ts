@@ -1,6 +1,6 @@
 import { getAdminDb } from '@/lib/firebaseAdmin'
-import { calculateRoundScore, sumRounds, checkGameEnd } from '@/lib/belote/rules'
-import type { BeloteEndCondition, RoundInput, TeamSlot } from '@/lib/belote/types'
+import { REGLES_DEFAUT, calculerPartie, checkGameEnd, inputDeTour } from '@/lib/belote/rules'
+import type { BeloteEndCondition, BeloteRegles, RegleEgalite, RoundInput, TeamSlot } from '@/lib/belote/types'
 
 // Helpers d'auth communs — identiques aux autres apps.
 export { genInviteToken, uidFromIdToken, displayName } from '@/lib/bebeInvite'
@@ -24,6 +24,15 @@ export const GAMES = 'belote_games'
 export const ROUNDS = 'belote_rounds'
 
 type Data = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** Règles d'une partie, nettoyées de ce qui vient du réseau ou d'un vieux document. */
+export function reglesValides(v: unknown): BeloteRegles {
+  const r = (v ?? {}) as { egalite?: unknown; beloteDansContrat?: unknown }
+  const egalite: RegleEgalite =
+    r.egalite === 'dedans' || r.egalite === 'preneur' || r.egalite === 'litige'
+      ? r.egalite : REGLES_DEFAUT.egalite
+  return { egalite, beloteDansContrat: !!r.beloteDansContrat }
+}
 
 /** Retrouve la partie porteuse du jeton, ou null. */
 export async function findByToken(token: string) {
@@ -64,6 +73,7 @@ export function publicGame(id: string, d: Data) {
     status: d.status === 'finished' ? 'finished' as const : 'in_progress' as const,
     winnerId: d.winnerId ?? null,
     totalScore: { team1: d.totalScore?.team1 ?? 0, team2: d.totalScore?.team2 ?? 0 },
+    regles: reglesValides(d.regles),
     serieId: d.serieId ?? null,
     serieName: d.serieName ?? null,
     createdAt: d.createdAt?.toMillis?.() ?? null,
@@ -85,8 +95,11 @@ export function publicRound(id: string, d: Data) {
     capot: !!d.capot,
     capotTeam: d.capotTeam ?? null,
     dedans: !!d.dedans,
+    ...(typeof d.dedansForce === 'boolean' ? { dedansForce: d.dedansForce } : {}),
     beloteRebelote: !!d.beloteRebelote,
     beloteRebeloteTeam: d.beloteRebeloteTeam ?? null,
+    litige: !!d.litige,
+    potRecu: Number(d.potRecu) || 0,
     finalScore: { team1: d.finalScore?.team1 ?? 0, team2: d.finalScore?.team2 ?? 0 },
   }
 }
@@ -127,17 +140,19 @@ export function cleanRoundInput(body: Data): { input: RoundInput; dealer: string
       rawScoreEux: nb(body.rawScoreEux),
       capot: !!body.capot && !!capotTeam,
       capotTeam: body.capot ? capotTeam : null,
-      dedans: !!body.dedans,
       beloteRebelote: !!body.beloteRebelote && !!beloteTeam,
       beloteRebeloteTeam: body.beloteRebelote ? beloteTeam : null,
+      ...(typeof body.dedansForce === 'boolean' ? { dedansForce: body.dedansForce } : {}),
     },
   }
 }
 
 /**
- * Recalcule le cumul et l'état de fin d'une partie à partir de ses tours, puis
- * les persiste. Même règle que le hook côté navigateur (`useBeloteGame`) : les
- * deux portes doivent aboutir au même score.
+ * Recalcule TOUTE la partie (verdict de chaque tour, report des litiges, cumul,
+ * fin de partie) et persiste ce qui a bougé.
+ *
+ * Même moteur que côté navigateur (`useBeloteGame`) : les deux portes — l'app et
+ * le lien public — doivent toujours aboutir au même score.
  */
 export async function resyncPartie(gameId: string) {
   const db = getAdminDb()
@@ -146,8 +161,27 @@ export async function resyncPartie(gameId: string) {
   if (!snap.exists) return null
 
   const d = snap.data()!
-  const rounds = (await roundsDePartie(gameId)).map((r) => ({ finalScore: r.view.finalScore }))
-  const totals = sumRounds(rounds)
+  const regles = reglesValides(d.regles)
+  const tours = await roundsDePartie(gameId)
+  const res = calculerPartie(tours.map((t) => inputDeTour(t.view)), regles)
+
+  await Promise.all(tours.map((t, i) => {
+    const calc = res.tours[i]
+    const inchange = t.view.finalScore.team1 === calc.finalScore.team1
+      && t.view.finalScore.team2 === calc.finalScore.team2
+      && t.view.dedans === calc.dedans
+      && t.view.litige === calc.litige
+      && t.view.potRecu === calc.potRecu
+      && t.view.roundNumber === i + 1
+    return inchange ? null : t.ref.update({
+      finalScore: calc.finalScore,
+      dedans: calc.dedans,
+      litige: calc.litige,
+      potRecu: calc.potRecu,
+      roundNumber: i + 1,
+    })
+  }))
+
   const end = checkGameEnd(
     {
       endCondition: (d.endCondition ?? 'score') as BeloteEndCondition,
@@ -155,11 +189,11 @@ export async function resyncPartie(gameId: string) {
       team1Id: d.team1Id ?? '',
       team2Id: d.team2Id ?? '',
     },
-    rounds,
+    res.tours.map((t) => ({ finalScore: t.finalScore })),
   )
 
   await ref.update({
-    totalScore: totals,
+    totalScore: res.totaux,
     status: end.finished ? 'finished' : 'in_progress',
     winnerId: end.winnerId,
     finishedAt: end.finished ? (d.finishedAt ?? new Date()) : null,
@@ -167,5 +201,13 @@ export async function resyncPartie(gameId: string) {
   return (await ref.get()).data()!
 }
 
-/** Score final d'un tour — exposé pour les routes d'écriture. */
-export { calculateRoundScore }
+/**
+ * Points encore en attente d'attribution (règle du litige).
+ * Recalculé depuis les saisies : c'est la seule source fiable.
+ */
+export function potDePartie(
+  tours: Parameters<typeof inputDeTour>[0][],
+  regles: BeloteRegles = REGLES_DEFAUT,
+): number {
+  return calculerPartie(tours.map(inputDeTour), regles).pot
+}

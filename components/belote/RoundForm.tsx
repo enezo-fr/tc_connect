@@ -1,13 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { calculateRoundScore, validateRoundPoints, BELOTE_TOTAL } from '@/lib/belote/rules'
-import type { BeloteGame, BelotePlayer, RoundInput, TeamSlot } from '@/lib/belote/types'
+import { calculerTour, validateRoundPoints, BELOTE_TOTAL, REGLES_DEFAUT } from '@/lib/belote/rules'
+import type { BeloteGame, BeloteRegles, BelotePlayer, RoundInput, TeamSlot } from '@/lib/belote/types'
 
 interface Props {
   game: BeloteGame
   team1Players: BelotePlayer[]
   team2Players: BelotePlayer[]
+  /** Règles de la partie — elles décident du contrat et du sort d'une égalité. */
+  regles?: BeloteRegles
   onSubmit: (input: RoundInput, meta: { dealer: string; trumpTaker: string }) => Promise<void>
   initial?: { input: RoundInput; dealer: string; trumpTaker: string }   // mode édition
   submitLabel?: string
@@ -35,7 +37,9 @@ function TriSelect({ value, onChange }: { value: TeamSlot | null; onChange: (v: 
   )
 }
 
-export default function RoundForm({ game, team1Players, team2Players, onSubmit, initial, submitLabel }: Props) {
+export default function RoundForm({
+  game, team1Players, team2Players, regles = REGLES_DEFAUT, onSubmit, initial, submitLabel,
+}: Props) {
   const players = useMemo<PlayerOption[]>(() => [
     ...team1Players.map(p => ({ name: `${p.firstName} ${p.lastName}`.trim(), team: 'team1' as TeamSlot })),
     ...team2Players.map(p => ({ name: `${p.firstName} ${p.lastName}`.trim(), team: 'team2' as TeamSlot })),
@@ -48,13 +52,14 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
   const [rawNous, setRawNous] = useState(initial ? String(initial.input.rawScoreNous) : '')   // team1
   const [rawEux, setRawEux] = useState(initial ? String(initial.input.rawScoreEux) : '')       // team2
   const [capotSel, setCapotSel] = useState<TeamSlot | null>(initial?.input.capot ? initial.input.capotTeam : null)
-  const [dedansSel, setDedansSel] = useState<TeamSlot | null>(initial?.input.dedans ? initial.input.teamTaker : null)
   const [beloteSel, setBeloteSel] = useState<TeamSlot | null>(initial?.input.beloteRebelote ? initial.input.beloteRebeloteTeam : null)
+  const [force, setForce] = useState<boolean | undefined>(initial?.input.dedansForce)
+  const [correction, setCorrection] = useState(initial?.input.dedansForce !== undefined)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // teamTaker : si dedans sélectionné, c'est l'équipe qui chute ; sinon l'équipe du preneur
-  const teamTaker: TeamSlot = dedansSel ?? players.find(p => p.name === trumpTaker)?.team ?? 'team1'
+  // L'équipe preneuse découle du preneur d'atout : c'est lui qui porte le contrat.
+  const teamTaker: TeamSlot = players.find(p => p.name === trumpTaker)?.team ?? 'team1'
 
   const input: RoundInput = {
     teamTaker,
@@ -62,13 +67,16 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
     rawScoreEux: Number(rawEux) || 0,
     capot: capotSel !== null,
     capotTeam: capotSel,
-    dedans: dedansSel !== null,
     beloteRebelote: beloteSel !== null,
     beloteRebeloteTeam: beloteSel,
+    ...(force !== undefined ? { dedansForce: force } : {}),
   }
 
-  const preview = calculateRoundScore(input)
-  const showRawInputs = capotSel === null && dedansSel === null
+  const resultat = calculerTour(input, regles)
+  const showRawInputs = capotSel === null
+  const pointsSaisis = showRawInputs && (rawNous !== '' || rawEux !== '')
+  const sommeOk = validateRoundPoints(Number(rawNous) || 0, Number(rawEux) || 0)
+  const nomEquipe = (t: TeamSlot) => (t === 'team1' ? game.team1Name : game.team2Name)
 
   const onChangeNous = (v: string) => {
     setRawNous(v)
@@ -83,7 +91,8 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
     setError('')
     // Distributeur facultatif (souvent oublié pendant la partie)
     if (!trumpTaker) return setError("Sélectionnez le preneur d'atout.")
-    if (showRawInputs && !validateRoundPoints(Number(rawNous) || 0, Number(rawEux) || 0)) {
+    // Un verdict imposé se passe du compte exact : la donne entière change de main.
+    if (showRawInputs && force === undefined && !sommeOk) {
       return setError(`La somme des points doit faire ${BELOTE_TOTAL} (actuel : ${(Number(rawNous) || 0) + (Number(rawEux) || 0)}).`)
     }
     setSaving(true)
@@ -97,6 +106,42 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
 
   const chip = (active: boolean) =>
     `px-3 py-2 rounded-lg text-sm border transition ${active ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-700 hover:border-blue-300'}`
+
+  // ── Verdict affiché ────────────────────────────────────────────────────────
+  const verdict = (() => {
+    if (!trumpTaker) return null
+    if (resultat.issue === 'capot') {
+      return capotSel === teamTaker
+        ? { ton: 'ok' as const, titre: 'Capot du preneur', detail: `${nomEquipe(teamTaker)} rafle tous les plis.` }
+        : { ton: 'ko' as const, titre: 'Capot encaissé', detail: `${nomEquipe(teamTaker)} a pris et perd tous les plis.` }
+    }
+    if (!pointsSaisis && force === undefined) return null
+    if (resultat.issue === 'litige') {
+      return {
+        ton: 'attente' as const,
+        titre: 'Litige',
+        detail: `Égalité : ${resultat.potAjoute} points partent en attente et reviendront à qui gagne la donne suivante.`,
+      }
+    }
+    if (resultat.dedans) {
+      return {
+        ton: 'ko' as const,
+        titre: 'Dedans',
+        detail: `${nomEquipe(teamTaker)} a pris et chute — il fallait ${resultat.seuil} points aux cartes.`,
+      }
+    }
+    return {
+      ton: 'ok' as const,
+      titre: 'Contrat tenu',
+      detail: `${nomEquipe(teamTaker)} a pris et tient son contrat (${resultat.seuil} requis).`,
+    }
+  })()
+
+  const tons = {
+    ok: 'bg-green-50 border-green-200 text-green-800',
+    ko: 'bg-red-50 border-red-200 text-red-700',
+    attente: 'bg-amber-50 border-amber-200 text-amber-800',
+  }
 
   return (
     <div className="space-y-4">
@@ -142,25 +187,21 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
         ) : (
           <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
             <span className="text-sm font-medium text-gray-800">
-              {trumpTaker} <span className="text-xs text-gray-400">· {teamTaker === 'team1' ? game.team1Name : game.team2Name}</span>
+              {trumpTaker} <span className="text-xs text-gray-400">· {nomEquipe(teamTaker)}</span>
             </span>
             <button type="button" onClick={() => setTakerOpen(true)} className="text-xs text-blue-600 hover:underline">Modifier</button>
           </div>
         )}
       </div>
 
-      {/* Événements (sélection directe Non / Nous / Eux) */}
+      {/* Événements */}
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Capot <span className="font-normal text-gray-400">(tous les plis)</span></label>
-          <TriSelect value={capotSel} onChange={(v) => { setCapotSel(v); if (v) setDedansSel(null) }} />
+          <TriSelect value={capotSel} onChange={setCapotSel} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Dedans <span className="font-normal text-gray-400">(équipe qui chute)</span></label>
-          <TriSelect value={dedansSel} onChange={(v) => { setDedansSel(v); if (v) setCapotSel(null) }} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Belote & rebelote <span className="font-normal text-gray-400">(+20)</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Belote &amp; rebelote <span className="font-normal text-gray-400">(+20)</span></label>
           <TriSelect value={beloteSel} onChange={setBeloteSel} />
         </div>
       </div>
@@ -183,21 +224,54 @@ export default function RoundForm({ game, team1Players, team2Players, onSubmit, 
         </div>
       )}
 
+      {/* Verdict calculé d'après les règles de la partie */}
+      {verdict && (
+        <div className={`rounded-xl border px-4 py-3 ${tons[verdict.ton]}`}>
+          <p className="text-sm font-semibold">
+            {verdict.titre}
+            {force !== undefined && <span className="font-normal opacity-70"> · corrigé à la main</span>}
+          </p>
+          <p className="text-xs mt-0.5 opacity-90">{verdict.detail}</p>
+        </div>
+      )}
+
       {/* Prévisualisation */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
         <p className="text-xs font-medium text-blue-500 mb-1.5 text-center">Score de ce tour</p>
         <div className="flex items-center justify-center gap-6">
           <div className="text-center">
             <p className="text-xs text-gray-500 truncate max-w-[120px]">Nous</p>
-            <p className="text-2xl font-bold text-blue-700 tabular-nums">{preview.team1}</p>
+            <p className="text-2xl font-bold text-blue-700 tabular-nums">{resultat.finalScore.team1}</p>
           </div>
           <span className="text-gray-300">·</span>
           <div className="text-center">
             <p className="text-xs text-gray-500 truncate max-w-[120px]">Eux</p>
-            <p className="text-2xl font-bold text-blue-700 tabular-nums">{preview.team2}</p>
+            <p className="text-2xl font-bold text-blue-700 tabular-nums">{resultat.finalScore.team2}</p>
           </div>
         </div>
       </div>
+
+      {/* Correction manuelle du verdict */}
+      {!correction ? (
+        <button type="button" onClick={() => setCorrection(true)}
+          className="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition">
+          Le verdict ne correspond pas ? Corriger à la main
+        </button>
+      ) : (
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Verdict du tour</label>
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+            {([[undefined, 'Automatique'], [false, 'Contrat tenu'], [true, 'Dedans']] as [boolean | undefined, string][]).map(([v, lbl]) => (
+              <button key={lbl} type="button" onClick={() => setForce(v)}
+                className={`flex-1 px-2 py-1.5 rounded-md text-sm font-medium transition ${
+                  force === v ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
+                }`}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 

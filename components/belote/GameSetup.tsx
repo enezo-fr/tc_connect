@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import TeamSelector from './TeamSelector'
+import ReglesSelector from './ReglesSelector'
 import { createBeloteGame } from '@/lib/belote/firebase'
+import { REGLES_DEFAUT } from '@/lib/belote/rules'
 import { useAuth } from '@/context/AuthContext'
-import type { BeloteTeam, BeloteEndCondition } from '@/lib/belote/types'
+import type { BeloteTeam, BeloteEndCondition, BeloteRegles } from '@/lib/belote/types'
 
 interface Props {
   onCreated: (gameId: string) => void
@@ -17,6 +19,7 @@ export default function GameSetup({ onCreated, onError }: Props) {
   const [team2, setTeam2] = useState<BeloteTeam | null>(null)
   const [endCondition, setEndCondition] = useState<BeloteEndCondition>('score')
   const [endValue, setEndValue] = useState('1000')
+  const [regles, setRegles] = useState<BeloteRegles>(REGLES_DEFAUT)
   const [saving, setSaving] = useState(false)
 
   const canStart = team1 && team2 && team1.id !== team2.id && Number(endValue) > 0
@@ -34,6 +37,7 @@ export default function GameSetup({ onCreated, onError }: Props) {
         team1Players: team1.players ?? [],
         team2Players: team2.players ?? [],
         members: currentUser ? [currentUser.uid] : [],
+        regles,
         endCondition,
         endValue: Number(endValue) || (endCondition === 'rounds' ? 10 : 1000),
         status: 'in_progress',
@@ -88,6 +92,12 @@ export default function GameSetup({ onCreated, onError }: Props) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Règles de table — l'app appliquera ensuite le verdict toute seule */}
+      <div className="border-t border-dashed border-gray-200 pt-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Règles de la table</h2>
+        <ReglesSelector valeur={regles} onChange={setRegles} />
       </div>
 
       <button onClick={handleStart} disabled={!canStart || saving}

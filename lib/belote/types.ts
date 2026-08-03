@@ -11,6 +11,27 @@ export interface Score {
   team2: number
 }
 
+// ─── Règles de table ────────────────────────────────────────────────────────────
+
+/**
+ * Que faire quand le preneur finit à égalité (81-81, ou 91-91 si la belote
+ * compte) ? Trois écoles, choisies PAR PARTIE.
+ */
+export type RegleEgalite =
+  | 'dedans'   // il fallait faire mieux : le preneur chute
+  | 'litige'   // personne ne marque, les points du preneur attendent la donne suivante
+  | 'preneur'  // la moitié suffit : chacun garde ses points
+
+export interface BeloteRegles {
+  egalite: RegleEgalite
+  /**
+   * La belote-rebelote (20) entre-t-elle dans le calcul du contrat ?
+   * Si oui, une belote adverse peut mettre le preneur dedans (seuil à 92) ;
+   * si non, elle s'ajoute au tableau une fois le contrat jugé (seuil à 82).
+   */
+  beloteDansContrat: boolean
+}
+
 // ─── Belote ─────────────────────────────────────────────────────────────────────
 
 export interface BelotePlayer {
@@ -57,6 +78,9 @@ export interface BeloteGame {
   /** Adresses à qui le lien a été envoyé — mémo d'envoi, aucun droit en soi. */
   sharedEmails?: string[]
 
+  /** Règles de table choisies pour cette partie (absentes = `REGLES_DEFAUT`). */
+  regles?: BeloteRegles
+
   /** Parties liées (revanche…) : même `serieId` = même série. */
   serieId?: string | null
   serieName?: string | null
@@ -81,9 +105,17 @@ export interface BeloteRound {
   // Événements spéciaux
   capot: boolean
   capotTeam: TeamSlot | null
+  /** Le preneur a chuté — CALCULÉ à partir des points et des règles de la partie. */
   dedans: boolean
+  /** L'utilisateur a contredit le verdict de l'app (cas particulier de table). */
+  dedansForce?: boolean
   beloteRebelote: boolean
   beloteRebeloteTeam: TeamSlot | null
+
+  /** Ce tour est parti en litige : ses points attendent la donne suivante. */
+  litige?: boolean
+  /** Points de litige encaissés sur ce tour (déjà compris dans `finalScore`). */
+  potRecu?: number
 
   // Scores calculés après application des règles
   finalScore: Score
@@ -100,8 +132,12 @@ export interface RoundInput {
   rawScoreEux: number
   capot: boolean
   capotTeam: TeamSlot | null
-  dedans: boolean
+  /**
+   * Verdict imposé à la main. `undefined` = l'app tranche d'après les règles ;
+   * `true`/`false` = la table a corrigé (points mal saisis, exception maison).
+   */
+  dedansForce?: boolean
   beloteRebelote: boolean
   beloteRebeloteTeam: TeamSlot | null
-  rounding?: boolean           // arrondi à la dizaine (défaut : true)
+  rounding?: boolean           // arrondi à la dizaine (défaut : false)
 }

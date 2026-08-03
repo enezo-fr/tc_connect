@@ -10,9 +10,11 @@ import RoundHistory from '@/components/belote/RoundHistory'
 import RoundForm from '@/components/belote/RoundForm'
 import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { useAuth } from '@/context/AuthContext'
+import ReglesSelector from '@/components/belote/ReglesSelector'
 import { cumulSerie, ecartSerie } from '@/lib/belote/serie'
+import { REGLES_DEFAUT } from '@/lib/belote/rules'
 import type {
-  BeloteEndCondition, BeloteGame, BelotePlayer, BeloteRound, RoundInput,
+  BeloteEndCondition, BeloteGame, BeloteRegles, BelotePlayer, BeloteRound, RoundInput,
 } from '@/lib/belote/types'
 import { Copy, Check, QrCode, Share2, UserPlus, Pencil, Plus } from 'lucide-react'
 
@@ -27,6 +29,7 @@ interface PartiePublique {
   team2Players: BelotePlayer[]
   endCondition: BeloteEndCondition
   endValue: number
+  regles: BeloteRegles
   status: 'in_progress' | 'finished'
   winnerId: string | null
   totalScore: { team1: number; team2: number }
@@ -57,6 +60,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
   const [parties, setParties] = useState<PartiePublique[]>([])
   const [gameId, setGameId] = useState<string>('')
   const [rounds, setRounds] = useState<TourPublic[]>([])
+  const [pot, setPot] = useState(0)
   const [status, setStatus] = useState<'loading' | 'ok' | 'invalid'>('loading')
   const [erreur, setErreur] = useState('')
 
@@ -78,6 +82,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
       setParties(data.parties ?? [])
       setGameId(data.gameId)
       setRounds(data.rounds ?? [])
+      setPot(data.pot ?? 0)
       setStatus('ok')
     } catch {
       setStatus((s) => (s === 'loading' ? 'invalid' : s))
@@ -108,6 +113,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
       if (!res.ok) throw new Error(data?.error || 'Une erreur est survenue.')
       if (data.partie) setParties((ps) => ps.map((p) => (p.id === data.partie.id ? data.partie : p)))
       if (data.rounds) setRounds(data.rounds)
+      if (typeof data.pot === 'number') setPot(data.pot)
       return data
     } catch (e) {
       setErreur(e instanceof Error ? e.message : 'Une erreur est survenue.')
@@ -271,7 +277,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           <div className="space-y-4">
-            <ScoreBoard game={asGame(partie)} rounds={asRounds(rounds)} />
+            <ScoreBoard game={asGame(partie)} rounds={asRounds(rounds)} pot={pot} />
 
             {partie.status === 'in_progress' ? (
               <button onClick={() => setTourOuvert('new')}
@@ -317,6 +323,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
         <RoundForm
           key={tourOuvert ?? 'new'}
           game={asGame(partie)}
+          regles={partie.regles ?? REGLES_DEFAUT}
           team1Players={partie.team1Players}
           team2Players={partie.team2Players}
           initial={tourEnEdition ? {
@@ -328,9 +335,10 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
               rawScoreEux: tourEnEdition.rawScoreEux,
               capot: tourEnEdition.capot,
               capotTeam: tourEnEdition.capotTeam,
-              dedans: tourEnEdition.dedans,
               beloteRebelote: tourEnEdition.beloteRebelote,
               beloteRebeloteTeam: tourEnEdition.beloteRebeloteTeam,
+              ...(typeof tourEnEdition.dedansForce === 'boolean'
+                ? { dedansForce: tourEnEdition.dedansForce } : {}),
             },
           } : undefined}
           submitLabel={tourEnEdition ? 'Enregistrer les modifications' : 'Valider le tour'}
@@ -344,8 +352,8 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
         onClose={() => setReglagesOuverts(false)}
         partie={partie}
         busy={busy}
-        onSave={async (endCondition, endValue) => {
-          await appel('settings', { endCondition, endValue })
+        onSave={async (endCondition, endValue, regles) => {
+          await appel('settings', { endCondition, endValue, regles })
           setReglagesOuverts(false)
         }}
       />
@@ -389,17 +397,22 @@ function ReglagesModal({ isOpen, onClose, partie, busy, onSave }: {
   onClose: () => void
   partie: PartiePublique
   busy: boolean
-  onSave: (endCondition: BeloteEndCondition, endValue: number) => Promise<void>
+  onSave: (endCondition: BeloteEndCondition, endValue: number, regles: BeloteRegles) => Promise<void>
 }) {
   const [endCondition, setEndCondition] = useState<BeloteEndCondition>(partie.endCondition)
   const [endValue, setEndValue] = useState(String(partie.endValue))
+  const [regles, setRegles] = useState<BeloteRegles>(partie.regles ?? REGLES_DEFAUT)
 
   useEffect(() => {
-    if (isOpen) { setEndCondition(partie.endCondition); setEndValue(String(partie.endValue)) }
-  }, [isOpen, partie.endCondition, partie.endValue])
+    if (isOpen) {
+      setEndCondition(partie.endCondition)
+      setEndValue(String(partie.endValue))
+      setRegles(partie.regles ?? REGLES_DEFAUT)
+    }
+  }, [isOpen, partie.endCondition, partie.endValue, partie.regles])
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Modifier la partie" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Modifier la partie">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Fin de partie</label>
@@ -422,12 +435,18 @@ function ReglagesModal({ isOpen, onClose, partie, busy, onSave }: {
             onChange={(e) => setEndValue(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
         </div>
+
+        <div className="border-t border-dashed border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Règles de la table</h3>
+          <ReglesSelector valeur={regles} onChange={setRegles} avertirRecalcul />
+        </div>
+
         <div className="flex gap-3 pt-1">
           <button onClick={onClose}
             className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
             Annuler
           </button>
-          <button onClick={() => onSave(endCondition, Number(endValue) || 1)} disabled={busy}
+          <button onClick={() => onSave(endCondition, Number(endValue) || 1, regles)} disabled={busy}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
             Enregistrer
           </button>

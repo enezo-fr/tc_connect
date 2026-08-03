@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { partiesDuJeton, publicGame, roundsDePartie } from '@/lib/beloteShare'
+import { partiesDuJeton, potDePartie, publicGame, reglesValides, roundsDePartie } from '@/lib/beloteShare'
 
 /**
  * GET — les parties ouvertes par un lien de partage (page publique
@@ -17,11 +17,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const demande = new URL(req.url).searchParams.get('game')
   const courante = parties.find((p) => p.id === demande) ?? publicGame(lot.porteuse.id, lot.porteuse.data())
 
+  const rounds = (await roundsDePartie(courante.id)).map((r) => r.view)
+
   return NextResponse.json({
     status: 'ok',
     parties,
     gameId: courante.id,
     serieName: courante.serieName,
-    rounds: (await roundsDePartie(courante.id)).map((r) => r.view),
+    rounds,
+    pot: potDePartie(rounds, reglesValides(courante.regles)),
   })
 }

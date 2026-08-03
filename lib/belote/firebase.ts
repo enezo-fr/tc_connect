@@ -188,7 +188,9 @@ export const listenBeloteRoundsForGames = (
 export const createBeloteRound = (data: Omit<BeloteRound, 'id' | 'createdAt'>) =>
   addDoc(roundsCol, { ...data, createdAt: Timestamp.now() })
 
-export const updateBeloteRound = (roundId: string, data: Partial<BeloteRound>) =>
+// `Record` et non `Partial<BeloteRound>` : une mise à jour peut porter un
+// `deleteField()` (repasser un verdict forcé en automatique).
+export const updateBeloteRound = (roundId: string, data: Record<string, unknown>) =>
   updateDoc(doc(db, 'belote_rounds', roundId), data)
 
 export const deleteBeloteRound = (roundId: string) =>
