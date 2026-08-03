@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useBeloteGames } from '@/hooks/useBeloteGames'
+import { useBeloteStats } from '@/hooks/useBeloteStats'
+import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { cumulSerie, ecartPartie, ecartSerie, partiesDeSerie } from '@/lib/belote/serie'
 import { lierPartieASerie } from '@/lib/belote/firebase'
 import { ArrowLeftIcon, ChevronRightIcon, PencilIcon } from '@heroicons/react/24/outline'
@@ -23,6 +25,8 @@ export default function SeriePage() {
   const lignes = useMemo(() => cumulSerie(parties), [parties])
   const ecart = useMemo(() => ecartSerie(lignes), [lignes])
   const nom = parties.find((g) => g.serieName)?.serieName ?? 'Série'
+
+  const { parties: partiesAvecTours } = useBeloteStats(parties)
 
   const [renommage, setRenommage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -125,7 +129,9 @@ export default function SeriePage() {
           </div>
 
           {/* Détail partie par partie */}
-          <div>
+          <div className="space-y-5">
+            <StatsJoueurs parties={partiesAvecTours} titre="Statistiques de la série" />
+            <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Parties, dans l&apos;ordre</h2>
             <div className="space-y-2">
               {parties.map((g, i) => {
@@ -150,6 +156,7 @@ export default function SeriePage() {
                   </button>
                 )
               })}
+            </div>
             </div>
           </div>
         </div>

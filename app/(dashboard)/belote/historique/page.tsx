@@ -3,7 +3,9 @@
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useBeloteGames } from '@/hooks/useBeloteGames'
+import { useBeloteStats } from '@/hooks/useBeloteStats'
 import GameHistory from '@/components/belote/GameHistory'
+import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { BeloteGame } from '@/lib/belote/types'
 
@@ -28,7 +30,10 @@ function buildStandings(games: BeloteGame[]): Standing[] {
 
 export default function HistoriquePage() {
   const router = useRouter()
-  const { finished, loading } = useBeloteGames()
+  const { games, finished, loading } = useBeloteGames()
+  // Toutes les parties, pas seulement les terminées : les prises d'une partie en
+  // cours comptent déjà dans le palmarès des preneurs.
+  const { parties: partiesAvecTours } = useBeloteStats(games)
 
   // Tri par date de fin décroissante (la plus récente en haut)
   const sortedFinished = useMemo(() =>
@@ -79,10 +84,13 @@ export default function HistoriquePage() {
             )}
           </div>
 
-          {/* Liste des parties terminées */}
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Parties terminées</h2>
-            <GameHistory games={sortedFinished} />
+          {/* Liste des parties terminées puis statistiques toutes parties confondues */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">Parties terminées</h2>
+              <GameHistory games={sortedFinished} />
+            </div>
+            <StatsJoueurs parties={partiesAvecTours} titre="Statistiques, toutes parties" />
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import CardsLogo from '@/components/belote/CardsLogo'
 import ScoreBoard from '@/components/belote/ScoreBoard'
 import RoundHistory from '@/components/belote/RoundHistory'
 import RoundForm from '@/components/belote/RoundForm'
+import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { useAuth } from '@/context/AuthContext'
 import { cumulSerie, ecartSerie } from '@/lib/belote/serie'
 import type {
@@ -294,14 +295,18 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
             </p>
           </div>
 
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Tours</h2>
-            <RoundHistory
-              game={asGame(partie)}
-              rounds={asRounds(rounds)}
-              onEdit={(id) => setTourOuvert(id)}
-              onDelete={supprimerTour}
-            />
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">Tours</h2>
+              <RoundHistory
+                game={asGame(partie)}
+                rounds={asRounds(rounds)}
+                onEdit={(id) => setTourOuvert(id)}
+                onDelete={supprimerTour}
+              />
+            </div>
+            <StatsJoueurs parties={[{ game: asGame(partie), rounds: asRounds(rounds) }]}
+              titre="Statistiques de la partie" />
           </div>
         </div>
       </div>

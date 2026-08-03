@@ -9,6 +9,7 @@ import { createBeloteGame, lierPartieASerie } from '@/lib/belote/firebase'
 import { cumulSerie, ecartSerie, nomSerieParDefaut, nouvelleSerieId, partiesDeSerie } from '@/lib/belote/serie'
 import ScoreBoard from '@/components/belote/ScoreBoard'
 import RoundHistory from '@/components/belote/RoundHistory'
+import StatsJoueurs from '@/components/belote/StatsJoueurs'
 import { BeloteShareModal } from '@/components/belote/BeloteShareModal'
 import { LierPartieModal } from '@/components/belote/LierPartieModal'
 import Modal from '@/components/ui/Modal'
@@ -213,15 +214,18 @@ export default function GameDetailPage() {
             </div>
           </div>
 
-          {/* Colonne droite : historique des tours */}
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Tours</h2>
-            <RoundHistory
-              game={game}
-              rounds={rounds}
-              onEdit={(id) => router.push(`/belote/${gameId}/nouveau-tour?roundId=${id}`)}
-              onDelete={removeRound}
-            />
+          {/* Colonne droite : historique des tours puis statistiques */}
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">Tours</h2>
+              <RoundHistory
+                game={game}
+                rounds={rounds}
+                onEdit={(id) => router.push(`/belote/${gameId}/nouveau-tour?roundId=${id}`)}
+                onDelete={removeRound}
+              />
+            </div>
+            <StatsJoueurs parties={[{ game, rounds }]} titre="Statistiques de la partie" />
           </div>
         </div>
       )}

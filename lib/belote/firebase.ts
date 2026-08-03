@@ -162,6 +162,29 @@ export const listenBeloteRounds = (gameId: string, cb: (rounds: BeloteRound[]) =
     cb(rounds)
   })
 
+/**
+ * Tours de PLUSIEURS parties à la fois (statistiques d'une série, de l'historique).
+ * Firestore plafonne `in` à 10 valeurs → on découpe et on fusionne les lots.
+ */
+export const listenBeloteRoundsForGames = (
+  gameIds: string[],
+  cb: (rounds: BeloteRound[]) => void,
+) => {
+  if (gameIds.length === 0) { cb([]); return () => {} }
+
+  const lots: string[][] = []
+  for (let i = 0; i < gameIds.length; i += 10) lots.push(gameIds.slice(i, i + 10))
+
+  const parLot = new Map<number, BeloteRound[]>()
+  const unsubs = lots.map((lot, i) =>
+    onSnapshot(query(roundsCol, where('gameId', 'in', lot)), (snap) => {
+      parLot.set(i, snap.docs.map(d => ({ id: d.id, ...d.data() } as BeloteRound)))
+      cb([...parLot.values()].flat().sort((a, b) => a.roundNumber - b.roundNumber))
+    }),
+  )
+  return () => unsubs.forEach(u => u())
+}
+
 export const createBeloteRound = (data: Omit<BeloteRound, 'id' | 'createdAt'>) =>
   addDoc(roundsCol, { ...data, createdAt: Timestamp.now() })
 
