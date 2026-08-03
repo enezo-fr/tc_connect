@@ -51,6 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       capotTeam: input.capotTeam,
       beloteRebelote: input.beloteRebelote,
       beloteRebeloteTeam: input.beloteRebeloteTeam,
+      beloteRebelotePlayer: input.beloteRebelotePlayer ?? '',
     }
 
     if (action === 'update') {

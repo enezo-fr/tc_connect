@@ -40,6 +40,7 @@ const champsSaisie = (input: RoundInput, meta: { dealer: string; trumpTaker: str
   capotTeam: input.capotTeam,
   beloteRebelote: input.beloteRebelote,
   beloteRebeloteTeam: input.beloteRebeloteTeam,
+  beloteRebelotePlayer: input.beloteRebelotePlayer ?? '',
 })
 
 /** À la CRÉATION : la clé est simplement absente si le verdict est automatique. */

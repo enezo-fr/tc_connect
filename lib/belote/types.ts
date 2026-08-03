@@ -111,6 +111,11 @@ export interface BeloteRound {
   dedansForce?: boolean
   beloteRebelote: boolean
   beloteRebeloteTeam: TeamSlot | null
+  /**
+   * Qui a annoncé la belote-rebelote (nom complet). Facultatif : sans lui,
+   * l'annonce n'est comptée qu'au crédit de l'équipe. `''` = non renseigné.
+   */
+  beloteRebelotePlayer?: string
 
   /** Ce tour est parti en litige : ses points attendent la donne suivante. */
   litige?: boolean
@@ -139,5 +144,7 @@ export interface RoundInput {
   dedansForce?: boolean
   beloteRebelote: boolean
   beloteRebeloteTeam: TeamSlot | null
+  /** Joueur qui a annoncé la belote (facultatif, `''` si non renseigné). */
+  beloteRebelotePlayer?: string
   rounding?: boolean           // arrondi à la dizaine (défaut : false)
 }

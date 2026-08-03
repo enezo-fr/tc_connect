@@ -95,10 +95,34 @@ export default function StatsJoueurs({ parties, titre = 'Statistiques', avecAide
               </div>
             </div>
 
+            {/* Capots et belotes — pastilles, comme dans l'historique des tours */}
+            {(j.capots > 0 || j.capotsSubis > 0 || j.belotesEquipe > 0) && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {j.capots > 0 && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                    {j.capots} capot{j.capots > 1 ? 's' : ''}
+                  </span>
+                )}
+                {j.capotsSubis > 0 && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">
+                    {j.capotsSubis} encaissé{j.capotsSubis > 1 ? 's' : ''}
+                  </span>
+                )}
+                {j.belotes > 0 && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                    {j.belotes} belote{j.belotes > 1 ? 's' : ''} annoncée{j.belotes > 1 ? 's' : ''}
+                  </span>
+                )}
+                {j.belotesEquipe > j.belotes && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+                    {j.belotesEquipe - j.belotes} belote{j.belotesEquipe - j.belotes > 1 ? 's' : ''} d&apos;équipe
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-400">
               {j.moyenne != null && <span>{j.moyenne} pts en moyenne par prise</span>}
-              {j.capots > 0 && <span className="text-purple-600">{j.capots} capot{j.capots > 1 ? 's' : ''}</span>}
-              {j.capotsSubis > 0 && <span className="text-red-400">{j.capotsSubis} capot{j.capotsSubis > 1 ? 's' : ''} encaissé{j.capotsSubis > 1 ? 's' : ''}</span>}
               {j.distributions > 0 && <span>{j.distributions} distribution{j.distributions > 1 ? 's' : ''}</span>}
               {j.prises === 0 && <span className="italic">n&apos;a jamais pris</span>}
             </div>
@@ -117,6 +141,14 @@ export default function StatsJoueurs({ parties, titre = 'Statistiques', avecAide
           <p>
             La <strong>moyenne par prise</strong> compte les points marqués par son équipe sur les tours
             où c&apos;est lui qui a pris.
+          </p>
+          <p>
+            Les <strong>capots</strong> sont ceux de son équipe, qu&apos;il ait pris ou non ; les
+            <strong> encaissés</strong> sont ceux subis par son équipe.
+          </p>
+          <p>
+            Une <strong>belote annoncée</strong> lui est comptée si son nom a été indiqué à la saisie.
+            Sinon elle reste au crédit de l&apos;équipe et apparaît en « belote d&apos;équipe ».
           </p>
           <p className="text-sky-900/60">
             Un joueur n&apos;apparaît avec une équipe que si la partie connaît sa composition ; les

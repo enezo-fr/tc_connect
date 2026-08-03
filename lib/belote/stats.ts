@@ -6,9 +6,10 @@ import type { BeloteGame, BeloteRound, TeamSlot } from './types'
  * Fonctions pures (aucune dépendance Firebase) : resservies dans l'app, sur la
  * page de série et sur la page publique du lien de partage.
  *
- * L'équipe d'un preneur se lit sur le TOUR lui-même (`teamTaker`), pas sur la
- * composition des équipes : les parties créées avant le partage n'ont pas leurs
- * joueurs recopiés, et leurs statistiques doivent quand même se calculer.
+ * L'équipe d'un joueur se déduit de la composition de la partie quand elle est
+ * connue, sinon des tours où il a pris (`teamTaker`) : les parties créées avant
+ * le partage n'ont pas leurs joueurs recopiés, et leurs statistiques doivent
+ * quand même se calculer.
  */
 
 export interface StatJoueur {
@@ -22,10 +23,14 @@ export interface StatJoueur {
   reussies: number
   /** Pourcentage de prises réussies, `null` s'il n'a jamais pris. */
   taux: number | null
-  /** Capots réalisés par son équipe sur ses prises. */
+  /** Capots réalisés par son équipe (toutes prises confondues). */
   capots: number
-  /** Capots encaissés par son équipe sur ses prises. */
+  /** Capots encaissés par son équipe. */
   capotsSubis: number
+  /** Belote-rebelote annoncées NOMINATIVEMENT par lui. */
+  belotes: number
+  /** Belote-rebelote de son équipe, la sienne comprise. */
+  belotesEquipe: number
   /** Points marqués par son équipe sur ses prises. */
   points: number
   /** Points moyens par prise, `null` s'il n'a jamais pris. */
@@ -45,18 +50,29 @@ export interface StatEquipe {
   points: number
 }
 
+type TourStat = Pick<BeloteRound,
+  'trumpTaker' | 'dealer' | 'teamTaker' | 'dedans' | 'capot' | 'capotTeam' |
+  'beloteRebelote' | 'beloteRebeloteTeam' | 'finalScore'> & { beloteRebelotePlayer?: string }
+
 /** Une partie et ses tours — l'unité de calcul (une seule, ou toute une série). */
 export interface PartieAvecTours {
   game: Pick<BeloteGame, 'team1Name' | 'team2Name' | 'team1Players' | 'team2Players'>
-  rounds: Pick<BeloteRound,
-    'trumpTaker' | 'dealer' | 'teamTaker' | 'dedans' | 'capot' | 'capotTeam' |
-    'beloteRebelote' | 'beloteRebeloteTeam' | 'finalScore'>[]
+  rounds: TourStat[]
 }
 
 const nomComplet = (p: { firstName: string; lastName: string }) =>
   `${p.firstName} ${p.lastName}`.trim()
 
 const pourcent = (n: number, sur: number) => (sur > 0 ? Math.round((n / sur) * 100) : null)
+
+const autre = (t: TeamSlot): TeamSlot => (t === 'team1' ? 'team2' : 'team1')
+
+const vide = (nom: string, equipe: TeamSlot | null, equipeNom: string): StatJoueur => ({
+  nom, equipe, equipeNom,
+  prises: 0, dedans: 0, reussies: 0, taux: null,
+  capots: 0, capotsSubis: 0, belotes: 0, belotesEquipe: 0,
+  points: 0, moyenne: null, distributions: 0,
+})
 
 /**
  * Statistiques par joueur, du plus preneur au moins preneur.
@@ -68,11 +84,7 @@ export function statsJoueurs(parties: PartieAvecTours[]): StatJoueur[] {
   const map = new Map<string, StatJoueur>()
 
   const entree = (nom: string, equipe: TeamSlot | null, equipeNom: string): StatJoueur => {
-    const cur = map.get(nom) ?? {
-      nom, equipe, equipeNom,
-      prises: 0, dedans: 0, reussies: 0, taux: null,
-      capots: 0, capotsSubis: 0, points: 0, moyenne: null, distributions: 0,
-    }
+    const cur = map.get(nom) ?? vide(nom, equipe, equipeNom)
     // L'équipe déduite d'un tour est plus sûre qu'une composition absente.
     if (equipe && !cur.equipe) { cur.equipe = equipe; cur.equipeNom = equipeNom }
     map.set(nom, cur)
@@ -82,23 +94,42 @@ export function statsJoueurs(parties: PartieAvecTours[]): StatJoueur[] {
   parties.forEach(({ game, rounds }) => {
     const nomEquipe = (t: TeamSlot) => (t === 'team1' ? game.team1Name : game.team2Name)
 
-    // Amorçage : tous les joueurs connus des deux équipes.
-    ;(game.team1Players ?? []).forEach((p) => entree(nomComplet(p), 'team1', game.team1Name))
-    ;(game.team2Players ?? []).forEach((p) => entree(nomComplet(p), 'team2', game.team2Name))
+    // ── Qui joue CETTE partie, et dans quelle équipe ? ───────────────────────
+    // Indispensable pour n'attribuer les capots et belotes d'équipe qu'aux
+    // joueurs présents : sur une série, tout le monde n'a pas joué toutes les
+    // parties.
+    const equipeDansCettePartie = new Map<string, TeamSlot>()
+    ;(game.team1Players ?? []).forEach((p) => equipeDansCettePartie.set(nomComplet(p), 'team1'))
+    ;(game.team2Players ?? []).forEach((p) => equipeDansCettePartie.set(nomComplet(p), 'team2'))
+    rounds.forEach((r) => {
+      if (r.trumpTaker && !equipeDansCettePartie.has(r.trumpTaker)) {
+        equipeDansCettePartie.set(r.trumpTaker, r.teamTaker)
+      }
+    })
 
+    equipeDansCettePartie.forEach((t, nom) => entree(nom, t, nomEquipe(t)))
+
+    // ── Ce qui se rattache à une PRISE ───────────────────────────────────────
     rounds.forEach((r) => {
       if (r.dealer) entree(r.dealer, null, '').distributions += 1
       if (!r.trumpTaker) return
-
-      const equipe = r.teamTaker
-      const s = entree(r.trumpTaker, equipe, nomEquipe(equipe))
+      const s = entree(r.trumpTaker, r.teamTaker, nomEquipe(r.teamTaker))
       s.prises += 1
-      s.points += r.finalScore?.[equipe] ?? 0
+      s.points += r.finalScore?.[r.teamTaker] ?? 0
       if (r.dedans) s.dedans += 1
-      if (r.capot) {
-        if (r.capotTeam === equipe) s.capots += 1
-        else s.capotsSubis += 1
+    })
+
+    // ── Ce qui se rattache à l'ÉQUIPE (ou nominativement à un joueur) ────────
+    rounds.forEach((r) => {
+      if (r.beloteRebelote && r.beloteRebelotePlayer) {
+        entree(r.beloteRebelotePlayer, null, '').belotes += 1
       }
+      equipeDansCettePartie.forEach((equipe, nom) => {
+        const s = entree(nom, equipe, nomEquipe(equipe))
+        if (r.capot && r.capotTeam === equipe) s.capots += 1
+        if (r.capot && r.capotTeam === autre(equipe)) s.capotsSubis += 1
+        if (r.beloteRebelote && r.beloteRebeloteTeam === equipe) s.belotesEquipe += 1
+      })
     })
   })
 

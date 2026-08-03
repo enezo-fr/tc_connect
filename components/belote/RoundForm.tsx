@@ -53,6 +53,7 @@ export default function RoundForm({
   const [rawEux, setRawEux] = useState(initial ? String(initial.input.rawScoreEux) : '')       // team2
   const [capotSel, setCapotSel] = useState<TeamSlot | null>(initial?.input.capot ? initial.input.capotTeam : null)
   const [beloteSel, setBeloteSel] = useState<TeamSlot | null>(initial?.input.beloteRebelote ? initial.input.beloteRebeloteTeam : null)
+  const [beloteJoueur, setBeloteJoueur] = useState(initial?.input.beloteRebelotePlayer ?? '')
   const [force, setForce] = useState<boolean | undefined>(initial?.input.dedansForce)
   const [correction, setCorrection] = useState(initial?.input.dedansForce !== undefined)
   const [saving, setSaving] = useState(false)
@@ -69,6 +70,9 @@ export default function RoundForm({
     capotTeam: capotSel,
     beloteRebelote: beloteSel !== null,
     beloteRebeloteTeam: beloteSel,
+    // Le joueur ne vaut que si l'annonce existe et qu'il est bien de cette équipe.
+    beloteRebelotePlayer: beloteSel && players.find(p => p.name === beloteJoueur)?.team === beloteSel
+      ? beloteJoueur : '',
     ...(force !== undefined ? { dedansForce: force } : {}),
   }
 
@@ -202,7 +206,29 @@ export default function RoundForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Belote &amp; rebelote <span className="font-normal text-gray-400">(+20)</span></label>
-          <TriSelect value={beloteSel} onChange={setBeloteSel} />
+          <TriSelect value={beloteSel} onChange={(v) => { setBeloteSel(v); setBeloteJoueur('') }} />
+
+          {/* Qui l'a annoncée : facultatif, mais c'est ce qui la compte au joueur */}
+          {beloteSel && (
+            <div className="mt-2">
+              <p className="text-xs text-gray-500 mb-1.5">
+                Qui l&apos;a annoncée ? <span className="text-gray-400">(facultatif)</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {players.filter(p => p.team === beloteSel).map(p => (
+                  <button key={p.name} type="button"
+                    onClick={() => setBeloteJoueur(beloteJoueur === p.name ? '' : p.name)}
+                    className={`px-3 py-1.5 rounded-lg text-sm border transition ${
+                      beloteJoueur === p.name
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'border-gray-200 text-gray-700 hover:border-amber-300'
+                    }`}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -27,6 +27,7 @@ export default function NouveauTourPage() {
       capotTeam: editing.capotTeam,
       beloteRebelote: editing.beloteRebelote,
       beloteRebeloteTeam: editing.beloteRebeloteTeam,
+      beloteRebelotePlayer: editing.beloteRebelotePlayer ?? '',
       ...(editing.dedansForce !== undefined ? { dedansForce: editing.dedansForce } : {}),
     },
   } : undefined

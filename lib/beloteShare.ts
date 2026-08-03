@@ -98,6 +98,7 @@ export function publicRound(id: string, d: Data) {
     ...(typeof d.dedansForce === 'boolean' ? { dedansForce: d.dedansForce } : {}),
     beloteRebelote: !!d.beloteRebelote,
     beloteRebeloteTeam: d.beloteRebeloteTeam ?? null,
+    beloteRebelotePlayer: typeof d.beloteRebelotePlayer === 'string' ? d.beloteRebelotePlayer : '',
     litige: !!d.litige,
     potRecu: Number(d.potRecu) || 0,
     finalScore: { team1: d.finalScore?.team1 ?? 0, team2: d.finalScore?.team2 ?? 0 },
@@ -142,6 +143,7 @@ export function cleanRoundInput(body: Data): { input: RoundInput; dealer: string
       capotTeam: body.capot ? capotTeam : null,
       beloteRebelote: !!body.beloteRebelote && !!beloteTeam,
       beloteRebeloteTeam: body.beloteRebelote ? beloteTeam : null,
+      beloteRebelotePlayer: body.beloteRebelote ? str(body.beloteRebelotePlayer, 60) : '',
       ...(typeof body.dedansForce === 'boolean' ? { dedansForce: body.dedansForce } : {}),
     },
   }

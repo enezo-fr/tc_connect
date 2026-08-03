@@ -337,6 +337,7 @@ export default function PartiePubliquePage({ params }: { params: Promise<{ token
               capotTeam: tourEnEdition.capotTeam,
               beloteRebelote: tourEnEdition.beloteRebelote,
               beloteRebeloteTeam: tourEnEdition.beloteRebeloteTeam,
+              beloteRebelotePlayer: tourEnEdition.beloteRebelotePlayer ?? '',
               ...(typeof tourEnEdition.dedansForce === 'boolean'
                 ? { dedansForce: tourEnEdition.dedansForce } : {}),
             },
