@@ -9,7 +9,7 @@ import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExerc
 import BlocMedia from '@/components/exercices/BlocMedia'
 import { MUSCLES, MATERIEL, PARTIES_CORPS, PARTIE_CORPS_DEFAUT, normalizePartieCorps } from '@/lib/exerciceOptions'
 import {
-  type TypeMedia, CHAMP_URL, CHAMP_SOURCE, urlMedia,
+  type TypeMedia, TYPES_MEDIA, CHAMP_URL, CHAMP_SOURCE, urlMedia,
   synchroniserMedias, supprimerMediaSiOrphelin, supprimerExerciceEtMedias,
 } from '@/lib/exerciceMedia'
 import { PlusIcon, MagnifyingGlassIcon, PhotoIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
@@ -89,6 +89,17 @@ export default function ExercicesPage() {
     if (precedente && precedente !== url && !dejaEnregistree && !precedentEtaitRepris) {
       supprimerMediaSiOrphelin(precedente, exercices, [editItem?.id ?? ''])
     }
+  }
+
+  /** Fermeture sans enregistrer : les fichiers envoyés pendant la saisie n'ont jamais servi → on les efface. */
+  const fermerSansEnregistrer = () => {
+    for (const type of TYPES_MEDIA) {
+      const url = form[CHAMP_URL[type]]
+      if (url && url !== urlMedia(editItem, type) && !form[CHAMP_SOURCE[type]]) {
+        supprimerMediaSiOrphelin(url, exercices, [editItem?.id ?? ''])
+      }
+    }
+    setShowModal(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,7 +255,7 @@ export default function ExercicesPage() {
       {/* Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={fermerSansEnregistrer}
         title={editItem ? "Modifier l'exercice" : 'Nouvel exercice'}
         size="lg"
       >
@@ -311,7 +322,7 @@ export default function ExercicesPage() {
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setShowModal(false)}
+              onClick={fermerSansEnregistrer}
               className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition"
             >
               Annuler

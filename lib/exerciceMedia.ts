@@ -34,9 +34,18 @@ export function sourceMedia(ex: ExerciceLike | null | undefined, type: TypeMedia
 
 export const LIBELLE_MEDIA: Record<TypeMedia, string> = { image: 'photo', video: 'vidéo' }
 
-/** Les exercices dont on peut reprendre le média (ceux qui en ont un), sauf celui en cours. */
+/** Tous les exercices qui affichent ce type de média (référence ET reprises), sauf celui en cours. */
 export function exercicesAvecMedia(tous: Exercice[], type: TypeMedia, exclureId?: string): Exercice[] {
   return tous.filter((e) => e.id !== exclureId && !!urlMedia(e, type))
+}
+
+/**
+ * Les exercices de RÉFÉRENCE : ceux qui possèdent vraiment le fichier, sans le reprendre
+ * de personne. Ce sont les seuls qu'on propose de reprendre — reprendre une reprise
+ * n'aurait aucun sens et le lien pointerait de toute façon sur la référence.
+ */
+export function exercicesReference(tous: Exercice[], type: TypeMedia, exclureId?: string): Exercice[] {
+  return tous.filter((e) => e.id !== exclureId && !!urlMedia(e, type) && !sourceMedia(e, type))
 }
 
 /**

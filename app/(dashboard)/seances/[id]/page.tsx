@@ -10,11 +10,12 @@ import { useExercices } from '@/hooks/useExercices'
 import { useProgrammeSeance } from '@/hooks/useProgrammeSeance'
 import { useAuth } from '@/context/AuthContext'
 import Modal from '@/components/ui/Modal'
-import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, CheckIcon, ChevronUpIcon, ChevronDownIcon, PhotoIcon, PlayIcon } from '@heroicons/react/24/outline'
-import { uploadImage } from '@/lib/uploadImage'
+import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, CheckIcon, ChevronUpIcon, ChevronDownIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { loadExerciceMemory, saveExerciceMemory } from '@/lib/exerciceMemory'
-import { MUSCLES, PARTIE_CORPS_DEFAUT, normalizePartieCorps } from '@/lib/exerciceOptions'
+import { MUSCLES, MATERIEL, PARTIE_CORPS_DEFAUT, normalizePartieCorps } from '@/lib/exerciceOptions'
 import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExercice'
+import BlocMedia from '@/components/exercices/BlocMedia'
+import { type TypeMedia, TYPES_MEDIA, CHAMP_URL, CHAMP_SOURCE, supprimerMediaSiOrphelin } from '@/lib/exerciceMedia'
 
 const TYPES_EFFORT = ['Répétitions', 'Durée (sec)', 'Distance (m)']
 const TYPES_SEANCE_CIRCUIT_DETAIL = ['Circuit classique','Tabata','Circuit en 30-10','Circuit varié (rep)','Circuit varié (temps)','Circuit varié']
@@ -80,18 +81,19 @@ export default function DetailSeancePage() {
 
   const [showCreateExo, setShowCreateExo] = useState(false)
   const [creatingExo, setCreatingExo] = useState(false)
-  const [newExoForm, setNewExoForm] = useState({
+  const NOUVEL_EXO_VIDE = {
     nom_exercice: '',
     partie_prioritaire: PARTIE_CORPS_DEFAUT as string,
     explications_commentees_exercice: '',
+    image_exercice: '',
     video_exercice: '',
     lien_exercice: '',
     Muscles: [] as string[],
     Materiel: [] as string[],
-  })
-  const [newExoImageFile, setNewExoImageFile] = useState<File | null>(null)
-  const [newExoImagePreview, setNewExoImagePreview] = useState('')
-  const [newExoMaterielInput, setNewExoMaterielInput] = useState('')
+    image_source_id: '',
+    video_source_id: '',
+  }
+  const [newExoForm, setNewExoForm] = useState(NOUVEL_EXO_VIDE)
   const [newMateriel, setNewMateriel] = useState('')
 
   const [form, setForm] = useState({
@@ -238,23 +240,32 @@ export default function DetailSeancePage() {
     setShowModal(true)
   }
 
+  /** Un média envoyé puis remplacé/abandonné avant la création n'appartient à personne → on l'efface. */
+  const majNouvelExoMedia = (type: TypeMedia, url: string, sourceId: string) => {
+    const precedente = newExoForm[CHAMP_URL[type]]
+    const precedentEtaitRepris = !!newExoForm[CHAMP_SOURCE[type]]
+    setNewExoForm((f) => ({ ...f, [CHAMP_URL[type]]: url, [CHAMP_SOURCE[type]]: sourceId }))
+    if (precedente && precedente !== url && !precedentEtaitRepris) {
+      supprimerMediaSiOrphelin(precedente, exercices, [])
+    }
+  }
+
+  const annulerCreationExo = () => {
+    for (const type of TYPES_MEDIA) {
+      const url = newExoForm[CHAMP_URL[type]]
+      if (url && !newExoForm[CHAMP_SOURCE[type]]) supprimerMediaSiOrphelin(url, exercices, [])
+    }
+    setShowCreateExo(false)
+    setNewExoForm(NOUVEL_EXO_VIDE)
+  }
+
   const handleCreateExo = async () => {
     if (!newExoForm.nom_exercice.trim()) return
     setCreatingExo(true)
     try {
-      let image_exercice = ''
-      if (newExoImageFile) {
-        image_exercice = await uploadImage(newExoImageFile, `exercices/${Date.now()}_${newExoImageFile.name}`)
-      }
       const created = await addExercice({
+        ...newExoForm,
         nom_exercice: newExoForm.nom_exercice.trim(),
-        partie_prioritaire: newExoForm.partie_prioritaire,
-        explications_commentees_exercice: newExoForm.explications_commentees_exercice,
-        image_exercice,
-        video_exercice: newExoForm.video_exercice,
-        lien_exercice: newExoForm.lien_exercice,
-        Materiel: newExoForm.Materiel,
-        Muscles: newExoForm.Muscles,
       } as any)
       setForm((f) => ({
         ...f,
@@ -264,10 +275,7 @@ export default function DetailSeancePage() {
       }))
       setSearch(newExoForm.nom_exercice.trim())
       setShowCreateExo(false)
-      setNewExoForm({ nom_exercice: '', partie_prioritaire: PARTIE_CORPS_DEFAUT, explications_commentees_exercice: '', video_exercice: '', lien_exercice: '', Muscles: [], Materiel: [] })
-      setNewExoImageFile(null)
-      setNewExoImagePreview('')
-      setNewExoMaterielInput('')
+      setNewExoForm(NOUVEL_EXO_VIDE)
     } finally {
       setCreatingExo(false)
     }
@@ -711,41 +719,23 @@ export default function DetailSeancePage() {
                   />
                 </div>
 
-                {/* Photo */}
-                <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1.5">Photo</p>
-                  {newExoImagePreview ? (
-                    <div className="relative w-full h-28 rounded-lg overflow-hidden bg-gray-100 mb-1.5">
-                      <img src={newExoImagePreview} alt="preview" className="w-full h-full object-cover" />
-                      <button type="button"
-                        onClick={() => { setNewExoImageFile(null); setNewExoImagePreview('') }}
-                        className="absolute top-1 right-1 bg-white rounded-full p-0.5 text-gray-500 hover:text-red-500 text-xs shadow">
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex items-center gap-2 w-full border border-dashed border-gray-300 rounded-lg px-3 py-3 text-sm text-gray-500 bg-white cursor-pointer hover:border-blue-400 hover:text-blue-500 transition">
-                      <PhotoIcon className="w-4 h-4 shrink-0" />
-                      <span>Choisir une photo</span>
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          setNewExoImageFile(file)
-                          setNewExoImagePreview(URL.createObjectURL(file))
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
+                {/* Photo et vidéo — envoyées ou reprises d'un autre exercice */}
+                <BlocMedia
+                  type="image"
+                  label="Photo"
+                  url={newExoForm.image_exercice}
+                  sourceId={newExoForm.image_source_id}
+                  exercices={exercices}
+                  onChange={(url, sourceId) => majNouvelExoMedia('image', url, sourceId)}
+                />
 
-                {/* Vidéo URL */}
-                <input
-                  type="url"
-                  placeholder="URL vidéo (YouTube, Vimeo...)"
-                  value={newExoForm.video_exercice}
-                  onChange={(e) => setNewExoForm((f) => ({ ...f, video_exercice: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                <BlocMedia
+                  type="video"
+                  label="Vidéo de démonstration"
+                  url={newExoForm.video_exercice}
+                  sourceId={newExoForm.video_source_id}
+                  exercices={exercices}
+                  onChange={(url, sourceId) => majNouvelExoMedia('video', url, sourceId)}
                 />
 
                 {/* Lien */}
@@ -757,53 +747,17 @@ export default function DetailSeancePage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 />
 
-                {/* Matériel */}
+                {/* Matériel — pastilles courantes + saisie libre (« Élastique rouge »…) */}
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-1.5">Matériel nécessaire</p>
-                  {newExoForm.Materiel.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {newExoForm.Materiel.map((m) => (
-                        <span key={m}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-600 text-white border border-blue-600">
-                          {m}
-                          <button type="button"
-                            onClick={() => setNewExoForm((f) => ({ ...f, Materiel: f.Materiel.filter(x => x !== m) }))}
-                            className="ml-0.5 hover:text-blue-200">✕</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newExoMaterielInput}
-                      onChange={(e) => setNewExoMaterielInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          const val = newExoMaterielInput.trim()
-                          if (val && !newExoForm.Materiel.includes(val)) {
-                            setNewExoForm((f) => ({ ...f, Materiel: [...f.Materiel, val] }))
-                          }
-                          setNewExoMaterielInput('')
-                        }
-                      }}
-                      placeholder="Haltères, barre, élastique..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    />
-                    <button type="button"
-                      disabled={!newExoMaterielInput.trim()}
-                      onClick={() => {
-                        const val = newExoMaterielInput.trim()
-                        if (val && !newExoForm.Materiel.includes(val)) {
-                          setNewExoForm((f) => ({ ...f, Materiel: [...f.Materiel, val] }))
-                        }
-                        setNewExoMaterielInput('')
-                      }}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition">
-                      +
-                    </button>
-                  </div>
+                  <ChipsMulti
+                    options={MATERIEL}
+                    valeurs={newExoForm.Materiel}
+                    onChange={(v) => setNewExoForm((f) => ({ ...f, Materiel: v }))}
+                    couleur="gray"
+                    avecAutre
+                    placeholderAutre="Élastique rouge, charge…"
+                  />
                 </div>
 
                 {/* Explications */}
@@ -816,7 +770,7 @@ export default function DetailSeancePage() {
                 />
 
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => { setShowCreateExo(false); setNewExoImageFile(null); setNewExoImagePreview(''); setNewExoMaterielInput('') }}
+                  <button type="button" onClick={annulerCreationExo}
                     className="flex-1 border border-gray-300 text-gray-600 py-1.5 rounded-lg text-xs hover:bg-white transition">
                     Annuler
                   </button>

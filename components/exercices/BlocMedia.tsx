@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from 'react'
 import { PhotoIcon, VideoCameraIcon, MagnifyingGlassIcon, ArrowPathIcon, LinkIcon } from '@heroicons/react/24/outline'
 import { uploadImage, uploadVideo } from '@/lib/uploadImage'
 import {
-  type TypeMedia, LIBELLE_MEDIA, exercicesAvecMedia, racineMedia, urlMedia,
+  type TypeMedia, LIBELLE_MEDIA, exercicesReference, exercicesAvecMedia,
+  racineMedia, urlMedia, sourceMedia,
 } from '@/lib/exerciceMedia'
 import type { Exercice } from '@/types'
 
@@ -39,11 +40,27 @@ export default function BlocMedia({
 
   const source = sourceId ? exercices.find((e) => e.id === sourceId) : null
 
+  const q = recherche.trim().toLowerCase()
+
+  /** Seuls les exercices de référence sont proposés (ceux qui possèdent le fichier). */
   const candidats = useMemo(() => {
-    const base = exercicesAvecMedia(exercices, type, exerciceId)
-    const q = recherche.trim().toLowerCase()
+    const base = exercicesReference(exercices, type, exerciceId)
     return (q ? base.filter((e) => e.nom_exercice?.toLowerCase().includes(q)) : base).slice(0, 40)
-  }, [exercices, type, exerciceId, recherche])
+  }, [exercices, type, exerciceId, q])
+
+  /**
+   * Une recherche peut tomber sur un exercice qui REPREND déjà ce média : il n'est pas
+   * dans la liste ci-dessus, alors on l'affiche à part et on renvoie vers sa référence,
+   * sinon on aurait l'impression que l'exercice cherché n'a pas de média.
+   */
+  const reprisesTrouvees = useMemo(() => {
+    if (!q) return []
+    return exercicesAvecMedia(exercices, type, exerciceId)
+      .filter((e) => sourceMedia(e, type) && e.nom_exercice?.toLowerCase().includes(q))
+      .map((e) => ({ repreneur: e, reference: exercices.find((r) => r.id === racineMedia(e.id, type, exercices)) }))
+      .filter((x) => x.reference && x.reference.id !== exerciceId)
+      .slice(0, 10)
+  }, [exercices, type, exerciceId, q])
 
   const envoyer = async (file: File) => {
     const mo = file.size / (1024 * 1024)
@@ -165,11 +182,15 @@ export default function BlocMedia({
             />
           </div>
 
-          {candidats.length === 0 ? (
+          <p className="text-[11px] text-gray-500">
+            {`Seuls les exercices de référence apparaissent — ceux qui portent vraiment le fichier. Un exercice qui reprend déjà la ${LIBELLE_MEDIA[type]} d'un autre renvoie vers sa référence.`}
+          </p>
+
+          {candidats.length === 0 && reprisesTrouvees.length === 0 ? (
             <p className="text-xs text-gray-500 py-2">
-              {`Aucun autre exercice n'a de ${LIBELLE_MEDIA[type]} à reprendre.`}
+              {`Aucun exercice de référence n'a de ${LIBELLE_MEDIA[type]} à reprendre.`}
             </p>
-          ) : (
+          ) : candidats.length === 0 ? null : (
             <ul className="max-h-56 overflow-y-auto divide-y divide-gray-100 bg-white rounded-lg border border-gray-100">
               {candidats.map((ex) => (
                 <li key={ex.id}>
@@ -191,6 +212,19 @@ export default function BlocMedia({
               ))}
             </ul>
           )}
+          {reprisesTrouvees.length > 0 && (
+            <ul className="space-y-1">
+              {reprisesTrouvees.map(({ repreneur, reference }) => (
+                <li key={repreneur.id}>
+                  <button type="button" onClick={() => reprendre(reference!)}
+                    className="w-full text-left text-xs px-2.5 py-2 rounded-lg bg-white border border-dashed border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50 transition break-words">
+                    {`« ${repreneur.nom_exercice} » reprend la ${LIBELLE_MEDIA[type]} de « ${reference!.nom_exercice} » — cliquer pour reprendre la référence`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <button type="button" onClick={() => { setChoix(false); setRecherche('') }}
             className="text-xs text-gray-500 hover:text-gray-700">Fermer</button>
         </div>

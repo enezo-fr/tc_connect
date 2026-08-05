@@ -10,13 +10,33 @@ import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExerc
 import BlocMedia from '@/components/exercices/BlocMedia'
 import { MUSCLES, MATERIEL, normalizePartieCorps } from '@/lib/exerciceOptions'
 import {
-  type TypeMedia, CHAMP_URL, CHAMP_SOURCE, urlMedia,
+  type TypeMedia, TYPES_MEDIA, CHAMP_URL, CHAMP_SOURCE, urlMedia, sourceMedia, repreneurs,
   synchroniserMedias, supprimerMediaSiOrphelin, supprimerExerciceEtMedias,
 } from '@/lib/exerciceMedia'
+import type { Exercice } from '@/types'
 import {
   ArrowLeftIcon, PencilIcon, TrashIcon,
   PhotoIcon, LinkIcon, PlayIcon,
 } from '@heroicons/react/24/outline'
+
+/**
+ * Sous une photo ou une vidéo : d'où elle vient (exercice de référence), ou combien
+ * d'autres exercices la reprennent — à savoir AVANT de la remplacer, puisque le
+ * changement leur est répercuté.
+ */
+function NoteMedia({ type, exercice, exercices }: { type: TypeMedia; exercice: any; exercices: Exercice[] }) {
+  const sourceId = sourceMedia(exercice, type)
+  const source = sourceId ? exercices.find((e) => e.id === sourceId) : null
+  const suiveurs = sourceId ? [] : repreneurs(exercice.id, type, exercices)
+  if (!sourceId && suiveurs.length === 0) return null
+
+  const libelle = type === 'image' ? 'Photo' : 'Vidéo'
+  const texte = sourceId
+    ? `${libelle} reprise de « ${source?.nom_exercice ?? 'un autre exercice'} »`
+    : `${libelle} de référence, reprise par ${suiveurs.length} autre${suiveurs.length > 1 ? 's' : ''} exercice${suiveurs.length > 1 ? 's' : ''} : ${suiveurs.map((e) => e.nom_exercice).join(', ')}`
+
+  return <p className="px-3 py-2 text-xs text-gray-500 break-words">{texte}</p>
+}
 
 function MissingBadge() {
   return (
@@ -83,6 +103,17 @@ export default function DetailExercicePage() {
     if (precedente && precedente !== url && !dejaEnregistree && !precedentEtaitRepris) {
       supprimerMediaSiOrphelin(precedente, exercices, [id])
     }
+  }
+
+  /** Fermeture sans enregistrer : les fichiers envoyés pendant la saisie n'ont jamais servi → on les efface. */
+  const fermerSansEnregistrer = () => {
+    for (const type of TYPES_MEDIA) {
+      const url = form[CHAMP_URL[type]]
+      if (url && url !== urlMedia(exercice, type) && !form[CHAMP_SOURCE[type]]) {
+        supprimerMediaSiOrphelin(url, exercices, [id])
+      }
+    }
+    setShowEditModal(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,11 +190,7 @@ export default function DetailExercicePage() {
                 <MissingBadge />
               </div>
             )}
-            {exercice.image_source_id && (
-              <p className="px-3 py-2 text-xs text-gray-500 break-words">
-                {`Photo reprise de « ${exercices.find((e) => e.id === exercice.image_source_id)?.nom_exercice ?? 'un autre exercice'} »`}
-              </p>
-            )}
+            <NoteMedia type="image" exercice={exercice} exercices={exercices} />
           </div>
 
           {/* Vidéo de démonstration */}
@@ -176,11 +203,7 @@ export default function DetailExercicePage() {
                 <MissingBadge />
               </div>
             )}
-            {exercice.video_source_id && (
-              <p className="px-3 py-2 text-xs text-gray-500 break-words">
-                {`Vidéo reprise de « ${exercices.find((e) => e.id === exercice.video_source_id)?.nom_exercice ?? 'un autre exercice'} »`}
-              </p>
-            )}
+            <NoteMedia type="video" exercice={exercice} exercices={exercices} />
           </div>
 
           {/* Liens */}
@@ -236,7 +259,7 @@ export default function DetailExercicePage() {
       </div>
 
       {/* Modal modification */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Modifier l'exercice" size="lg">
+      <Modal isOpen={showEditModal} onClose={fermerSansEnregistrer} title="Modifier l'exercice" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
@@ -295,7 +318,7 @@ export default function DetailExercicePage() {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setShowEditModal(false)}
+            <button type="button" onClick={fermerSansEnregistrer}
               className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition">Annuler</button>
             <button type="submit"
               className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Enregistrer</button>
