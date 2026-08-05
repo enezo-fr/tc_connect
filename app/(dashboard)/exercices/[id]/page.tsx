@@ -8,6 +8,7 @@ import { useExercices } from '@/hooks/useExercices'
 import Modal from '@/components/ui/Modal'
 import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExercice'
 import BlocMedia from '@/components/exercices/BlocMedia'
+import BoutonTelechargerMedia from '@/components/exercices/BoutonTelechargerMedia'
 import { MUSCLES, MATERIEL, normalizePartieCorps } from '@/lib/exerciceOptions'
 import {
   type TypeMedia, TYPES_MEDIA, CHAMP_URL, CHAMP_SOURCE, urlMedia, sourceMedia, repreneurs,
@@ -191,6 +192,11 @@ export default function DetailExercicePage() {
               </div>
             )}
             <NoteMedia type="image" exercice={exercice} exercices={exercices} />
+            {exercice.image_exercice && (
+              <div className="px-3 pb-3">
+                <BoutonTelechargerMedia url={exercice.image_exercice} type="image" nomExercice={exercice.nom_exercice} />
+              </div>
+            )}
           </div>
 
           {/* Vidéo de démonstration */}
@@ -204,6 +210,11 @@ export default function DetailExercicePage() {
               </div>
             )}
             <NoteMedia type="video" exercice={exercice} exercices={exercices} />
+            {exercice.video_exercice && (
+              <div className="px-3 pb-3">
+                <BoutonTelechargerMedia url={exercice.video_exercice} type="video" nomExercice={exercice.nom_exercice} />
+              </div>
+            )}
           </div>
 
           {/* Liens */}

@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# sauvegarde locale des photos/vidéos d'exercices (scripts/exporter-medias-exercices.mjs)
+/export-medias-exercices
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
