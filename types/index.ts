@@ -153,7 +153,7 @@ export interface ProgrammeSeance {
 // Collection : exercices
 export interface Exercice {
   id: string
-  partie_prioritaire: string
+  partie_prioritaire: string   // zone du corps, cf. PARTIES_CORPS dans lib/exerciceOptions
   nom_exercice: string
   image_exercice: string
   video_exercice: string
@@ -161,6 +161,10 @@ export interface Exercice {
   explications_commentees_exercice: string
   Materiel: string[]
   Muscles: string[]
+  // Média repris d'un autre exercice : l'URL ci-dessus est recopiée telle quelle
+  // (un seul fichier stocké) et ces champs disent d'où elle vient. Cf. lib/exerciceMedia.
+  image_source_id?: string
+  video_source_id?: string
 }
 
 // Collection : rpe

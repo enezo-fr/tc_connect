@@ -6,6 +6,7 @@ import {
   ChevronUpIcon, ChevronDownIcon, LinkIcon,
 } from '@heroicons/react/24/outline'
 import type { Exercice } from '@/types'
+import { normalizePartieCorps } from '@/lib/exerciceOptions'
 import {
   type Circuit, type Exercise,
   newId, emptyExercise, emptyCircuit, calcCircuitSeconds, formatSeconds,
@@ -70,9 +71,7 @@ function ExerciseNameInput({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 leading-snug break-words">{ex.nom_exercice}</p>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {ex.partie_prioritaire && (
-                    <span className="text-[10px] text-gray-400">{ex.partie_prioritaire}</span>
-                  )}
+                  <span className="text-[10px] text-gray-400">{normalizePartieCorps(ex.partie_prioritaire)}</span>
                   {Array.isArray(ex.Muscles) && ex.Muscles.slice(0, 2).map((m) => (
                     <span key={m} className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{m}</span>
                   ))}

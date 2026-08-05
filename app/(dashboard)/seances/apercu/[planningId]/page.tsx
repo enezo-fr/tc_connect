@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
 import { useExercices } from '@/hooks/useExercices'
 import { saveExerciceMemory } from '@/lib/exerciceMemory'
+import { normalizePartieCorps } from '@/lib/exerciceOptions'
 import Modal from '@/components/ui/Modal'
 import QuestionnaireFormeModal, { reponsesDepuisPlanning } from '@/components/ui/QuestionnaireFormeModal'
 import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon, PlusIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline'
@@ -1449,7 +1450,7 @@ export default function OverviewSeancePage() {
                 <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                   <CheckIcon className="w-4 h-4 text-blue-600 shrink-0" />
                   <span className="text-sm font-medium text-blue-700 truncate">{sel.nom_exercice}</span>
-                  {sel.partie_prioritaire && <span className="text-xs text-blue-400 shrink-0">· {sel.partie_prioritaire}</span>}
+                  <span className="text-xs text-blue-400 shrink-0">{`· ${normalizePartieCorps(sel.partie_prioritaire)}`}</span>
                 </div>
               ) : null
             })()}
@@ -1482,9 +1483,7 @@ export default function OverviewSeancePage() {
                       >
                         <span>
                           {ex.nom_exercice}
-                          {(ex as any).partie_prioritaire && (
-                            <span className="text-xs text-gray-400 ml-2">· {(ex as any).partie_prioritaire}</span>
-                          )}
+                          <span className="text-xs text-gray-400 ml-2">{`· ${normalizePartieCorps((ex as any).partie_prioritaire)}`}</span>
                         </span>
                         {exoSelId === ex.id && <CheckIcon className="w-4 h-4 text-blue-600 shrink-0" />}
                       </button>

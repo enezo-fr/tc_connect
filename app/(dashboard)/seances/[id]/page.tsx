@@ -13,6 +13,8 @@ import Modal from '@/components/ui/Modal'
 import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, CheckIcon, ChevronUpIcon, ChevronDownIcon, PhotoIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { uploadImage } from '@/lib/uploadImage'
 import { loadExerciceMemory, saveExerciceMemory } from '@/lib/exerciceMemory'
+import { MUSCLES, PARTIE_CORPS_DEFAUT, normalizePartieCorps } from '@/lib/exerciceOptions'
+import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExercice'
 
 const TYPES_EFFORT = ['Répétitions', 'Durée (sec)', 'Distance (m)']
 const TYPES_SEANCE_CIRCUIT_DETAIL = ['Circuit classique','Tabata','Circuit en 30-10','Circuit varié (rep)','Circuit varié (temps)','Circuit varié']
@@ -76,12 +78,11 @@ export default function DetailSeancePage() {
     type_effort_exo_default: 'Durée (sec)' as string, tps_effort_exo_default: 30, intensite_circuit_planifie: 0,
   })
 
-  const PARTIES_EXO = ['Quadriceps','Ischio-jambiers','Fessiers','Mollets','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Cardio','Full body','Autre']
   const [showCreateExo, setShowCreateExo] = useState(false)
   const [creatingExo, setCreatingExo] = useState(false)
   const [newExoForm, setNewExoForm] = useState({
     nom_exercice: '',
-    partie_prioritaire: 'Full body',
+    partie_prioritaire: PARTIE_CORPS_DEFAUT as string,
     explications_commentees_exercice: '',
     video_exercice: '',
     lien_exercice: '',
@@ -263,7 +264,7 @@ export default function DetailSeancePage() {
       }))
       setSearch(newExoForm.nom_exercice.trim())
       setShowCreateExo(false)
-      setNewExoForm({ nom_exercice: '', partie_prioritaire: 'Full body', explications_commentees_exercice: '', video_exercice: '', lien_exercice: '', Muscles: [], Materiel: [] })
+      setNewExoForm({ nom_exercice: '', partie_prioritaire: PARTIE_CORPS_DEFAUT, explications_commentees_exercice: '', video_exercice: '', lien_exercice: '', Muscles: [], Materiel: [] })
       setNewExoImageFile(null)
       setNewExoImagePreview('')
       setNewExoMaterielInput('')
@@ -666,7 +667,7 @@ export default function DetailSeancePage() {
                 <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                   <CheckIcon className="w-4 h-4 text-blue-600 shrink-0" />
                   <span className="text-sm font-medium text-blue-700 truncate">{sel.nom_exercice}</span>
-                  {sel.partie_prioritaire && <span className="text-xs text-blue-400 shrink-0">· {sel.partie_prioritaire}</span>}
+                  <span className="text-xs text-blue-400 shrink-0">{`· ${normalizePartieCorps(sel.partie_prioritaire)}`}</span>
                 </div>
               ) : null
             })()}
@@ -692,34 +693,22 @@ export default function DetailSeancePage() {
                 />
 
                 {/* Partie prioritaire */}
-                <select
-                  value={newExoForm.partie_prioritaire}
-                  onChange={(e) => setNewExoForm((f) => ({ ...f, partie_prioritaire: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  {PARTIES_EXO.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1.5">Partie prioritaire</p>
+                  <ChipsPartieCorps
+                    valeur={newExoForm.partie_prioritaire}
+                    onChange={(p) => setNewExoForm((f) => ({ ...f, partie_prioritaire: p }))}
+                  />
+                </div>
 
                 {/* Muscles (multi-sélection) */}
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-1.5">Muscles sollicités</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PARTIES_EXO.map((m) => (
-                      <button key={m} type="button"
-                        onClick={() => setNewExoForm((f) => ({
-                          ...f,
-                          Muscles: f.Muscles.includes(m) ? f.Muscles.filter(x => x !== m) : [...f.Muscles, m]
-                        }))}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
-                          newExoForm.Muscles.includes(m)
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
+                  <ChipsMulti
+                    options={MUSCLES}
+                    valeurs={newExoForm.Muscles}
+                    onChange={(v) => setNewExoForm((f) => ({ ...f, Muscles: v }))}
+                  />
                 </div>
 
                 {/* Photo */}
@@ -856,9 +845,7 @@ export default function DetailSeancePage() {
                       >
                         <span>
                           {ex.nom_exercice}
-                          {ex.partie_prioritaire && (
-                            <span className="text-xs text-gray-400 ml-2">· {ex.partie_prioritaire}</span>
-                          )}
+                          <span className="text-xs text-gray-400 ml-2">{`· ${normalizePartieCorps(ex.partie_prioritaire)}`}</span>
                         </span>
                         {form.exercice_id === ex.id && <CheckIcon className="w-4 h-4 text-blue-600 shrink-0" />}
                       </button>

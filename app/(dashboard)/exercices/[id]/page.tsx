@@ -1,22 +1,22 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useExercices } from '@/hooks/useExercices'
-import { uploadImage, deleteImage } from '@/lib/uploadImage'
 import Modal from '@/components/ui/Modal'
+import { ChipsPartieCorps, ChipsMulti } from '@/components/exercices/ChampsExercice'
+import BlocMedia from '@/components/exercices/BlocMedia'
+import { MUSCLES, MATERIEL, normalizePartieCorps } from '@/lib/exerciceOptions'
+import {
+  type TypeMedia, CHAMP_URL, CHAMP_SOURCE, urlMedia,
+  synchroniserMedias, supprimerMediaSiOrphelin, supprimerExerciceEtMedias,
+} from '@/lib/exerciceMedia'
 import {
   ArrowLeftIcon, PencilIcon, TrashIcon,
   PhotoIcon, LinkIcon, PlayIcon,
 } from '@heroicons/react/24/outline'
-
-const PARTIES = [
-  'Quadriceps', 'Ischio-jambiers', 'Fessiers', 'Mollets',
-  'Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps',
-  'Abdominaux', 'Cardio', 'Full body', 'Autre'
-]
 
 function MissingBadge() {
   return (
@@ -29,24 +29,24 @@ function MissingBadge() {
 export default function DetailExercicePage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { updateExercice, deleteExercice } = useExercices()
+  const { exercices, updateExercice, deleteExercice } = useExercices()
 
   const [exercice, setExercice] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     nom_exercice: '',
-    partie_prioritaire: 'Full body',
+    partie_prioritaire: '',
     explications_commentees_exercice: '',
     lien_exercice: '',
     Materiel: [] as string[],
     Muscles: [] as string[],
     image_exercice: '',
     video_exercice: '',
+    image_source_id: '',
+    video_source_id: '',
   })
 
   // Fetch direct par ID — rapide, pas besoin de charger toute la collection
@@ -60,55 +60,44 @@ export default function DetailExercicePage() {
   const openEdit = () => {
     setForm({
       nom_exercice: exercice.nom_exercice || '',
-      partie_prioritaire: exercice.partie_prioritaire || 'Full body',
+      partie_prioritaire: normalizePartieCorps(exercice.partie_prioritaire),
       explications_commentees_exercice: exercice.explications_commentees_exercice || '',
       lien_exercice: exercice.lien_exercice || '',
       Materiel: exercice.Materiel || [],
       Muscles: exercice.Muscles || [],
       image_exercice: exercice.image_exercice || '',
       video_exercice: exercice.video_exercice || '',
+      image_source_id: exercice.image_source_id || '',
+      video_source_id: exercice.video_source_id || '',
     })
     setShowEditModal(true)
   }
 
-  const handleImageUpload = async (file: File) => {
-    setUploadingImage(true)
-    try {
-      const prev = form.image_exercice
-      const url = await uploadImage(file, `exercices/${Date.now()}_${file.name}`)
-      setForm((f) => ({ ...f, image_exercice: url }))
-      // Remplacement d'une image uploadée dans CETTE session mais pas encore enregistrée → on la nettoie.
-      // (L'image déjà enregistrée, elle, n'est supprimée qu'à l'enregistrement, pour ne rien perdre si on annule.)
-      if (prev && prev !== exercice.image_exercice) await deleteImage(prev)
-    } catch {
-      alert("Erreur lors de l'upload de l'image")
-    } finally {
-      setUploadingImage(false)
+  /** Fichier envoyé puis remplacé AVANT d'enregistrer : il n'appartient encore à personne → nettoyage.
+   *  (Le média déjà enregistré, lui, n'est touché qu'à l'enregistrement — rien de perdu si on annule.) */
+  const majMedia = (type: TypeMedia, url: string, sourceId: string) => {
+    const precedente = form[CHAMP_URL[type]]
+    const precedentEtaitRepris = !!form[CHAMP_SOURCE[type]]
+    setForm((f) => ({ ...f, [CHAMP_URL[type]]: url, [CHAMP_SOURCE[type]]: sourceId }))
+    const dejaEnregistree = urlMedia(exercice, type) === precedente
+    if (precedente && precedente !== url && !dejaEnregistree && !precedentEtaitRepris) {
+      supprimerMediaSiOrphelin(precedente, exercices, [id])
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const oldImage = exercice.image_exercice
     await updateExercice(id, form)
-    // Image retirée ou remplacée → supprimer l'ancienne du stockage (plus d'orphelin).
-    if (oldImage && oldImage !== form.image_exercice) await deleteImage(oldImage)
+    // Répercute sur les exercices qui reprennent ces médias, puis efface l'ancien fichier
+    // s'il n'est plus affiché nulle part.
+    await synchroniserMedias(id, exercice, form, exercices, updateExercice)
     setExercice({ ...exercice, ...form })
     setShowEditModal(false)
   }
 
   const handleDelete = async () => {
-    const image = exercice.image_exercice
-    await deleteExercice(id)
-    if (image) await deleteImage(image)
+    await supprimerExerciceEtMedias(exercice, exercices, deleteExercice, updateExercice)
     router.push('/exercices')
-  }
-
-  const toggleTag = (field: 'Muscles' | 'Materiel', value: string) => {
-    setForm((f) => ({
-      ...f,
-      [field]: f[field].includes(value) ? f[field].filter((v) => v !== value) : [...f[field], value],
-    }))
   }
 
   if (loading) {
@@ -127,9 +116,6 @@ export default function DetailExercicePage() {
     )
   }
 
-  const MUSCLES_SUGGESTIONS = ['Quadriceps', 'Ischio-jambiers', 'Fessiers', 'Mollets', 'Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Abdominaux', 'Core', 'Full body']
-  const MATERIEL_SUGGESTIONS = ['Haltères', 'Barre', 'Élastiques', 'Kettlebell', 'Banc', 'Poulie', 'TRX', 'Poids du corps', 'Médecine-ball', 'Corde à sauter', 'Tapis', 'Aucun']
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -139,11 +125,9 @@ export default function DetailExercicePage() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="text-2xl font-bold text-gray-800">{exercice.nom_exercice}</h1>
-          {exercice.partie_prioritaire && (
-            <span className="hidden sm:inline-block text-xs bg-blue-100 text-blue-700 font-medium px-2.5 py-1 rounded-full">
-              {exercice.partie_prioritaire}
-            </span>
-          )}
+          <span className="hidden sm:inline-block text-xs bg-blue-100 text-blue-700 font-medium px-2.5 py-1 rounded-full">
+            {normalizePartieCorps(exercice.partie_prioritaire)}
+          </span>
         </div>
         <div className="flex gap-2 shrink-0">
           <button onClick={openEdit}
@@ -175,11 +159,33 @@ export default function DetailExercicePage() {
                 <MissingBadge />
               </div>
             )}
+            {exercice.image_source_id && (
+              <p className="px-3 py-2 text-xs text-gray-500 break-words">
+                {`Photo reprise de « ${exercices.find((e) => e.id === exercice.image_source_id)?.nom_exercice ?? 'un autre exercice'} »`}
+              </p>
+            )}
+          </div>
+
+          {/* Vidéo de démonstration */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {exercice.video_exercice ? (
+              <video src={exercice.video_exercice} controls playsInline className="w-full max-h-56 bg-black" />
+            ) : (
+              <div className="h-28 flex flex-col items-center justify-center gap-2 bg-gray-50">
+                <PlayIcon className="w-7 h-7 text-gray-300" />
+                <MissingBadge />
+              </div>
+            )}
+            {exercice.video_source_id && (
+              <p className="px-3 py-2 text-xs text-gray-500 break-words">
+                {`Vidéo reprise de « ${exercices.find((e) => e.id === exercice.video_source_id)?.nom_exercice ?? 'un autre exercice'} »`}
+              </p>
+            )}
           </div>
 
           {/* Liens */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Liens</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Lien externe</p>
             {exercice.lien_exercice ? (
               <a href={exercice.lien_exercice} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline break-all">
@@ -187,19 +193,6 @@ export default function DetailExercicePage() {
                 {exercice.lien_exercice}
               </a>
             ) : <MissingBadge />}
-
-            {exercice.video_exercice ? (
-              <a href={exercice.video_exercice} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-blue-600 hover:underline break-all">
-                <PlayIcon className="w-4 h-4 shrink-0" />
-                Vidéo
-              </a>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Vidéo</span>
-                <MissingBadge />
-              </div>
-            )}
           </div>
         </div>
 
@@ -253,34 +246,17 @@ export default function DetailExercicePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Partie prioritaire</label>
-            <select value={form.partie_prioritaire} onChange={(e) => setForm({ ...form, partie_prioritaire: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              {PARTIES.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <ChipsPartieCorps valeur={form.partie_prioritaire} onChange={(p) => setForm({ ...form, partie_prioritaire: p })} />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Muscles ciblés</label>
-            <div className="flex flex-wrap gap-1.5">
-              {MUSCLES_SUGGESTIONS.map((m) => (
-                <button key={m} type="button" onClick={() => toggleTag('Muscles', m)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition ${form.Muscles.includes(m) ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>
-                  {m}
-                </button>
-              ))}
-            </div>
+            <ChipsMulti options={MUSCLES} valeurs={form.Muscles} onChange={(v) => setForm((f) => ({ ...f, Muscles: v }))} />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Matériel</label>
-            <div className="flex flex-wrap gap-1.5">
-              {MATERIEL_SUGGESTIONS.map((m) => (
-                <button key={m} type="button" onClick={() => toggleTag('Materiel', m)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition ${form.Materiel.includes(m) ? 'bg-gray-700 text-white border-gray-700' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>
-                  {m}
-                </button>
-              ))}
-            </div>
+            <ChipsMulti options={MATERIEL} valeurs={form.Materiel} onChange={(v) => setForm((f) => ({ ...f, Materiel: v }))} couleur="gray" avecAutre placeholderAutre="Élastique rouge, charge…" />
           </div>
 
           <div>
@@ -291,24 +267,25 @@ export default function DetailExercicePage() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} />
-            {form.image_exercice ? (
-              <div className="relative rounded-lg overflow-hidden h-40 bg-gray-100">
-                <img src={form.image_exercice} alt="Aperçu" className="w-full h-full object-contain" />
-                <button type="button" onClick={() => setForm((f) => ({ ...f, image_exercice: '' }))}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">✕</button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}
-                className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition disabled:opacity-50">
-                <PhotoIcon className="w-7 h-7" />
-                <span className="text-sm">{uploadingImage ? "Upload en cours…" : "Cliquer pour ajouter une photo"}</span>
-              </button>
-            )}
-          </div>
+          <BlocMedia
+            type="image"
+            label="Photo"
+            url={form.image_exercice}
+            sourceId={form.image_source_id}
+            exercices={exercices}
+            exerciceId={id}
+            onChange={(url, sourceId) => majMedia('image', url, sourceId)}
+          />
+
+          <BlocMedia
+            type="video"
+            label="Vidéo de démonstration"
+            url={form.video_exercice}
+            sourceId={form.video_source_id}
+            exercices={exercices}
+            exerciceId={id}
+            onChange={(url, sourceId) => majMedia('video', url, sourceId)}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Lien vidéo / externe</label>
