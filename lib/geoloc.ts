@@ -21,3 +21,19 @@ export function positionActuelle(): Promise<Coords | null> {
 
 /** « 47.629300, -2.779100 » — format attendu par les liens Google Maps de l'app. */
 export const formatCoords = (p: Coords) => `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`
+
+/**
+ * « 47.6293, -2.7791 » → coordonnées, ou `null` si la saisie n'est pas
+ * exploitable. Source unique de vérité du format GPS de l'app : le champ est
+ * libre, c'est ici qu'on décide ce qui est valable.
+ */
+export function parseGps(v?: string | null): Coords | null {
+  if (!v) return null
+  const m = v.replace(/\s/g, '').match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/)
+  if (!m) return null
+  const lat = Number(m[1])
+  const lng = Number(m[2])
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  return { lat, lng }
+}

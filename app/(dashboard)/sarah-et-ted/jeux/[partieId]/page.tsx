@@ -7,6 +7,7 @@ import ConfirmSuppression, { type CibleSuppression } from '@/components/ui/Confi
 import { useDuoJeux } from '@/hooks/useDuoJeux'
 import ClassementPartie from '@/components/duo/jeux/ClassementPartie'
 import ToursPartie from '@/components/duo/jeux/ToursPartie'
+import StatsPartie from '@/components/duo/jeux/StatsPartie'
 import TourModal from '@/components/duo/jeux/TourModal'
 import OrdreArrivee from '@/components/duo/jeux/OrdreArrivee'
 import PartageJeuModal from '@/components/duo/jeux/PartageJeuModal'
@@ -268,13 +269,14 @@ export default function PartieJeuPage() {
                 )}
               </div>
 
-              {/* Colonne droite : la feuille de score */}
-              <div className="space-y-4">
+              {/* Colonne droite : la feuille de score, puis son analyse */}
+              <div className="space-y-5">
                 {!partie.sansPoints && (
                   <ToursPartie partie={partie}
                     onModifier={partie.termine ? undefined : (i) => setTourOuvert({ index: i })}
                     onSupprimer={partie.termine ? undefined : supprimerTour} />
                 )}
+                <StatsPartie partie={partie} />
               </div>
             </div>
           </>

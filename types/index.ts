@@ -1108,6 +1108,11 @@ export interface DuoActivite extends DuoBase {
   type?: string
   /** Ville ou région */
   zone?: string
+  /**
+   * Adresse postale. Elle et le GPS se déduisent l'une de l'autre (route
+   * `/api/geocodage`) : on saisit ce qu'on a, l'app complète l'autre.
+   */
+  adresse?: string
   /** Coordonnées « lat, lng » */
   gps?: string
   fait?: boolean

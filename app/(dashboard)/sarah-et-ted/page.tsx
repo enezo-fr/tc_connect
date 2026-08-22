@@ -12,14 +12,26 @@ import { DuoShareModal } from '@/components/duo/DuoShareModal'
 import { Timestamp } from 'firebase/firestore'
 import {
   Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, ChevronLeft, Users,
-  Star, Eye, LocateFixed,
+  Star, Eye, List, Map as MapIcon,
 } from 'lucide-react'
 import {
   TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, SAISONS_PARTIES, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
   categoriesFilm,
 } from '@/lib/duoModel'
-import { positionActuelle, formatCoords } from '@/lib/geoloc'
+import ChampLieu from '@/components/duo/ChampLieu'
+import { pointsActivites } from '@/lib/duoActivites'
+import dynamic from 'next/dynamic'
 import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
+
+// Leaflet touche `window` dès l'import : la carte est chargée côté client seulement.
+const CarteActivites = dynamic(() => import('@/components/duo/CarteActivites'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-white rounded-2xl border border-gray-100 h-[70vh] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+})
 
 const champCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500'
 const chipCls = (actif: boolean) =>
@@ -306,26 +318,13 @@ export default function ADeuxPage() {
   const [actOuverte, setActOuverte] = useState(false)
   const [actEditee, setActEditee] = useState<DuoActivite | null>(null)
   const actVide = {
-    nom: '', type: '', typeLibre: false, zone: '', gps: '', fait: false,
+    nom: '', type: '', typeLibre: false, zone: '', adresse: '', gps: '', fait: false,
     note: undefined as number | undefined,
     priorite: '', conseillePar: '', lien: '', gammePrix: '', infos: '',
   }
   const [actForm, setActForm] = useState(actVide)
-  const [gpsEnCours, setGpsEnCours] = useState(false)
-  const [gpsRefuse, setGpsRefuse] = useState(false)
-
-  /** Remplit les coordonnées avec la position du téléphone (droit à demander une fois). */
-  const prendrePositionActuelle = async () => {
-    setGpsEnCours(true)
-    setGpsRefuse(false)
-    try {
-      const p = await positionActuelle()
-      if (p) setActForm((f) => ({ ...f, gps: formatCoords(p) }))
-      else setGpsRefuse(true)
-    } finally {
-      setGpsEnCours(false)
-    }
-  }
+  /** Liste ou carte : deux façons de regarder les mêmes activités. */
+  const [vueActivites, setVueActivites] = useState<'liste' | 'carte'>('liste')
 
   const listeActivites = useMemo(() => {
     const q = recherche.trim().toLowerCase()
@@ -334,20 +333,23 @@ export default function ADeuxPage() {
         if (filtreFait === 'a_faire' && a.fait) return false
         if (filtreFait === 'faits' && !a.fait) return false
         if (filtreTypeAct && a.type !== filtreTypeAct) return false
-        if (q && !`${a.nom} ${a.zone ?? ''} ${a.infos ?? ''} ${a.conseillePar ?? ''}`.toLowerCase().includes(q)) return false
+        if (q && !`${a.nom} ${a.zone ?? ''} ${a.adresse ?? ''} ${a.infos ?? ''} ${a.conseillePar ?? ''}`.toLowerCase().includes(q)) return false
         return true
       })
       .sort((a, b) => Number(a.fait ?? false) - Number(b.fait ?? false) || a.nom.localeCompare(b.nom))
   }, [activites.items, filtreFait, filtreTypeAct, recherche])
 
+  // La carte suit les mêmes filtres que la liste : ce qu'on voit à l'écran est
+  // ce qu'on voit sur la carte.
+  const pointsCarte = useMemo(() => pointsActivites(listeActivites), [listeActivites])
+
   const ouvrirActivite = (a?: DuoActivite) => {
     setActEditee(a ?? null)
-    setGpsRefuse(false)
     setActForm(a ? {
       nom: a.nom,
       type: a.type === 'Autre' ? '' : a.type ?? '',
       typeLibre: !!a.type && !(TYPES_ACTIVITE as readonly string[]).includes(a.type),
-      zone: a.zone ?? '', gps: a.gps ?? '', fait: !!a.fait,
+      zone: a.zone ?? '', adresse: a.adresse ?? '', gps: a.gps ?? '', fait: !!a.fait,
       note: a.note, priorite: a.priorite ?? '', conseillePar: a.conseillePar ?? '',
       lien: a.lien ?? '', gammePrix: a.gammePrix ?? '', infos: a.infos ?? '',
     } : actVide)
@@ -358,6 +360,7 @@ export default function ADeuxPage() {
     if (!base || !actForm.nom.trim()) return
     const champs = {
       nom: actForm.nom.trim(), type: actForm.type.trim(), zone: actForm.zone.trim(),
+      adresse: actForm.adresse.trim(),
       gps: actForm.gps.trim(), fait: actForm.fait, note: actForm.note ?? null,
       priorite: actForm.priorite, conseillePar: actForm.conseillePar.trim(),
       lien: actForm.lien.trim(), gammePrix: actForm.gammePrix, infos: actForm.infos.trim(),
@@ -550,9 +553,30 @@ export default function ADeuxPage() {
                 ))}
               </div>
               <Chips options={TYPES_ACTIVITE} valeur={filtreTypeAct} onChange={setFiltreTypeAct} />
+
+              {/* Liste ou carte — la carte suit exactement les mêmes filtres */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl ml-auto">
+                {([['liste', 'Liste', List], ['carte', 'Carte', MapIcon]] as const).map(([k, l, Icone]) => (
+                  <button key={k} onClick={() => setVueActivites(k)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition inline-flex items-center gap-1.5 ${
+                      vueActivites === k ? 'bg-white shadow text-gray-900' : 'text-gray-500'
+                    }`}>
+                    <Icone size={13} />{l}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {listeActivites.length === 0 ? (
+            {vueActivites === 'carte' ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">
+                  {`${pointsCarte.length} lieu${pointsCarte.length > 1 ? 'x' : ''} placé${pointsCarte.length > 1 ? 's' : ''} sur ${listeActivites.length}`}
+                  {listeActivites.length > pointsCarte.length
+                    && ' — les autres n’ont ni adresse ni point GPS.'}
+                </p>
+                <CarteActivites points={pointsCarte} onOuvrir={ouvrirActivite} />
+              </div>
+            ) : listeActivites.length === 0 ? (
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
                 <p className="text-sm text-gray-400">Rien pour l&apos;instant.</p>
               </div>
@@ -574,6 +598,11 @@ export default function ADeuxPage() {
                           {[a.type, a.zone, a.gammePrix, a.priorite].filter(Boolean).map((t, i) => <span key={i}>{t}</span>)}
                           {a.conseillePar && <span>conseillé par {a.conseillePar}</span>}
                         </p>
+                        {a.adresse && (
+                          <p className="text-xs text-gray-400 mt-0.5 flex items-start gap-1 break-words">
+                            <MapPin size={11} className="shrink-0 mt-0.5" />{a.adresse}
+                          </p>
+                        )}
                         {a.infos && <p className="text-xs text-gray-500 italic mt-1 break-words">{a.infos}</p>}
                         <div className="flex items-center gap-3 mt-1">
                           <Etoiles note={a.note} onChange={(n) => activites.modifier(a.id, { note: n ?? null })} taille={14} />
@@ -668,28 +697,10 @@ export default function ADeuxPage() {
               placeholder="Musée, Randonnée, Concert…"
               onChange={(v, libre) => setActForm((f) => ({ ...f, type: v, typeLibre: libre }))} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Zone / ville</label>
-              <input value={actForm.zone} onChange={(e) => setActForm((f) => ({ ...f, zone: e.target.value }))} placeholder="Vannes" className={champCls} />
-            </div>
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <label className="text-sm font-medium text-gray-700">Coordonnées GPS</label>
-                <button type="button" onClick={prendrePositionActuelle} disabled={gpsEnCours}
-                  className="text-xs font-medium text-rose-600 hover:text-rose-700 flex items-center gap-1 disabled:opacity-60 shrink-0">
-                  <LocateFixed size={13} />{gpsEnCours ? 'Localisation…' : 'Ma position'}
-                </button>
-              </div>
-              <input value={actForm.gps} onChange={(e) => setActForm((f) => ({ ...f, gps: e.target.value }))}
-                placeholder="47.6293, -2.7791" className={champCls} />
-              {gpsRefuse && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Position indisponible — autorisez la localisation pour ce site, ou saisissez les coordonnées à la main.
-                </p>
-              )}
-            </div>
-          </div>
+          {/* Adresse et GPS se remplissent l'un l'autre — cf. ChampLieu */}
+          <ChampLieu
+            valeurs={{ adresse: actForm.adresse, gps: actForm.gps, zone: actForm.zone }}
+            onChange={(v) => setActForm((f) => ({ ...f, ...v }))} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Priorité</label>
             <Chips options={PRIORITES} valeur={actForm.priorite} onChange={(v) => setActForm((f) => ({ ...f, priorite: v }))} />

@@ -4,7 +4,7 @@
 // la page publique du lien de partage, et dans les statistiques. Les écritures
 // vivent dans `lib/duoJeuxDb.ts`, le partage côté serveur dans `lib/jeuxShare.ts`.
 
-import type { DuoPartie } from '@/types'
+import type { DuoPartie, DuoTour } from '@/types'
 
 /**
  * Jeux connus — repères de saisie, la liste reste ouverte (le champ est libre).
@@ -299,6 +299,179 @@ export function nomSoireeParDefaut(p: DuoPartie): string {
   return nomSoireePour(p.date?.toDate() ?? p.createdAt?.toDate() ?? new Date())
 }
 
+// ─── Statistiques d'UNE partie, tour par tour ───────────────────────────────────
+
+const pourcent = (n: number, sur: number) => (sur > 0 ? Math.round((n / sur) * 100) : null)
+
+/** Points d'un joueur sur un tour (absent = 0). */
+export const pointsTour = (t: DuoTour, joueur: string): number =>
+  (t.scores ?? []).find((s) => s.joueur === joueur)?.points ?? 0
+
+/**
+ * Gagnant(s) d'un tour, dans le sens du jeu.
+ *
+ * Si tout le monde marque la même chose, personne ne gagne le tour : compter
+ * une victoire pour chacun ferait grimper les compteurs sans rien distinguer
+ * (typiquement une manche entière à zéro).
+ */
+export function gagnantsDuTour(p: DuoPartie, t: DuoTour): string[] {
+  const joueurs = p.joueurs ?? []
+  if (joueurs.length < 2 || p.sansPoints) return []
+  const scores = joueurs.map((j) => pointsTour(t, j))
+  const meilleur = p.scoreBasGagne ? Math.min(...scores) : Math.max(...scores)
+  if (scores.every((s) => s === meilleur)) return []
+  return joueurs.filter((j) => pointsTour(t, j) === meilleur)
+}
+
+/** Totaux cumulés après chaque tour : `cumuls[i].get(joueur)`. */
+export function cumulsParTour(p: DuoPartie): Map<string, number>[] {
+  const joueurs = p.joueurs ?? []
+  const courant = new Map<string, number>(joueurs.map((j) => [j, 0]))
+  return (p.tours ?? []).map((t) => {
+    joueurs.forEach((j) => courant.set(j, (courant.get(j) ?? 0) + pointsTour(t, j)))
+    return new Map(courant)
+  })
+}
+
+/** Joueur(s) en tête d'un état de cumul, dans le sens du jeu. */
+function enTeteDe(p: DuoPartie, cumul: Map<string, number>): string[] {
+  const joueurs = p.joueurs ?? []
+  const valeurs = joueurs.map((j) => cumul.get(j) ?? 0)
+  if (valeurs.length < 2) return joueurs
+  const meilleur = p.scoreBasGagne ? Math.min(...valeurs) : Math.max(...valeurs)
+  if (valeurs.every((v) => v === meilleur)) return []
+  return joueurs.filter((j) => (cumul.get(j) ?? 0) === meilleur)
+}
+
+export interface StatJoueurPartie {
+  joueur: string
+  rang: number
+  total: number
+  /** Tours où il a fait le meilleur score du tour. */
+  toursGagnes: number
+  /** Part de ses tours gagnés, en %. */
+  tauxTours: number | null
+  moyenne: number | null
+  /** Meilleur et pire tour DANS LE SENS DU JEU. */
+  meilleurTour: number | null
+  pireTour: number | null
+  /** Tours bouclés à zéro — au SkyJo comme à l'Uno, c'est un fait de jeu. */
+  zeros: number
+  /** Écart-type de ses tours : petit = régulier, grand = en dents de scie. */
+  regularite: number | null
+  /** Meilleure série de tours gagnés d'affilée. */
+  serieTours: number
+  /** Nombre de tours à l'issue desquels il était en tête. */
+  toursEnTete: number
+  /** Part des points marqués sur la table, en %. */
+  partPoints: number | null
+}
+
+export interface BilanPartie {
+  tours: number
+  /** Somme de tous les points marqués par tout le monde. */
+  totalPoints: number
+  /** Moyenne des points d'un joueur sur un tour. */
+  moyenneParTour: number | null
+  /** Le tour le plus prolifique de la partie (toutes places confondues). */
+  tourRecord: { index: number; joueur: string; points: number } | null
+  /** Nombre de fois où la tête de la partie a changé de mains. */
+  changementsDeLeader: number
+  /** Écart entre le 1er et le 2e au classement final. */
+  ecart: number | null
+}
+
+/**
+ * Le détail d'une partie, tour par tour : qui gagne les manches, qui est
+ * régulier, qui mène et depuis quand.
+ *
+ * Vide pour une partie sans points (il n'y a pas de tour à analyser) et pour une
+ * partie où personne n'a encore marqué.
+ */
+export function statsPartie(p: DuoPartie): { bilan: BilanPartie; joueurs: StatJoueurPartie[] } {
+  const joueurs = p.joueurs ?? []
+  const tours = p.sansPoints ? [] : (p.tours ?? [])
+  const cumuls = cumulsParTour(p)
+  const rangs = new Map(classementPartie(p).map((l) => [l.joueur, l.rang]))
+
+  // ── Ce qui se joue tour par tour ────────────────────────────────────────
+  const gagnants = tours.map((t) => gagnantsDuTour(p, t))
+  const meneurs = cumuls.map((c) => enTeteDe(p, c))
+
+  let changements = 0
+  for (let i = 1; i < meneurs.length; i++) {
+    const avant = [...meneurs[i - 1]].sort().join('|')
+    const apres = [...meneurs[i]].sort().join('|')
+    if (avant !== apres && apres) changements += 1
+  }
+
+  const totalPoints = joueurs.reduce((s, j) => s + totalJoueur(p, j), 0)
+
+  let tourRecord: BilanPartie['tourRecord'] = null
+  tours.forEach((t, i) => {
+    joueurs.forEach((j) => {
+      const pts = pointsTour(t, j)
+      if (!tourRecord || (p.scoreBasGagne ? pts < tourRecord.points : pts > tourRecord.points)) {
+        tourRecord = { index: i, joueur: j, points: pts }
+      }
+    })
+  })
+
+  const lignes = joueurs.map((j) => {
+    const scores = tours.map((t) => pointsTour(t, j))
+    const total = scores.reduce((s, v) => s + v, 0)
+    const moyenne = scores.length ? total / scores.length : null
+
+    // Écart-type de population : on décrit CETTE partie, pas un échantillon.
+    const regularite = moyenne === null || scores.length < 2
+      ? null
+      : Math.sqrt(scores.reduce((s, v) => s + (v - moyenne) ** 2, 0) / scores.length)
+
+    let serie = 0
+    let meilleureSerie = 0
+    gagnants.forEach((g) => {
+      serie = g.includes(j) ? serie + 1 : 0
+      meilleureSerie = Math.max(meilleureSerie, serie)
+    })
+
+    const gagnes = gagnants.filter((g) => g.includes(j)).length
+    return {
+      joueur: j,
+      rang: rangs.get(j) ?? 0,
+      total,
+      toursGagnes: gagnes,
+      tauxTours: pourcent(gagnes, tours.length),
+      moyenne: moyenne === null ? null : Math.round(moyenne),
+      meilleurTour: scores.length ? (p.scoreBasGagne ? Math.min(...scores) : Math.max(...scores)) : null,
+      pireTour: scores.length ? (p.scoreBasGagne ? Math.max(...scores) : Math.min(...scores)) : null,
+      zeros: scores.filter((v) => v === 0).length,
+      regularite: regularite === null ? null : Math.round(regularite),
+      serieTours: meilleureSerie,
+      toursEnTete: meneurs.filter((m) => m.includes(j)).length,
+      partPoints: totalPoints > 0 ? Math.round((total / totalPoints) * 100) : null,
+    }
+  })
+
+  const classement = classementPartie(p)
+  const ecart = classement.length >= 2 && !p.sansPoints
+    ? Math.abs(classement[0].total - classement[1].total)
+    : null
+
+  return {
+    bilan: {
+      tours: tours.length,
+      totalPoints,
+      moyenneParTour: tours.length && joueurs.length
+        ? Math.round(totalPoints / (tours.length * joueurs.length))
+        : null,
+      tourRecord,
+      changementsDeLeader: changements,
+      ecart,
+    },
+    joueurs: lignes.sort((a, b) => a.rang - b.rang || b.toursGagnes - a.toursGagnes),
+  }
+}
+
 // ─── Statistiques ───────────────────────────────────────────────────────────────
 
 export interface StatJoueur {
@@ -317,9 +490,24 @@ export interface StatJoueur {
   meilleureSerie: number
   /** Jeu où il gagne le plus souvent (au moins 2 parties). */
   jeuFavori: { jeu: string; victoires: number; parties: number } | null
+
+  // ── Le détail tour par tour, cumulé sur toutes ses parties avec points ──
+  /** Tours joués (les parties sans points n'en ont pas). */
+  tours: number
+  /** Tours où il a fait le meilleur score de la manche. */
+  toursGagnes: number
+  /** Part de ses tours gagnés, en %. */
+  tauxTours: number | null
+  /** Points marqués par tour, en moyenne. */
+  moyenneParTour: number | null
+  /** Plus gros score marqué en une seule manche, et le jeu où c'était. */
+  plusGrosTour: { points: number; jeu: string } | null
+  /** Manches bouclées à zéro. */
+  zeros: number
+  /** Ses 8 derniers résultats (`true` = gagné), du plus ancien au plus récent. */
+  dernieres: boolean[]
 }
 
-const pourcent = (n: number, sur: number) => (sur > 0 ? Math.round((n / sur) * 100) : null)
 
 /**
  * Bilan par joueur, du plus victorieux au moins victorieux.
@@ -335,12 +523,19 @@ export function statsJoueurs(parties: DuoPartie[]): StatJoueur[] {
     const cur = map.get(joueur) ?? {
       joueur, parties: 0, victoires: 0, taux: null, podiums: 0, pointsMarques: 0,
       record: null, serieEnCours: 0, meilleureSerie: 0, jeuFavori: null,
+      tours: 0, toursGagnes: 0, tauxTours: null, moyenneParTour: null,
+      plusGrosTour: null, zeros: 0, dernieres: [],
     }
     map.set(joueur, cur)
     return cur
   }
 
   jouees.forEach((p) => {
+    // Le détail tour par tour : qui gagne les manches, à quelle moyenne. Ne
+    // concerne que les parties avec points — une partie sans score n'a pas de
+    // tour à analyser, elle ne doit donc pas peser sur les moyennes.
+    const gagnantsTours = p.sansPoints ? [] : (p.tours ?? []).map((t) => gagnantsDuTour(p, t))
+
     classementPartie(p).forEach((l) => {
       const s = stat(l.joueur)
       s.parties += 1
@@ -350,6 +545,25 @@ export function statsJoueurs(parties: DuoPartie[]): StatJoueur[] {
       if (l.classe && l.rang <= 3) s.podiums += 1
       if (!p.sansPoints && (!s.record || l.total > s.record.points)) {
         s.record = { points: l.total, jeu: p.jeu }
+      }
+
+      // Les 8 derniers résultats, du plus ancien au plus récent : de quoi
+      // dessiner une forme du moment plutôt qu'un simple total.
+      s.dernieres = [...s.dernieres, gagne].slice(-8)
+
+      if (!p.sansPoints) {
+        const scores = (p.tours ?? []).map((t) => pointsTour(t, l.joueur))
+        s.tours += scores.length
+        s.toursGagnes += gagnantsTours.filter((g) => g.includes(l.joueur)).length
+        s.zeros += scores.filter((v) => v === 0).length
+        // « Plus gros tour » = le plus gros score marqué en une manche, quel que
+        // soit le sens du jeu : comparer un petit tour de SkyJo à un gros tour
+        // d'Uno n'aurait aucun sens, alors qu'un gros coup reste un gros coup.
+        scores.forEach((v) => {
+          if (v > (s.plusGrosTour?.points ?? Number.NEGATIVE_INFINITY)) {
+            s.plusGrosTour = { points: v, jeu: p.jeu }
+          }
+        })
       }
 
       const jeux = parJeu.get(l.joueur) ?? new Map<string, { victoires: number; parties: number }>()
@@ -381,6 +595,8 @@ export function statsJoueurs(parties: DuoPartie[]): StatJoueur[] {
         serieEnCours: suite.courante,
         meilleureSerie: suite.meilleure,
         jeuFavori: jeux.length ? { jeu: jeux[0][0], ...jeux[0][1] } : null,
+        tauxTours: pourcent(s.toursGagnes, s.tours),
+        moyenneParTour: s.tours > 0 ? Math.round(s.pointsMarques / s.tours) : null,
       }
     })
     .sort((a, b) => b.victoires - a.victoires || b.parties - a.parties || a.joueur.localeCompare(b.joueur))

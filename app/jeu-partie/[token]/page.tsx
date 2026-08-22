@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import ClassementPartie from '@/components/duo/jeux/ClassementPartie'
 import ClassementSoiree from '@/components/duo/jeux/ClassementSoiree'
 import ToursPartie from '@/components/duo/jeux/ToursPartie'
+import StatsPartie from '@/components/duo/jeux/StatsPartie'
 import TourModal from '@/components/duo/jeux/TourModal'
 import OrdreArrivee from '@/components/duo/jeux/OrdreArrivee'
 import { baremeDeSoiree, vainqueurs } from '@/lib/duoJeux'
@@ -266,6 +267,8 @@ export default function PartieJeuPubliquePage({ params }: { params: Promise<{ to
                 onModifier={partie.termine ? undefined : (i) => setTourOuvert({ index: i })}
                 onSupprimer={partie.termine ? undefined : supprimerTour} />
             )}
+
+            <StatsPartie partie={courante} avecAide={false} />
 
             {parties.length > 1 && (
               <div className="space-y-2">

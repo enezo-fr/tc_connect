@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { formatNote, type BiereCalculee } from '@/lib/biereModel'
+import { parseGps } from '@/lib/geoloc'
 
 /**
  * Carte des dégustations — Leaflet + tuiles OpenStreetMap (aucune clé d'API).
@@ -27,16 +28,9 @@ export interface PointCarte {
   bieres: { nom: string; note: number | null; date?: Date }[]
 }
 
-/** « 47.6293, -2.7791 » → coordonnées, ou null si la saisie n'est pas exploitable */
-export function parseGps(v?: string): { lat: number; lng: number } | null {
-  if (!v) return null
-  const m = v.replace(/\s/g, '').match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/)
-  if (!m) return null
-  const lat = Number(m[1]); const lng = Number(m[2])
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
-  return { lat, lng }
-}
+// Le format GPS de l'app n'a qu'une définition, dans `lib/geoloc.ts` — on la
+// ré-exporte ici pour ne pas casser ce qui importait `parseGps` de ce fichier.
+export { parseGps }
 
 /** Regroupe les dégustations par coordonnées : un même bar = un seul point */
 export function pointsDeCarte(liste: BiereCalculee[]): PointCarte[] {

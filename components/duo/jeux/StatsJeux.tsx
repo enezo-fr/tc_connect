@@ -100,6 +100,39 @@ export default function StatsJeux({ parties, titre = 'Statistiques', avecAide = 
               </div>
             </div>
 
+            {/* Le détail tour par tour, cumulé sur toutes ses parties */}
+            {j.tours > 0 && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-gray-500">
+                <span>
+                  <strong className="text-gray-800 tabular-nums">{j.toursGagnes}</strong>
+                  {` tour${j.toursGagnes > 1 ? 's' : ''} gagné${j.toursGagnes > 1 ? 's' : ''} sur ${j.tours}`}
+                  {j.tauxTours != null && ` · ${j.tauxTours}%`}
+                </span>
+                {j.moyenneParTour != null && (
+                  <span>
+                    <strong className="text-gray-800 tabular-nums">{j.moyenneParTour}</strong>
+                    {' pts par tour'}
+                  </span>
+                )}
+                {j.zeros > 0 && (
+                  <span>{`${j.zeros} tour${j.zeros > 1 ? 's' : ''} à zéro`}</span>
+                )}
+              </div>
+            )}
+
+            {/* Forme du moment : les 8 derniers résultats, du plus ancien au plus récent */}
+            {j.dernieres.length > 1 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="text-[11px] text-gray-400 shrink-0">Forme</span>
+                <span className="flex items-center gap-1">
+                  {j.dernieres.map((gagne, i) => (
+                    <span key={i} title={gagne ? 'Gagnée' : 'Perdue'}
+                      className={`w-4 h-1.5 rounded-full ${gagne ? 'bg-amber-400' : 'bg-gray-200'}`} />
+                  ))}
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               {j.serieEnCours > 1 && (
                 <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
@@ -114,6 +147,11 @@ export default function StatsJeux({ parties, titre = 'Statistiques', avecAide = 
               {j.record && (
                 <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
                   {`record ${j.record.points} au ${j.record.jeu}`}
+                </span>
+              )}
+              {j.plusGrosTour && (
+                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-500 font-medium">
+                  {`plus gros tour ${j.plusGrosTour.points} au ${j.plusGrosTour.jeu}`}
                 </span>
               )}
               {j.podiums > j.victoires && (
