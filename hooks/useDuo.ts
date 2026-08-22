@@ -5,12 +5,16 @@ import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Commande, DuoActivite, DuoFilm, DuoPartie } from '@/types'
+import type { Commande, DuoActivite, DuoFilm, DuoPartie, DuoRachat } from '@/types'
 
 /**
- * Les trois listes de l'app « Sarah & Ted ». Chacune est une collection à plat
- * filtrée sur `members` — pas de sous-collection, donc aucune requête de groupe
- * ni index à créer. Les tours d'une partie vivent dans son document.
+ * Les listes de l'app « Sarah & Ted » (films, activités, parties, à racheter).
+ * Chacune est une collection à plat filtrée sur `members` — pas de
+ * sous-collection, donc aucune requête de groupe ni index à créer. Les tours
+ * d'une partie vivent dans son document.
+ *
+ * ⚠️ Toute NOUVELLE collection doit être ajoutée à `estListeDuo()` dans les
+ * règles Firestore, sinon elle est refusée en silence.
  */
 function useCollectionPartagee<T extends { id: string }>(nom: string, uid?: string) {
   const [items, setItems] = useState<T[]>([])
@@ -44,6 +48,10 @@ export function useDuoActivites(uid?: string) {
 }
 export function useDuoParties(uid?: string) {
   return useCollectionPartagee<DuoPartie>('duo_parties', uid)
+}
+/** « À racheter » — ce qu'on a aimé et qu'on veut retrouver (un vin, un fromage…). */
+export function useDuoRachats(uid?: string) {
+  return useCollectionPartagee<DuoRachat>('duo_rachats', uid)
 }
 
 /** Commandes au bar — app de la boutique à part entière, même mécanique de partage */

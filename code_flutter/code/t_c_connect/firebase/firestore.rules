@@ -318,7 +318,7 @@ service cloud.firestore {
     // non plus restreindre une collection déjà autorisée plus haut.
     match /{listeDuo}/{docId} {
       function estListeDuo() {
-        return listeDuo in ['duo_films', 'duo_activites', 'duo_parties', 'bar_commandes'];
+        return listeDuo in ['duo_films', 'duo_activites', 'duo_parties', 'duo_rachats', 'bar_commandes'];
       }
       function estMembreDuo() {
         return request.auth != null && request.auth.uid in resource.data.members;

@@ -24,6 +24,15 @@ export const TYPES_ACTIVITE = [
   'Restaurant', 'Bar', 'Activité', 'Lieu', 'Parc', 'Vacances', 'Logement', "Aire d'autoroute",
 ] as const
 export const PRIORITES = ['A faire absolument', 'A revoir', 'A ne pas faire'] as const
+
+/**
+ * Types de « à racheter ». Même principe que PLATEFORMES : « Autre… » n'est pas
+ * dans la liste, c'est une pastille qui ouvre un champ libre.
+ * La bière a son app à elle (`/bieres`), elle n'a rien à faire ici.
+ */
+export const TYPES_RACHAT = [
+  'Vin', 'Champagne', 'Spiritueux', 'Boisson', 'Épicerie', 'Fromage', 'Maison', 'Cosmétique',
+] as const
 export const GAMMES_PRIX = ['🟢 Abordable', '🟡 Modéré', '🟠 Cher', '🔴 Exorbitant'] as const
 
 // Le module Jeux (liste des jeux, classements, sessions, statistiques) vit

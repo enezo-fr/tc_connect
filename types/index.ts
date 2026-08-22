@@ -1127,6 +1127,38 @@ export interface DuoActivite extends DuoBase {
   infos?: string
 }
 
+/**
+ * Document Firestore : duo_rachats/{id} — ce qu'on a aimé et qu'on veut
+ * retrouver : un vin, un fromage, un produit précis.
+ *
+ * Tout est facultatif sauf le nom : on note souvent une bouteille à la volée,
+ * la photo de l'étiquette valant mieux qu'un formulaire complet.
+ */
+export interface DuoRachat extends DuoBase {
+  nom: string
+  /** Vin, Champagne, Épicerie… libre à la saisie */
+  type?: string
+  /** Millésime ou année. TEXTE : un champagne peut être « N.M. », un whisky « 12 ans ». */
+  annee?: string
+  /** Domaine, marque, producteur */
+  marque?: string
+  /** Région, appellation, pays */
+  origine?: string
+  /** Où on l'a trouvé — c'est ce qui manque le plus au moment de racheter */
+  ouTrouver?: string
+  /** Prix constaté, texte libre (« 12,90 € ») */
+  prix?: string
+  note?: number
+  /**
+   * Photos (URL de download Storage), la première sert de vignette.
+   * Stockées sous `users/{uid}/rachats/` — cf. `PhotosRachat`.
+   */
+  photos?: string[]
+  /** Déjà racheté (même logique que `vu` pour un film, `fait` pour une activité). */
+  rachete?: boolean
+  infos?: string
+}
+
 /** Un tour de jeu : le score de chaque joueur sur ce tour */
 export interface DuoTour {
   scores: { joueur: string; points: number }[]
