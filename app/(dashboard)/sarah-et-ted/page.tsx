@@ -19,7 +19,7 @@ import {
   categoriesFilm,
 } from '@/lib/duoModel'
 import ChampLieu from '@/components/duo/ChampLieu'
-import { pointsActivites } from '@/lib/duoActivites'
+import { groupesActivites, pointsActivites } from '@/lib/duoActivites'
 import dynamic from 'next/dynamic'
 import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
 
@@ -27,7 +27,7 @@ import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
 const CarteActivites = dynamic(() => import('@/components/duo/CarteActivites'), {
   ssr: false,
   loading: () => (
-    <div className="bg-white rounded-2xl border border-gray-100 h-[70vh] flex items-center justify-center">
+    <div className="bg-white rounded-2xl border border-gray-100 h-[65vh] flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
     </div>
   ),
@@ -351,6 +351,7 @@ export default function ADeuxPage() {
   // La carte suit les mêmes filtres que la liste : ce qu'on voit à l'écran est
   // ce qu'on voit sur la carte.
   const pointsCarte = useMemo(() => pointsActivites(listeActivites), [listeActivites])
+  const nbEndroits = useMemo(() => groupesActivites(pointsCarte).length, [pointsCarte])
 
   const ouvrirActivite = (a?: DuoActivite) => {
     setActEditee(a ?? null)
@@ -601,7 +602,10 @@ export default function ADeuxPage() {
             {vueActivites === 'carte' ? (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500">
-                  {`${pointsCarte.length} lieu${pointsCarte.length > 1 ? 'x' : ''} placé${pointsCarte.length > 1 ? 's' : ''} sur ${listeActivites.length}`}
+                  {`${pointsCarte.length} activité${pointsCarte.length > 1 ? 's' : ''} placée${pointsCarte.length > 1 ? 's' : ''} sur ${listeActivites.length}`}
+                  {/* Deux activités à la même adresse ne font qu'un rond : le dire
+                      évite de croire qu'il en manque sur la carte. */}
+                  {nbEndroits < pointsCarte.length && ` · ${nbEndroits} endroits distincts`}
                   {listeActivites.length > pointsCarte.length
                     && ' — les autres n’ont ni adresse ni point GPS.'}
                 </p>

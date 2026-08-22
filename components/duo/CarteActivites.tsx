@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import { useEffect, useMemo } from 'react'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { PointActivite } from '@/lib/duoActivites'
+import { groupesActivites, type GroupeActivites, type PointActivite } from '@/lib/duoActivites'
 import type { DuoActivite } from '@/types'
 
 /**
@@ -11,12 +11,17 @@ import type { DuoActivite } from '@/types'
  * Mêmes précautions que la carte des bières : import dynamique `ssr: false`, et
  * des `CircleMarker` plutôt que les icônes par défaut de Leaflet.
  *
- * 🔑 Une pastille de couleur ne veut rien dire toute seule : la légende est
- * juste au-dessus, et elle est construite à partir de la MÊME table `ETATS`.
- * Impossible qu'elles se désynchronisent.
+ * 🔑 Trois choses rendent cette carte lisible, et il ne faut pas les défaire :
+ *  1. le cadrage s'AJUSTE aux points (`Ajuster`) — un zoom fixe montrait toute
+ *     la façade atlantique pour sept lieux tous situés autour de Vannes ;
+ *  2. les activités au même endroit sont REGROUPÉES en un seul rond, sinon les
+ *     unes recouvrent les autres et le compteur ment ;
+ *  3. la légende est construite depuis la même table `ETATS` que les marqueurs,
+ *     donc elles ne peuvent pas se désynchroniser.
  *
- * Ce qui reste à faire ressort : rond plein et large. Ce qui est fait s'efface :
- * rond plus petit, translucide, contour pointillé.
+ * Ce qui reste à faire ressort (rond plein, cerné de blanc) ; ce qui est fait
+ * s'efface (plus petit, translucide, contour pointillé — lisible même sans
+ * distinguer les couleurs).
  */
 
 export type EtatCarte = 'absolument' | 'a_faire' | 'revoir' | 'eviter' | 'fait'
@@ -40,34 +45,55 @@ export function etatDe(a: DuoActivite): EtatCarte {
 
 const infosEtat = (cle: EtatCarte) => ETATS.find((e) => e.cle === cle) ?? ETATS[1]
 
+/** Ce qui reste à faire l'emporte sur le reste : un groupe attire l'œil si UNE seule y reste. */
+const ORDRE: EtatCarte[] = ['absolument', 'a_faire', 'eviter', 'revoir', 'fait']
+
+const etatDuGroupe = (g: GroupeActivites): EtatCarte => {
+  const etats = g.activites.map(etatDe)
+  return ORDRE.find((e) => etats.includes(e)) ?? 'fait'
+}
+
 /**
- * Légende — affichée seulement pour les états réellement présents sur la carte.
- * Rendue DANS ce composant (et pas depuis la page) pour que Leaflet reste
- * derrière l'import dynamique.
+ * Cadre la vue sur les points affichés, à chaque changement de filtre.
+ * `maxZoom` évite de coller au ras des toits quand il n'y a qu'un seul lieu.
  */
-function LegendeCarte({ points }: { points: PointActivite[] }) {
+function Ajuster({ groupes }: { groupes: GroupeActivites[] }) {
+  const map = useMap()
+  const cle = groupes.map((g) => `${g.lat.toFixed(4)},${g.lng.toFixed(4)}`).join('|')
+
+  useEffect(() => {
+    if (!groupes.length) return
+    if (groupes.length === 1) {
+      map.setView([groupes[0].lat, groupes[0].lng], 14)
+      return
+    }
+    map.fitBounds(groupes.map((g) => [g.lat, g.lng] as [number, number]), {
+      padding: [36, 36],
+      maxZoom: 15,
+    })
+  }, [cle, map]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
+
+/** Légende compacte — seulement les états réellement présents sur la carte. */
+function LegendeCarte({ groupes }: { groupes: GroupeActivites[] }) {
   const presents = useMemo(() => {
-    const vus = new Set(points.map((p) => etatDe(p.activite)))
+    const vus = new Set(groupes.flatMap((g) => g.activites.map(etatDe)))
     return ETATS.filter((e) => vus.has(e.cle))
-  }, [points])
+  }, [groupes])
 
   if (!presents.length) return null
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Légende</p>
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {presents.map((e) => (
-          <span key={e.cle} className="inline-flex items-center gap-1.5 text-xs text-gray-600">
-            <span className={`rounded-full shrink-0 ${e.fait ? 'w-2.5 h-2.5 opacity-50' : 'w-3.5 h-3.5'}`}
-              style={{ background: e.couleur, border: `2px solid ${e.couleur}` }} />
-            {e.libelle}
-          </span>
-        ))}
-      </div>
-      <p className="text-[11px] text-gray-400 mt-2">
-        Les gros ronds pleins sont ce qu&apos;il vous reste à faire ; les petits ronds pâles, ce qui est déjà fait.
-      </p>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
+      {presents.map((e) => (
+        <span key={e.cle} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600">
+          <span className={`rounded-full shrink-0 ${e.fait ? 'w-2 h-2 opacity-50' : 'w-3 h-3'}`}
+            style={{ background: e.couleur }} />
+          {e.libelle}
+        </span>
+      ))}
     </div>
   )
 }
@@ -77,14 +103,16 @@ export default function CarteActivites({ points, onOuvrir }: {
   /** Ouvre la fiche depuis la bulle. */
   onOuvrir?: (a: DuoActivite) => void
 }) {
-  // Centre = barycentre des points ; par défaut la Bretagne.
+  const groupes = useMemo(() => groupesActivites(points), [points])
+
+  // Centre de départ ; `Ajuster` recadre dès le premier rendu.
   const centre = useMemo<[number, number]>(() => {
-    if (!points.length) return [47.5, -2.5]
+    if (!groupes.length) return [47.5, -2.5]
     return [
-      points.reduce((s, p) => s + p.lat, 0) / points.length,
-      points.reduce((s, p) => s + p.lng, 0) / points.length,
+      groupes.reduce((s, g) => s + g.lat, 0) / groupes.length,
+      groupes.reduce((s, g) => s + g.lng, 0) / groupes.length,
     ]
-  }, [points])
+  }, [groupes])
 
   if (!points.length) {
     return (
@@ -99,56 +127,74 @@ export default function CarteActivites({ points, onOuvrir }: {
 
   return (
     <div className="space-y-2">
-      <LegendeCarte points={points} />
+      <LegendeCarte groupes={groupes} />
+
       <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-      <MapContainer center={centre} zoom={points.length > 1 ? 7 : 13} scrollWheelZoom
-        style={{ height: '70vh', width: '100%' }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {points.map(({ activite: a, lat, lng }) => {
-          const etat = infosEtat(etatDe(a))
-          return (
-            <CircleMarker key={a.id} center={[lat, lng]} radius={etat.fait ? 6 : 10}
-              pathOptions={{
-                color: etat.couleur,
-                fillColor: etat.couleur,
-                fillOpacity: etat.fait ? 0.2 : 0.7,
-                weight: etat.fait ? 1.5 : 2.5,
-                // Le pointillé distingue le « déjà fait » même pour un daltonien.
-                dashArray: etat.fait ? '3 3' : undefined,
-              }}>
-              <Popup>
-                <div className="text-sm">
-                  <p className="font-semibold text-gray-900 break-words">{a.nom}</p>
-                  <p className="text-xs text-gray-500 break-words">
-                    {[a.type, a.zone].filter(Boolean).join(' · ')}
-                  </p>
-                  {a.adresse && <p className="text-xs text-gray-400 break-words mt-0.5">{a.adresse}</p>}
-                  <p className="text-xs mt-1" style={{ color: etat.couleur }}>
-                    <strong>{etat.libelle}</strong>
-                    {a.gammePrix && <span className="text-gray-500">{` · ${a.gammePrix}`}</span>}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {onOuvrir && (
-                      <button onClick={() => onOuvrir(a)}
-                        className="text-xs font-medium text-rose-600 hover:text-rose-700">
-                        Ouvrir la fiche
-                      </button>
+        <MapContainer center={centre} zoom={9} scrollWheelZoom
+          style={{ height: '65vh', width: '100%' }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Ajuster groupes={groupes} />
+
+          {groupes.map((g) => {
+            const etat = infosEtat(etatDuGroupe(g))
+            const nb = g.activites.length
+            return (
+              <CircleMarker key={`${g.lat},${g.lng}`} center={[g.lat, g.lng]}
+                // Le rayon grossit avec le nombre d'activités du lieu, sans jamais
+                // manger la carte.
+                radius={Math.min(15, (etat.fait ? 5 : 7) + (nb - 1) * 2)}
+                pathOptions={{
+                  color: '#ffffff',           // liseré blanc : deux ronds voisins restent distincts
+                  fillColor: etat.couleur,
+                  fillOpacity: etat.fait ? 0.55 : 0.95,
+                  weight: 2,
+                  dashArray: etat.fait ? '3 3' : undefined,
+                }}>
+                <Popup>
+                  <div className="text-sm space-y-2">
+                    {nb > 1 && (
+                      <p className="text-xs font-semibold text-gray-500">
+                        {`${nb} activités à cet endroit`}
+                      </p>
                     )}
-                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                    {g.activites.map((a) => {
+                      const e = infosEtat(etatDe(a))
+                      return (
+                        <div key={a.id} className={nb > 1 ? 'border-t border-gray-100 pt-1.5 first:border-0 first:pt-0' : ''}>
+                          <p className="font-semibold text-gray-900 break-words">{a.nom}</p>
+                          <p className="text-xs text-gray-500 break-words">
+                            {[a.type, a.zone].filter(Boolean).join(' · ')}
+                          </p>
+                          {a.adresse && nb === 1 && (
+                            <p className="text-xs text-gray-400 break-words mt-0.5">{a.adresse}</p>
+                          )}
+                          <p className="text-xs mt-0.5" style={{ color: e.couleur }}>
+                            <strong>{e.libelle}</strong>
+                            {a.gammePrix && <span className="text-gray-500">{` · ${a.gammePrix}`}</span>}
+                          </p>
+                          {onOuvrir && (
+                            <button onClick={() => onOuvrir(a)}
+                              className="text-xs font-medium text-rose-600 hover:text-rose-700 mt-0.5">
+                              Ouvrir la fiche
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}`}
                       target="_blank" rel="noopener noreferrer"
-                      className="text-xs font-medium text-gray-500 hover:text-gray-800">
+                      className="block text-xs font-medium text-gray-500 hover:text-gray-800 pt-1">
                       Y aller
                     </a>
                   </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          )
-        })}
-      </MapContainer>
+                </Popup>
+              </CircleMarker>
+            )
+          })}
+        </MapContainer>
       </div>
     </div>
   )
