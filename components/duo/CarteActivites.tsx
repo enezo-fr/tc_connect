@@ -35,9 +35,13 @@ import type { DuoActivite } from '@/types'
  */
 export type EtatCarte = 'a_faire' | 'fait'
 
+/**
+ * Rouge = à faire, vert = fait. Deux couleurs, deux libellés, rien d'autre —
+ * demandé explicitement par Teddy après deux essais plus nuancés.
+ */
 export const ETATS: { cle: EtatCarte; libelle: string; couleur: string; fait: boolean }[] = [
-  { cle: 'a_faire', libelle: 'À faire', couleur: '#e11d48', fait: false },
-  { cle: 'fait', libelle: 'Déjà fait', couleur: '#64748b', fait: true },
+  { cle: 'a_faire', libelle: 'À faire', couleur: '#dc2626', fait: false },
+  { cle: 'fait', libelle: 'Fait', couleur: '#16a34a', fait: true },
 ]
 
 export const etatDe = (a: DuoActivite): EtatCarte => (a.fait ? 'fait' : 'a_faire')
@@ -83,8 +87,8 @@ function LegendeCarte({ groupes }: { groupes: GroupeActivites[] }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
       {presents.map((e) => (
-        <span key={e.cle} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600">
-          <span className={`rounded-full shrink-0 ${e.fait ? 'w-2 h-2 opacity-50' : 'w-3 h-3'}`}
+        <span key={e.cle} className="inline-flex items-center gap-1.5 text-xs text-gray-700">
+          <span className={`rounded-full shrink-0 ${e.fait ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'}`}
             style={{ background: e.couleur }} />
           {e.libelle}
         </span>
@@ -140,12 +144,14 @@ export default function CarteActivites({ points, onOuvrir }: {
               <CircleMarker key={`${g.lat},${g.lng}`} center={[g.lat, g.lng]}
                 // Le rayon grossit avec le nombre d'activités du lieu, sans jamais
                 // manger la carte.
-                radius={Math.min(15, (etat.fait ? 5 : 7) + (nb - 1) * 2)}
+                radius={Math.min(15, (etat.fait ? 6 : 8) + (nb - 1) * 2)}
                 pathOptions={{
                   color: '#ffffff',           // liseré blanc : deux ronds voisins restent distincts
                   fillColor: etat.couleur,
-                  fillOpacity: etat.fait ? 0.55 : 0.95,
+                  fillOpacity: 0.9,
                   weight: 2,
+                  // Rouge et vert sont mal distingués par un daltonien : le
+                  // « fait » est aussi plus petit et cerné de pointillés.
                   dashArray: etat.fait ? '3 3' : undefined,
                 }}>
                 <Popup>
