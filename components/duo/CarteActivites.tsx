@@ -20,9 +20,9 @@ import type { DuoActivite } from '@/types'
  *  4. la légende est construite depuis la même table `ETATS` que les marqueurs,
  *     donc elles ne peuvent pas se désynchroniser.
  *
- * Ce qui reste à faire ressort (rond plein, cerné de blanc) ; ce qui est fait
- * s'efface (plus petit, translucide, contour pointillé — lisible même sans
- * distinguer les couleurs).
+ * Des RONDS PLEINS cernés de blanc, dans les deux cas — rouge à faire, vert
+ * fait, le « fait » un peu plus petit. Pas de contour pointillé (essayé : à
+ * cette taille, ça donne une roue dentée), pas de transparence.
  */
 
 /**
@@ -144,15 +144,15 @@ export default function CarteActivites({ points, onOuvrir }: {
               <CircleMarker key={`${g.lat},${g.lng}`} center={[g.lat, g.lng]}
                 // Le rayon grossit avec le nombre d'activités du lieu, sans jamais
                 // manger la carte.
-                radius={Math.min(15, (etat.fait ? 6 : 8) + (nb - 1) * 2)}
+                radius={Math.min(15, (etat.fait ? 7 : 9) + (nb - 1) * 2)}
                 pathOptions={{
                   color: '#ffffff',           // liseré blanc : deux ronds voisins restent distincts
                   fillColor: etat.couleur,
-                  fillOpacity: 0.9,
+                  fillOpacity: 1,
                   weight: 2,
-                  // Rouge et vert sont mal distingués par un daltonien : le
-                  // « fait » est aussi plus petit et cerné de pointillés.
-                  dashArray: etat.fait ? '3 3' : undefined,
+                  // ⚠️ PAS de `dashArray` : sur un rond de cette taille, un
+                  // contour pointillé donne une roue dentée, pas un cercle.
+                  // La nuance « fait » passe par la couleur et la taille.
                 }}>
                 <Popup>
                   <div className="text-sm space-y-2">
