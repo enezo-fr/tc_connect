@@ -52,10 +52,10 @@ function Interrupteur({ actif, onChange, titre, aide, icone: Icone }: {
 /**
  * Création d'une partie — sur sa propre page, comme la nouvelle partie de belote :
  * le formulaire est trop haut pour une modale de téléphone (jeu, joueurs, mode de
- * score, soirée).
+ * score, session).
  *
- * `?soiree=<id>` pré-rattache la partie à une soirée : c'est ce que fait le
- * bouton « Ajouter une partie » depuis la page d'une soirée.
+ * `?soiree=<id>` pré-rattache la partie à une session : c'est ce que fait le
+ * bouton « Ajouter une partie » depuis la page d'une session.
  */
 export default function NouvellePartiePage() {
   const router = useRouter()
@@ -79,8 +79,8 @@ export default function NouvellePartiePage() {
   const [busy, setBusy] = useState(false)
 
   /**
-   * Rattachement : `''` = partie isolée, `'nouvelle'` = créer une soirée,
-   * sinon l'identifiant d'une soirée existante.
+   * Rattachement : `''` = partie isolée, `'nouvelle'` = créer une session,
+   * sinon l'identifiant d'une session existante.
    */
   const [soiree, setSoiree] = useState<string>(soireeDemandee ?? '')
   const [nomSoiree, setNomSoiree] = useState('')
@@ -102,7 +102,7 @@ export default function NouvellePartiePage() {
     })
   }
 
-  /** Nom proposé pour une nouvelle soirée : celui de la date saisie. */
+  /** Nom proposé pour une nouvelle session : celui de la date saisie. */
   const nomParDefaut = () => nomSoireePour(depuisChampDate(date)?.toDate() ?? new Date())
 
   const propres = joueurs.map((j) => j.trim()).filter(Boolean)
@@ -116,7 +116,7 @@ export default function NouvellePartiePage() {
       const lien = soiree === 'nouvelle'
         ? { soireeId: nouvelleSoireeId(), soireeName: nomSoiree.trim() || nomParDefaut() }
         : soiree
-          ? { soireeId: soiree, soireeName: soirees.find((s) => s.soireeId === soiree)?.nom ?? 'Soirée jeux' }
+          ? { soireeId: soiree, soireeName: soirees.find((s) => s.soireeId === soiree)?.nom ?? 'Session de jeux' }
           : { soireeId: null, soireeName: null }
 
       const id = await ajouter({
@@ -238,7 +238,7 @@ export default function NouvellePartiePage() {
               </div>
               <LigneAide>
                 {sansPoints
-                  ? "Aucun score à saisir : on touche les joueurs dans l'ordre d'arrivée. Idéal pour les jeux sans points, qui comptent quand même dans le classement de la soirée."
+                  ? "Aucun score à saisir : on touche les joueurs dans l'ordre d'arrivée. Idéal pour les jeux sans points, qui comptent quand même dans le classement de la session."
                   : 'Un score par joueur et par tour, additionné automatiquement.'}
               </LigneAide>
 
@@ -248,29 +248,33 @@ export default function NouvellePartiePage() {
                     titre="Le plus petit score gagne"
                     aide="SkyJo, 6 qui prend, Rami… sans ça, le classement désigne le perdant." />
 
+                  {/* Le mot change avec le sens du jeu : on court après 500 à
+                      l'Uno, on fuit les 100 du SkyJo. */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Objectif de score <span className="text-gray-400 font-normal">(facultatif)</span>
+                      {scoreBasGagne ? 'Limite de points' : 'Objectif de score'}
+                      <span className="text-gray-400 font-normal"> (facultatif)</span>
                     </label>
                     <div className="flex items-center gap-2">
                       <Target size={16} className="text-gray-300 shrink-0" />
                       <input type="number" inputMode="numeric" min={1} value={objectif}
-                        onChange={(e) => setObjectif(e.target.value)} placeholder="500"
-                        className={champCls} />
+                        onChange={(e) => setObjectif(e.target.value)}
+                        placeholder={scoreBasGagne ? '100' : '500'} className={champCls} />
                     </div>
                     <LigneAide>
-                      Atteint par n&apos;importe qui, l&apos;app vous propose de terminer la partie. La barre de
-                      progression suit l&apos;avancée.
+                      {scoreBasGagne
+                        ? "Dès que quelqu'un touche cette limite, l'app vous propose de terminer la partie — c'est lui qui saute."
+                        : "Atteint par n'importe qui, l'app vous propose de terminer la partie. La barre de progression suit l'avancée."}
                     </LigneAide>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Soirée */}
+            {/* Session */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
               <p className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                <CalendarDays size={15} className="text-gray-400" />Soirée
+                <CalendarDays size={15} className="text-gray-400" />Session
               </p>
               <div className="flex flex-wrap gap-1.5">
                 <button type="button" onClick={() => setSoiree('')} className={chipCls(soiree === '')}>
@@ -279,7 +283,7 @@ export default function NouvellePartiePage() {
                 <button type="button"
                   onClick={() => { setSoiree('nouvelle'); if (!nomSoiree) setNomSoiree(nomParDefaut()) }}
                   className={chipCls(soiree === 'nouvelle')}>
-                  Nouvelle soirée
+                  Nouvelle session
                 </button>
                 {soirees.slice(0, 4).map((s) => (
                   <button key={s.soireeId} type="button" onClick={() => setSoiree(s.soireeId)}
@@ -290,10 +294,10 @@ export default function NouvellePartiePage() {
               </div>
               {soiree === 'nouvelle' && (
                 <input value={nomSoiree} onChange={(e) => setNomSoiree(e.target.value)}
-                  placeholder="Nom de la soirée" className={champCls} />
+                  placeholder="Nom de la session" className={champCls} />
               )}
               <LigneAide>
-                Une soirée additionne plusieurs parties — même jeu ou non — et désigne un vainqueur
+                Une session additionne plusieurs parties — même jeu ou non — et désigne un vainqueur
                 général. Vous pourrez toujours en rattacher une plus tard.
               </LigneAide>
             </div>
@@ -326,7 +330,7 @@ export default function NouvellePartiePage() {
             et saisir les scores.
           </p>
           <p>
-            Si la partie appartient à une soirée, le lien donne accès à <strong>toutes</strong> ses parties
+            Si la partie appartient à une session, le lien donne accès à <strong>toutes</strong> ses parties
             et au classement général.
           </p>
         </NoteAide>

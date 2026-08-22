@@ -15,7 +15,7 @@ const couleurRang = (rang: number) =>
         : 'bg-gray-50 text-gray-400'
 
 /**
- * Classement général d'une soirée, TOUS JEUX CONFONDUS.
+ * Classement général d'une session, TOUS JEUX CONFONDUS.
  *
  * Le barème est le cœur du sujet : on ne peut pas additionner 500 points d'Uno
  * et 32 de SkyJo. « Victoires » et « Places » ramènent chaque partie à un
@@ -62,7 +62,7 @@ export default function ClassementSoiree({ parties, bareme, onBareme }: {
           {aide && <LigneAide>{aide}</LigneAide>}
           {!pointsPossible && (
             <LigneAide>
-              Les <strong>points cumulés</strong> sont désactivés : cette soirée mélange plusieurs jeux
+              Les <strong>points cumulés</strong> sont désactivés : cette session mélange plusieurs jeux
               (ou une partie sans points), et leurs scores ne se comparent pas.
             </LigneAide>
           )}

@@ -14,9 +14,9 @@ const couleurRang = (rang: number) =>
  * Ordre d'arrivée d'une partie SANS POINTS : on touche les joueurs dans l'ordre
  * où ils finissent, le premier d'abord.
  *
- * Beaucoup de jeux de soirée n'ont pas de score (jeux d'ambiance, sport, jeux de
+ * Beaucoup de jeux de session n'ont pas de score (jeux d'ambiance, sport, jeux de
  * plateau à élimination) : sans ce mode ils resteraient hors du classement de la
- * soirée, alors qu'ils comptent autant que les autres.
+ * session, alors qu'ils comptent autant que les autres.
  *
  * Le bouton « annuler » d'une ligne renvoie simplement le joueur dans la liste
  * des restants — c'est l'inverse exact du geste qui l'a placé, refaisable d'une

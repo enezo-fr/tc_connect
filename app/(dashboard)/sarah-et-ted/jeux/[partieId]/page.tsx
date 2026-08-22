@@ -31,7 +31,7 @@ import type { DuoPartie, DuoTour } from '@/types'
  *
  * C'est le changement de fond de ce chantier : une partie n'est plus une ligne
  * qu'on déplie dans une liste, elle a son écran — score, feuille de tours,
- * partage, soirée. Tout ce qui supprime passe par une poubelle et une
+ * partage, session. Tout ce qui supprime passe par une poubelle et une
  * confirmation, jamais par une croix.
  */
 export default function PartieJeuPage() {
@@ -48,7 +48,7 @@ export default function PartieJeuPage() {
   const [aSupprimer, setASupprimer] = useState<CibleSuppression | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // ── Soirée : cumul avec les parties liées ────────────────────────────────
+  // ── Session : cumul avec les parties liées ────────────────────────────────
   const soiree = useMemo(
     () => (partie?.soireeId ? partiesDeSoiree(items, partie.soireeId) : []),
     [items, partie],
@@ -79,7 +79,7 @@ export default function PartieJeuPage() {
 
   /**
    * Revanche : même jeu, mêmes joueurs, mêmes réglages, rattachée à la même
-   * soirée (créée au besoin) pour que les points se cumulent. Les accès sont
+   * session (créée au besoin) pour que les points se cumulent. Les accès sont
    * repris, sinon les invités perdraient la revanche.
    */
   const revanche = async () => {
@@ -137,7 +137,7 @@ export default function PartieJeuPage() {
                 className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-rose-300 hover:text-rose-600 transition">
                 <Share2 size={16} /><span className="hidden sm:inline">Partager</span>
               </button>
-              <button onClick={() => setSoireeOuverte(true)} aria-label="Rattacher à une soirée"
+              <button onClick={() => setSoireeOuverte(true)} aria-label="Rattacher à une session"
                 className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                 <Link2 size={16} />
               </button>
@@ -171,13 +171,13 @@ export default function PartieJeuPage() {
           </div>
         ) : (
           <>
-            {/* Soirée */}
+            {/* Session */}
             {partie.soireeId && soiree.length > 1 && (
               <button onClick={() => router.push(`/sarah-et-ted/jeux/soiree/${partie.soireeId}`)}
                 className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3 hover:shadow-md transition text-left">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <CalendarDays size={12} />{`Soirée · ${soiree.length} parties`}
+                    <CalendarDays size={12} />{`Session · ${soiree.length} parties`}
                   </p>
                   <p className="text-sm font-semibold text-gray-800 break-words">{partie.soireeName || 'Sans nom'}</p>
                   {ecart && (
@@ -207,13 +207,21 @@ export default function PartieJeuPage() {
               <div className="space-y-4">
                 <ClassementPartie partie={partie} />
 
+                {/* Au SkyJo la limite est une élimination, pas une victoire :
+                    on ne l'annonce pas en vert comme un objectif atteint. */}
                 {proposerFin && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                    <p className="text-sm text-emerald-900 min-w-0">
-                      L&apos;objectif est atteint. On arrête là ?
+                  <div className={`rounded-xl px-4 py-3 flex items-center justify-between gap-3 border ${
+                    partie.scoreBasGagne ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <p className={`text-sm min-w-0 ${partie.scoreBasGagne ? 'text-amber-900' : 'text-emerald-900'}`}>
+                      {partie.scoreBasGagne
+                        ? 'La limite de points est atteinte. On arrête là ?'
+                        : "L'objectif est atteint. On arrête là ?"}
                     </p>
                     <button onClick={basculerTermine}
-                      className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition">
+                      className={`shrink-0 text-white text-sm font-medium px-3 py-2 rounded-xl transition ${
+                        partie.scoreBasGagne ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}>
                       Terminer
                     </button>
                   </div>
@@ -249,7 +257,7 @@ export default function PartieJeuPage() {
                       </button>
                     </div>
                     <p className="text-xs text-gray-400 text-center">
-                      La revanche reprend les mêmes joueurs et rejoint la même soirée : les points se cumulent.
+                      La revanche reprend les mêmes joueurs et rejoint la même session : les points se cumulent.
                     </p>
                   </div>
                 ) : partieJouee(partie) && (

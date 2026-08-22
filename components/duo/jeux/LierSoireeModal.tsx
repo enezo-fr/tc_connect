@@ -9,9 +9,9 @@ import { CalendarDays, Unlink } from 'lucide-react'
 import type { DuoPartie } from '@/types'
 
 /**
- * Rattacher une partie à une soirée — ou l'en détacher.
+ * Rattacher une partie à une session — ou l'en détacher.
  *
- * Une soirée n'existe que par le `soireeId` recopié sur ses parties : la créer,
+ * Une session n'existe que par le `soireeId` recopié sur ses parties : la créer,
  * c'est simplement en poser un nouveau sur la partie courante. Rien à supprimer
  * quand la dernière partie s'en détache.
  */
@@ -19,7 +19,7 @@ export default function LierSoireeModal({ isOpen, onClose, partie, toutes }: {
   isOpen: boolean
   onClose: () => void
   partie: DuoPartie
-  /** Toutes les parties visibles, pour proposer les soirées existantes. */
+  /** Toutes les parties visibles, pour proposer les sessions existantes. */
   toutes: DuoPartie[]
 }) {
   const soirees = useMemo(() => soireesDe(toutes), [toutes])
@@ -36,17 +36,17 @@ export default function LierSoireeModal({ isOpen, onClose, partie, toutes }: {
     lierPartieASoiree(partie.id, nouvelleSoireeId(), nom.trim() || nomSoireeParDefaut(partie)))
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Rattacher à une soirée">
+    <Modal isOpen={isOpen} onClose={onClose} title="Rattacher à une session">
       <div className="space-y-4">
         <LigneAide>
-          Les parties d&apos;une même soirée s&apos;additionnent dans un classement général, même si ce
+          Les parties d&apos;une même session s&apos;additionnent dans un classement général, même si ce
           sont des jeux différents.
         </LigneAide>
 
         {partie.soireeId && (
           <div className="bg-rose-50 border border-rose-100 rounded-xl px-3 py-2.5 flex items-center justify-between gap-3">
             <p className="text-sm text-rose-900 min-w-0 break-words">
-              Rattachée à <strong>{partie.soireeName || 'une soirée'}</strong>
+              Rattachée à <strong>{partie.soireeName || 'une session'}</strong>
             </p>
             <button onClick={() => agir(() => delierPartie(partie.id))} disabled={busy}
               className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-red-600 border border-gray-200 bg-white px-2.5 py-1.5 rounded-lg transition">
@@ -57,7 +57,7 @@ export default function LierSoireeModal({ isOpen, onClose, partie, toutes }: {
 
         {soirees.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Soirées existantes</h3>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Sessions existantes</h3>
             <div className="border border-gray-200 rounded-xl divide-y divide-gray-50 overflow-hidden">
               {soirees.map((s) => (
                 <button key={s.soireeId} disabled={busy || s.soireeId === partie.soireeId}
@@ -82,7 +82,7 @@ export default function LierSoireeModal({ isOpen, onClose, partie, toutes }: {
         )}
 
         <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Nouvelle soirée</h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Nouvelle session</h3>
           <div className="flex gap-2">
             <input value={nom} onChange={(e) => setNom(e.target.value)}
               placeholder={nomSoireeParDefaut(partie)}

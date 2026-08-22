@@ -13,10 +13,10 @@ import { baremeDeSoiree, partiesDeSoiree, type BaremeSoiree } from '@/lib/duoJeu
 import { ArrowLeft, Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 
 /**
- * Une soirée jeux : plusieurs parties, éventuellement de jeux différents, et UN
+ * Une session jeux : plusieurs parties, éventuellement de jeux différents, et UN
  * classement général.
  *
- * La soirée n'est pas un document : elle n'existe que par le `soireeId` porté par
+ * La session n'est pas un document : elle n'existe que par le `soireeId` porté par
  * ses parties. La dissoudre revient donc à les détacher — aucune partie n'est
  * supprimée au passage, et c'est dit tel quel dans la confirmation.
  */
@@ -27,7 +27,7 @@ export default function SoireePage() {
 
   const parties = useMemo(() => partiesDeSoiree(items, soireeId), [items, soireeId])
   const bareme = useMemo(() => baremeDeSoiree(parties), [parties])
-  const nom = parties.find((p) => p.soireeName)?.soireeName ?? 'Soirée jeux'
+  const nom = parties.find((p) => p.soireeName)?.soireeName ?? 'Session de jeux'
   const jeux = useMemo(() => [...new Set(parties.map((p) => p.jeu).filter(Boolean))], [parties])
   const partageeIds = useMemo(() => new Set(partagees.map((p) => p.id)), [partagees])
 
@@ -46,7 +46,7 @@ export default function SoireePage() {
   const changerBareme = (b: BaremeSoiree) => changerBaremeSoiree(parties, b)
 
   const dissoudre = () => setASupprimer({
-    quoi: `la soirée « ${nom} »`,
+    quoi: `la session « ${nom} »`,
     detail: `Les ${parties.length} parties sont conservées : elles redeviennent simplement indépendantes.`,
     libelleBouton: 'Dissoudre',
     go: async () => {
@@ -77,11 +77,11 @@ export default function SoireePage() {
                 className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-2 rounded-xl shadow-sm transition">
                 <Plus size={16} /><span className="hidden sm:inline">Ajouter une partie</span>
               </button>
-              <button onClick={() => setRenommage(nom)} aria-label="Renommer la soirée"
+              <button onClick={() => setRenommage(nom)} aria-label="Renommer la session"
                 className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
                 <Pencil size={16} />
               </button>
-              <button onClick={dissoudre} aria-label="Dissoudre la soirée"
+              <button onClick={dissoudre} aria-label="Dissoudre la session"
                 className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition">
                 <Trash2 size={16} />
               </button>
@@ -93,7 +93,7 @@ export default function SoireePage() {
           <div className="flex gap-2">
             <input autoFocus value={renommage} onChange={(e) => setRenommage(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') renommer(); if (e.key === 'Escape') setRenommage(null) }}
-              placeholder="Nom de la soirée"
+              placeholder="Nom de la session"
               className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-rose-400" />
             <button onClick={renommer} disabled={busy} aria-label="Enregistrer le nom"
               className="shrink-0 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
@@ -112,7 +112,7 @@ export default function SoireePage() {
           </div>
         ) : parties.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-            <p className="text-sm text-gray-400">Cette soirée ne contient aucune partie.</p>
+            <p className="text-sm text-gray-400">Cette session ne contient aucune partie.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
@@ -128,7 +128,7 @@ export default function SoireePage() {
                 </div>
               </section>
 
-              <StatsJeux parties={parties} titre="Statistiques de la soirée" avecAide={false} />
+              <StatsJeux parties={parties} titre="Statistiques de la session" avecAide={false} />
             </div>
           </div>
         )}

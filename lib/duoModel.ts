@@ -26,7 +26,7 @@ export const TYPES_ACTIVITE = [
 export const PRIORITES = ['A faire absolument', 'A revoir', 'A ne pas faire'] as const
 export const GAMMES_PRIX = ['🟢 Abordable', '🟡 Modéré', '🟠 Cher', '🔴 Exorbitant'] as const
 
-// Le module Jeux (liste des jeux, classements, soirées, statistiques) vit
+// Le module Jeux (liste des jeux, classements, sessions, statistiques) vit
 // désormais dans `lib/duoJeux.ts` : il a sa propre section d'écrans et n'a plus
 // rien à faire dans les référentiels des deux listes « à voir » / « à faire ».
 

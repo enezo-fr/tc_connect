@@ -27,7 +27,7 @@ const asPartie = (p: PartiePublique) => p as unknown as DuoPartie
  * Page publique d'une partie, ouverte par lien ou QR — SANS COMPTE.
  *
  * Le porteur du lien voit et complète la partie (et toutes celles de la même
- * soirée), mais ne peut pas en créer de nouvelles : c'est la différence avec
+ * session), mais ne peut pas en créer de nouvelles : c'est la différence avec
  * l'app, réservée aux comptes.
  */
 export default function PartieJeuPubliquePage({ params }: { params: Promise<{ token: string }> }) {
@@ -207,7 +207,7 @@ export default function PartieJeuPubliquePage({ params }: { params: Promise<{ to
           </div>
         )}
 
-        {/* Sélecteur de partie (soirée) */}
+        {/* Sélecteur de partie (session) */}
         {parties.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {parties.map((p, i) => (
@@ -273,7 +273,7 @@ export default function PartieJeuPubliquePage({ params }: { params: Promise<{ to
             {parties.length > 1 && (
               <div className="space-y-2">
                 <h2 className="text-sm font-semibold text-gray-700">
-                  {partie.soireeName || 'Classement de la soirée'}
+                  {partie.soireeName || 'Classement de la session'}
                 </h2>
                 <ClassementSoiree parties={parties.map(asPartie)} bareme={bareme} />
               </div>

@@ -60,7 +60,7 @@ export default function HistoriqueJeuxPage() {
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Un jeu, un joueur, une soirée…"
+            placeholder="Un jeu, un joueur, une session…"
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" />
         </div>
 

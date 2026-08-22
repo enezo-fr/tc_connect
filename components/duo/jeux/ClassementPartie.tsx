@@ -28,6 +28,13 @@ export default function ClassementPartie({ partie, compact = false }: {
   const jouee = partieJouee(partie)
   const cible = partie.objectif ?? 0
   const atteint = objectifAtteint(partie)
+  /** Le plus petit score gagne : la cible est une limite, pas un but. */
+  const bas = !!partie.scoreBasGagne
+  /** Score le plus haut de la table — c'est lui qui court vers la cible. */
+  const plusHaut = useMemo(
+    () => Math.max(...(partie.joueurs ?? []).map((j) => totalJoueur(partie, j)), 0),
+    [partie],
+  )
 
   const meilleur = lignes.find((l) => l.classe)?.total ?? 0
 
@@ -70,8 +77,12 @@ export default function ClassementPartie({ partie, compact = false }: {
               {!partie.sansPoints && (
                 <span className="text-right shrink-0">
                   <span className="text-sm font-semibold text-gray-800 tabular-nums">{l.total}</span>
+                  {/* L'écart au leader se lit dans le sens du jeu : il MANQUE 15
+                      points à l'Uno, on en a 15 DE TROP au SkyJo. */}
                   {ecart !== null && ecart > 0 && (
-                    <span className="block text-[11px] text-gray-400 tabular-nums">{`-${ecart}`}</span>
+                    <span className="block text-[11px] text-gray-400 tabular-nums">
+                      {`${bas ? '+' : '-'}${ecart}`}
+                    </span>
                   )}
                 </span>
               )}
@@ -80,22 +91,34 @@ export default function ClassementPartie({ partie, compact = false }: {
         })}
       </div>
 
-      {/* Objectif de score : où en est la partie */}
+      {/* Fin de partie : objectif à atteindre, ou limite à ne pas dépasser.
+          🔑 Le sens du jeu change TOUT, y compris la couleur : à l'Uno on court
+          après les 500 points (vert quand on y est), au SkyJo on les fuit
+          (rouge, parce que la partie s'arrête sur une élimination). */}
       {cible > 0 && !partie.sansPoints && (
         <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <span className="text-xs text-gray-500 flex items-center gap-1.5">
-              <Target size={13} className="text-rose-500" />
-              {`Objectif ${cible} points`}
+              <Target size={13} className={bas ? 'text-gray-400' : 'text-rose-500'} />
+              {`${bas ? 'Limite' : 'Objectif'} ${cible} points`}
             </span>
-            <span className={`text-xs font-medium ${atteint ? 'text-emerald-600' : 'text-gray-400'}`}>
-              {atteint ? 'Atteint' : `${Math.max(...(partie.joueurs ?? []).map((j) => totalJoueur(partie, j)), 0)} / ${cible}`}
+            <span className={`text-xs font-medium ${
+              atteint ? (bas ? 'text-red-600' : 'text-emerald-600') : 'text-gray-400'
+            }`}>
+              {atteint ? (bas ? 'Limite atteinte' : 'Atteint') : `${plusHaut} / ${cible}`}
             </span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${atteint ? 'bg-emerald-500' : 'bg-rose-500'}`}
-              style={{ width: `${Math.min(100, Math.round((Math.max(...(partie.joueurs ?? []).map((j) => totalJoueur(partie, j)), 0) / cible) * 100))}%` }} />
+            <div className={`h-full rounded-full transition-all ${
+              atteint ? (bas ? 'bg-red-500' : 'bg-emerald-500') : bas ? 'bg-amber-400' : 'bg-rose-500'
+            }`}
+              style={{ width: `${Math.min(100, Math.round((plusHaut / cible) * 100))}%` }} />
           </div>
+          {bas && (
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              La barre suit celui qui a le PLUS de points : la partie s&apos;arrête quand il touche la limite.
+            </p>
+          )}
         </div>
       )}
 

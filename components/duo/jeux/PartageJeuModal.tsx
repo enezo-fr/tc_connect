@@ -20,7 +20,7 @@ interface Membre { uid: string; name: string; isCreator: boolean }
 const emailValide = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
 
 /**
- * Partage d'UNE partie (et de sa soirée s'il y en a une) :
+ * Partage d'UNE partie (et de sa session s'il y en a une) :
  *  - lien public + QR, ouvrable SANS COMPTE ;
  *  - envoi du lien à une adresse email (mailto, comme tous les envois de l'app) ;
  *  - rattachement direct d'un compte existant — ADMIN uniquement.
@@ -202,7 +202,7 @@ export default function PartageJeuModal({ isOpen, onClose, partie, estAuteur }: 
       <div className="space-y-5">
         {partie.soireeId && (
           <p className="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
-            Cette partie fait partie d&apos;une soirée : le lien donne accès à toutes les parties liées,
+            Cette partie fait partie d&apos;une session : le lien donne accès à toutes les parties liées,
             et donc au classement général.
           </p>
         )}

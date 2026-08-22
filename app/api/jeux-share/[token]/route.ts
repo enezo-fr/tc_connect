@@ -6,7 +6,7 @@ import { partiesDuJeton, publicPartie } from '@/lib/jeuxShare'
  * /jeu-partie/[token]). Aucun compte requis.
  *
  * Tout est renvoyé d'un coup : la partie porteuse du jeton ET les autres parties
- * de la soirée, dans l'ordre de jeu. Le classement se calcule côté navigateur
+ * de la session, dans l'ordre de jeu. Le classement se calcule côté navigateur
  * avec les mêmes fonctions que l'app (`lib/duoJeux.ts`), il n'y a donc jamais
  * deux résultats possibles pour un même score.
  */

@@ -50,7 +50,7 @@ export default function CartePartie({ partie, partagee = false }: {
           )}
           {partie.soireeId && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-1.5 py-0.5">
-              <CalendarDays size={11} />{partie.soireeName || 'Soirée'}
+              <CalendarDays size={11} />{partie.soireeName || 'Session'}
             </span>
           )}
           {partagee && (

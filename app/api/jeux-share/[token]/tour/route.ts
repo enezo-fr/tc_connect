@@ -62,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     updatedAt: FieldValue.serverTimestamp(),
   })
 
-  // On renvoie TOUTES les parties du jeton : le classement de la soirée bouge
+  // On renvoie TOUTES les parties du jeton : le classement de la session bouge
   // dès qu'un score change, l'appareil doit le voir sans second appel.
   const lot = await partiesDuJeton(token)
   return NextResponse.json({

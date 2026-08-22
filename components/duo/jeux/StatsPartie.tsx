@@ -60,14 +60,18 @@ export default function StatsPartie({ partie, avecAide = true }: {
           <Chiffre valeur={bilan.tours} legende={bilan.tours > 1 ? 'tours joués' : 'tour joué'} />
           <Chiffre valeur={bilan.totalPoints} legende="points marqués" couleur="text-rose-600" />
           <Chiffre valeur={bilan.moyenneParTour ?? '—'} legende="moy. par tour et joueur" />
+          {/* Un changement de leader n'est ni bon ni mauvais : c'est du suspense.
+              Rien d'orange ici, l'orange voudrait dire « attention ». */}
           <Chiffre valeur={bilan.changementsDeLeader} legende="changements de leader"
-            couleur={bilan.changementsDeLeader > 0 ? 'text-amber-600' : 'text-gray-300'} />
+            couleur={bilan.changementsDeLeader > 0 ? 'text-gray-800' : 'text-gray-300'} />
         </div>
         {(bilan.tourRecord || bilan.ecart != null) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-dashed border-gray-100">
+            {/* `tourRecord` est déjà pris dans le sens du jeu : au SkyJo c'est la
+                plus PETITE manche. L'appeler « plus gros tour » serait un contresens. */}
             {bilan.tourRecord && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-                {`plus gros tour : ${bilan.tourRecord.points} — ${bilan.tourRecord.joueur} au tour ${bilan.tourRecord.index + 1}`}
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
+                {`meilleure manche : ${bilan.tourRecord.points} — ${bilan.tourRecord.joueur} au tour ${bilan.tourRecord.index + 1}`}
               </span>
             )}
             {bilan.ecart != null && (

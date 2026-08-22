@@ -5,7 +5,7 @@ import { partiesDuJeton, uidFromIdToken } from '@/lib/jeuxShare'
 /**
  * POST — le porteur du lien a un compte et veut rattacher la partie au sien.
  *
- * Il rejoint TOUTE la soirée, pour ne pas devoir cliquer partie par partie quand
+ * Il rejoint TOUTE la session, pour ne pas devoir cliquer partie par partie quand
  * on en a enchaîné cinq. Passe par l'Admin SDK : les règles de `duo_parties`
  * figent `members`, personne ne peut s'y ajouter depuis le navigateur.
  */

@@ -158,10 +158,12 @@ export default function ModifierPartieModal({ partie, onClose, onEnregistrer }: 
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Objectif de score <span className="text-gray-400 font-normal">(facultatif)</span>
+                {scoreBasGagne ? 'Limite de points' : 'Objectif de score'}
+                <span className="text-gray-400 font-normal"> (facultatif)</span>
               </label>
               <input type="number" inputMode="numeric" min={1} value={objectif}
-                onChange={(e) => setObjectif(e.target.value)} placeholder="500" className={champCls} />
+                onChange={(e) => setObjectif(e.target.value)}
+                placeholder={scoreBasGagne ? '100' : '500'} className={champCls} />
             </div>
           </>
         )}

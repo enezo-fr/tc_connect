@@ -116,12 +116,19 @@ export function objectifAtteint(partie: DuoPartie): boolean {
   return (partie.joueurs ?? []).some((j) => totalJoueur(partie, j) >= cible)
 }
 
-// ─── Soirées (parties liées) ────────────────────────────────────────────────────
+// ─── Sessions (parties liées) ────────────────────────────────────────────────────
 
 /**
- * Une soirée n'a pas de collection dédiée : c'est un `soireeId` recopié sur
+ * Une session n'a pas de collection dédiée : c'est un `soireeId` recopié sur
  * chaque partie liée — même patron que les séries de belote. Elle peut mélanger
- * plusieurs jeux : c'est tout l'intérêt d'une soirée jeux.
+ * plusieurs jeux : c'est tout l'intérêt d'une session de jeux.
+ *
+ * ⚠️ VOCABULAIRE : l'interface dit « session », le CODE et les champs Firestore
+ * disent `soiree*` (`soireeId`, `soireeName`, `soireeBareme`), tout comme la
+ * route `/sarah-et-ted/jeux/soiree/[soireeId]`. Le mot « soirée » a été écarté
+ * le 2026-08-22 — on joue aussi l'après-midi — mais renommer les champs
+ * imposerait une migration des parties déjà enregistrées, pour zéro gain
+ * visible. Ne pas « corriger » cet écart : il est voulu.
  */
 export type BaremeSoiree = 'victoires' | 'places' | 'points'
 
@@ -136,7 +143,7 @@ export const BAREMES: { cle: BaremeSoiree; nom: string; aide: string }[] = [
   },
   {
     cle: 'points', nom: 'Points cumulés',
-    aide: 'La somme des scores de toutes les parties. Réservé aux soirées où toutes les parties sont le même jeu — additionner un Uno et un SkyJo ne veut rien dire.',
+    aide: 'La somme des scores de toutes les parties. Réservé aux sessions où toutes les parties sont le même jeu — additionner un Uno et un SkyJo ne veut rien dire.',
   },
 ]
 
@@ -150,7 +157,7 @@ export function nouvelleSoireeId(): string {
 export const secondesPartie = (p: DuoPartie): number =>
   p.date?.seconds ?? p.createdAt?.seconds ?? 0
 
-/** Parties d'une soirée, de la plus ancienne à la plus récente (ordre de jeu). */
+/** Parties d'une session, de la plus ancienne à la plus récente (ordre de jeu). */
 export function partiesDeSoiree(parties: DuoPartie[], soireeId: string): DuoPartie[] {
   return parties
     .filter((p) => p.soireeId === soireeId)
@@ -161,14 +168,14 @@ export interface Soiree {
   soireeId: string
   nom: string
   parties: DuoPartie[]
-  /** Jeux distincts joués pendant la soirée. */
+  /** Jeux distincts joués pendant la session. */
   jeux: string[]
   bareme: BaremeSoiree
-  /** Date de la dernière partie (tri des soirées). */
+  /** Date de la dernière partie (tri des sessions). */
   dernier: number
 }
 
-/** Soirées visibles, de la plus récente à la plus ancienne. */
+/** Sessions visibles, de la plus récente à la plus ancienne. */
 export function soireesDe(parties: DuoPartie[]): Soiree[] {
   const map = new Map<string, DuoPartie[]>()
   parties.forEach((p) => {
@@ -180,7 +187,7 @@ export function soireesDe(parties: DuoPartie[]): Soiree[] {
       const ordonnees = [...liste].sort((a, b) => secondesPartie(a) - secondesPartie(b))
       return {
         soireeId,
-        nom: ordonnees.find((p) => p.soireeName)?.soireeName ?? 'Soirée jeux',
+        nom: ordonnees.find((p) => p.soireeName)?.soireeName ?? 'Session de jeux',
         parties: ordonnees,
         jeux: [...new Set(ordonnees.map((p) => p.jeu).filter(Boolean))],
         bareme: baremeDeSoiree(ordonnees),
@@ -203,7 +210,7 @@ export function cumulPointsPossible(parties: DuoPartie[]): boolean {
   return parties.every((p) => p.jeu === jeu && !!p.scoreBasGagne === sens)
 }
 
-/** Barème enregistré sur la soirée, ramené à ce qui a du sens pour ces parties. */
+/** Barème enregistré sur la session, ramené à ce qui a du sens pour ces parties. */
 export function baremeDeSoiree(parties: DuoPartie[]): BaremeSoiree {
   const choisi = parties.find((p) => p.soireeBareme)?.soireeBareme
   if (choisi === 'points') return cumulPointsPossible(parties) ? 'points' : 'places'
@@ -225,7 +232,7 @@ export interface LigneSoiree {
 }
 
 /**
- * Classement d'une soirée, tous jeux confondus.
+ * Classement d'une session, tous jeux confondus.
  *
  * ⚠️ Les scores bruts ne sont additionnés QUE dans le barème « points », et
  * seulement s'il est autorisé : 500 points à l'Uno et 32 au SkyJo ne se
@@ -282,19 +289,19 @@ export function classementSoiree(parties: DuoPartie[], bareme: BaremeSoiree): Li
   })
 }
 
-/** Écart entre les deux premiers d'un classement de soirée. */
+/** Écart entre les deux premiers d'un classement de session. */
 export function ecartSoiree(lignes: LigneSoiree[]): { ecart: number; enTete: LigneSoiree; second: LigneSoiree } | null {
   if (lignes.length < 2) return null
   const [enTete, second] = lignes
   return { ecart: Math.abs(enTete.points - second.points), enTete, second }
 }
 
-/** Nom par défaut d'une soirée, d'après sa date. */
+/** Nom par défaut d'une session, d'après sa date. */
 export function nomSoireePour(d: Date): string {
-  return `Soirée du ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
+  return `Session du ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
 }
 
-/** Nom par défaut d'une soirée créée depuis une partie. */
+/** Nom par défaut d'une session créée depuis une partie. */
 export function nomSoireeParDefaut(p: DuoPartie): string {
   return nomSoireePour(p.date?.toDate() ?? p.createdAt?.toDate() ?? new Date())
 }
@@ -472,6 +479,46 @@ export function statsPartie(p: DuoPartie): { bilan: BilanPartie; joueurs: StatJo
   }
 }
 
+// ─── Dire les chiffres dans le bon sens ─────────────────────────────────────────
+
+/**
+ * Le mot juste pour la fin de partie : on COURT APRÈS les 500 points à l'Uno,
+ * on FUIT les 100 du SkyJo. « Objectif » et « limite » ne se colorent donc pas
+ * pareil non plus.
+ */
+export const motCible = (scoreBasGagne?: boolean) => (scoreBasGagne ? 'limite' : 'objectif')
+
+export interface LibelleChiffre {
+  texte: string
+  /** `false` = c'est une contre-performance : à ne surtout pas peindre en doré. */
+  positif: boolean
+}
+
+/**
+ * Un gros total n'est un exploit que dans un jeu où le plus grand gagne.
+ * Ailleurs c'est tout l'inverse — autant le dire avec le sourire plutôt que de
+ * l'appeler « record » et de le colorer comme une médaille.
+ */
+export function libelleRecord(
+  r: { points: number; jeu: string; scoreBasGagne: boolean },
+  quoi: 'total' | 'tour',
+): LibelleChiffre {
+  if (!r.scoreBasGagne) {
+    return {
+      texte: quoi === 'total'
+        ? `record : ${r.points} au ${r.jeu}`
+        : `plus gros tour : ${r.points} au ${r.jeu}`,
+      positif: true,
+    }
+  }
+  return {
+    texte: quoi === 'total'
+      ? `record du nul : ${r.points} au ${r.jeu}`
+      : `manche à oublier : ${r.points} au ${r.jeu}`,
+    positif: false,
+  }
+}
+
 // ─── Statistiques ───────────────────────────────────────────────────────────────
 
 export interface StatJoueur {
@@ -483,8 +530,14 @@ export interface StatJoueur {
   podiums: number
   /** Points cumulés toutes parties confondues — indicatif, tous jeux mélangés. */
   pointsMarques: number
-  /** Meilleur score personnel et le jeu où il a été fait. */
-  record: { points: number; jeu: string } | null
+  /**
+   * Le plus gros total jamais posé, et le jeu où c'était.
+   *
+   * ⚠️ `scoreBasGagne` voyage AVEC : dans un jeu où le plus petit gagne, ce
+   * « record » est en réalité une contre-performance, et l'affichage doit le
+   * dire (cf. `libelleRecord`). Un gros total au SkyJo n'est pas un exploit.
+   */
+  record: { points: number; jeu: string; scoreBasGagne: boolean } | null
   /** Victoires d'affilée en cours (parties les plus récentes). */
   serieEnCours: number
   meilleureSerie: number
@@ -500,8 +553,8 @@ export interface StatJoueur {
   tauxTours: number | null
   /** Points marqués par tour, en moyenne. */
   moyenneParTour: number | null
-  /** Plus gros score marqué en une seule manche, et le jeu où c'était. */
-  plusGrosTour: { points: number; jeu: string } | null
+  /** Plus gros score marqué en une seule manche — même remarque que `record`. */
+  plusGrosTour: { points: number; jeu: string; scoreBasGagne: boolean } | null
   /** Manches bouclées à zéro. */
   zeros: number
   /** Ses 8 derniers résultats (`true` = gagné), du plus ancien au plus récent. */
@@ -544,7 +597,7 @@ export function statsJoueurs(parties: DuoPartie[]): StatJoueur[] {
       if (gagne) s.victoires += 1
       if (l.classe && l.rang <= 3) s.podiums += 1
       if (!p.sansPoints && (!s.record || l.total > s.record.points)) {
-        s.record = { points: l.total, jeu: p.jeu }
+        s.record = { points: l.total, jeu: p.jeu, scoreBasGagne: !!p.scoreBasGagne }
       }
 
       // Les 8 derniers résultats, du plus ancien au plus récent : de quoi
@@ -556,12 +609,12 @@ export function statsJoueurs(parties: DuoPartie[]): StatJoueur[] {
         s.tours += scores.length
         s.toursGagnes += gagnantsTours.filter((g) => g.includes(l.joueur)).length
         s.zeros += scores.filter((v) => v === 0).length
-        // « Plus gros tour » = le plus gros score marqué en une manche, quel que
-        // soit le sens du jeu : comparer un petit tour de SkyJo à un gros tour
-        // d'Uno n'aurait aucun sens, alors qu'un gros coup reste un gros coup.
+        // Le plus gros score posé en une manche, quel que soit le sens du jeu :
+        // comparer un petit tour de SkyJo à un gros tour d'Uno n'aurait aucun
+        // sens. C'est le LIBELLÉ qui dit si c'est un exploit ou une bourde.
         scores.forEach((v) => {
           if (v > (s.plusGrosTour?.points ?? Number.NEGATIVE_INFINITY)) {
-            s.plusGrosTour = { points: v, jeu: p.jeu }
+            s.plusGrosTour = { points: v, jeu: p.jeu, scoreBasGagne: !!p.scoreBasGagne }
           }
         })
       }

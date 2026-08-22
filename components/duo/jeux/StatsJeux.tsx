@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { Flame, Crown, Dices, Swords } from 'lucide-react'
 import { NoteAide } from '@/components/ui/NoteAide'
 import {
-  duoVedette, faceAFace, partieJouee, statsJoueurs, statsParJeu,
+  duoVedette, faceAFace, libelleRecord, partieJouee, statsJoueurs, statsParJeu,
 } from '@/lib/duoJeux'
 import type { DuoPartie } from '@/types'
 
@@ -24,7 +24,7 @@ function Chiffre({ valeur, legende, couleur = 'text-gray-800' }: {
 }
 
 /**
- * Statistiques d'un lot de parties : sur toute l'histoire, sur une soirée, ou sur
+ * Statistiques d'un lot de parties : sur toute l'histoire, sur une session, ou sur
  * un seul jeu — c'est l'appelant qui choisit ce qu'il envoie.
  */
 export default function StatsJeux({ parties, titre = 'Statistiques', avecAide = true }: {
@@ -144,16 +144,18 @@ export default function StatsJeux({ parties, titre = 'Statistiques', avecAide = 
                   <Crown size={11} />{`imbattable au ${j.jeuFavori.jeu}`}
                 </span>
               )}
-              {j.record && (
-                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-                  {`record ${j.record.points} au ${j.record.jeu}`}
+              {/* Un « record » n'en est un que dans le bon sens de jeu : au SkyJo,
+                  un gros total est une contre-performance, dite comme telle. */}
+              {[
+                j.record && libelleRecord(j.record, 'total'),
+                j.plusGrosTour && libelleRecord(j.plusGrosTour, 'tour'),
+              ].filter(Boolean).map((l, i) => (
+                <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${
+                  l!.positif ? 'bg-gray-100 text-gray-600' : 'bg-violet-50 text-violet-700'
+                }`}>
+                  {l!.texte}
                 </span>
-              )}
-              {j.plusGrosTour && (
-                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-500 font-medium">
-                  {`plus gros tour ${j.plusGrosTour.points} au ${j.plusGrosTour.jeu}`}
-                </span>
-              )}
+              ))}
               {j.podiums > j.victoires && (
                 <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-500 font-medium">
                   {libelle(j.podiums, 'podium')}

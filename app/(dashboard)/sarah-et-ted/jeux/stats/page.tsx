@@ -18,7 +18,7 @@ const chipCls = (actif: boolean) =>
 /**
  * Statistiques, avec le cumul par jeu.
  *
- * Choisir un jeu additionne TOUTES ses parties, quelle que soit la soirée : c'est
+ * Choisir un jeu additionne TOUTES ses parties, quelle que soit la session : c'est
  * le classement « de la maison » à l'Uno ou au SkyJo. Comme il n'y a qu'un seul
  * jeu, les points bruts se comparent, et le barème « Points cumulés » redevient
  * possible.
@@ -61,7 +61,7 @@ export default function StatsJeuxPage() {
               ))}
             </div>
             <LigneAide>
-              Choisissez un jeu pour additionner toutes ses parties, toutes soirées confondues.
+              Choisissez un jeu pour additionner toutes ses parties, toutes sessions confondues.
             </LigneAide>
           </div>
         )}

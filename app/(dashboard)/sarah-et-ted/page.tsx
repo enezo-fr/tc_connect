@@ -325,6 +325,12 @@ export default function ADeuxPage() {
   const [actForm, setActForm] = useState(actVide)
   /** Liste ou carte : deux façons de regarder les mêmes activités. */
   const [vueActivites, setVueActivites] = useState<'liste' | 'carte'>('liste')
+  // Filtres partagés par les deux vues : ce qu'on voit dans la liste est
+  // exactement ce qu'on voit sur la carte.
+  const [filtrePriorite, setFiltrePriorite] = useState('')
+  const [filtrePrix, setFiltrePrix] = useState('')
+  /** N'afficher que ce qui a un point GPS (utile avant de basculer sur la carte). */
+  const [filtreGeo, setFiltreGeo] = useState(false)
 
   const listeActivites = useMemo(() => {
     const q = recherche.trim().toLowerCase()
@@ -333,11 +339,14 @@ export default function ADeuxPage() {
         if (filtreFait === 'a_faire' && a.fait) return false
         if (filtreFait === 'faits' && !a.fait) return false
         if (filtreTypeAct && a.type !== filtreTypeAct) return false
+        if (filtrePriorite && a.priorite !== filtrePriorite) return false
+        if (filtrePrix && a.gammePrix !== filtrePrix) return false
+        if (filtreGeo && !a.gps?.trim()) return false
         if (q && !`${a.nom} ${a.zone ?? ''} ${a.adresse ?? ''} ${a.infos ?? ''} ${a.conseillePar ?? ''}`.toLowerCase().includes(q)) return false
         return true
       })
       .sort((a, b) => Number(a.fait ?? false) - Number(b.fait ?? false) || a.nom.localeCompare(b.nom))
-  }, [activites.items, filtreFait, filtreTypeAct, recherche])
+  }, [activites.items, filtreFait, filtreTypeAct, filtrePriorite, filtrePrix, filtreGeo, recherche])
 
   // La carte suit les mêmes filtres que la liste : ce qu'on voit à l'écran est
   // ce qu'on voit sur la carte.
@@ -372,7 +381,7 @@ export default function ADeuxPage() {
 
   // ── Jeux ───────────────────────────────────────────────────────────────────
   // Le module a sa propre section d'écrans (`/sarah-et-ted/jeux`) : une partie
-  // par page, avec ses soirées, son partage et ses statistiques. Ici, la carte
+  // par page, avec ses sessions, son partage et ses statistiques. Ici, la carte
   // d'accueil ne fait plus que compter et ouvrir.
 
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; go: () => Promise<void> } | null>(null)
@@ -565,6 +574,28 @@ export default function ADeuxPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Filtres fins : priorité, prix, et « seulement ce qui est placé » */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Chips options={PRIORITES} valeur={filtrePriorite} onChange={setFiltrePriorite} />
+              <Chips options={GAMMES_PRIX} valeur={filtrePrix} onChange={setFiltrePrix} />
+              <button onClick={() => setFiltreGeo((v) => !v)}
+                className={`px-3 py-1.5 rounded-xl text-sm border transition inline-flex items-center gap-1.5 ${
+                  filtreGeo ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-700 hover:border-rose-300'
+                }`}>
+                <MapPin size={13} />Placées sur la carte
+              </button>
+              {(filtrePriorite || filtrePrix || filtreGeo || filtreTypeAct || filtreFait !== 'tous') && (
+                <button
+                  onClick={() => {
+                    setFiltrePriorite(''); setFiltrePrix(''); setFiltreGeo(false)
+                    setFiltreTypeAct(''); setFiltreFait('tous')
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-700 underline underline-offset-2 transition">
+                  Tout afficher
+                </button>
+              )}
             </div>
 
             {vueActivites === 'carte' ? (

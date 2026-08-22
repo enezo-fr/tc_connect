@@ -64,9 +64,9 @@ export const noterEmailPartage = (partieId: string, email: string) =>
 export const retirerEmailPartage = (partieId: string, email: string) =>
   majPartie(partieId, { sharedEmails: arrayRemove(email) })
 
-// ─── Soirées (parties liées) ────────────────────────────────────────────────────
+// ─── Sessions (parties liées) ────────────────────────────────────────────────────
 
-/** Rattache une partie à une soirée. */
+/** Rattache une partie à une session. */
 export const lierPartieASoiree = (
   partieId: string,
   soireeId: string,
@@ -78,12 +78,12 @@ export const lierPartieASoiree = (
   ...(soireeBareme ? { soireeBareme } : {}),
 })
 
-/** Détache une partie de sa soirée (elle garde ses propres scores). */
+/** Détache une partie de sa session (elle garde ses propres scores). */
 export const delierPartie = (partieId: string) =>
   majPartie(partieId, { soireeId: null, soireeName: null })
 
 /**
- * Renomme une soirée : le nom vit sur CHAQUE partie liée, il faut donc les
+ * Renomme une session : le nom vit sur CHAQUE partie liée, il faut donc les
  * réécrire toutes. On saute celles qui portent déjà le bon nom.
  */
 export const renommerSoiree = (parties: DuoPartie[], nom: string) =>
@@ -91,7 +91,7 @@ export const renommerSoiree = (parties: DuoPartie[], nom: string) =>
     .filter((p) => p.soireeName !== nom)
     .map((p) => majPartie(p.id, { soireeName: nom })))
 
-/** Change le barème de classement d'une soirée (même mécanique que le nom). */
+/** Change le barème de classement d'une session (même mécanique que le nom). */
 export const changerBaremeSoiree = (parties: DuoPartie[], bareme: BaremeSoiree) =>
   Promise.all(parties
     .filter((p) => p.soireeBareme !== bareme)

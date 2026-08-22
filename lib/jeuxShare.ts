@@ -41,7 +41,7 @@ export async function findByToken(token: string) {
 
 /**
  * Parties ouvertes par un jeton : la partie elle-même, et toutes celles de sa
- * soirée. Triées dans l'ordre de jeu (la plus ancienne d'abord) — la page
+ * session. Triées dans l'ordre de jeu (la plus ancienne d'abord) — la page
  * publique s'appuie sur cet ordre, elle n'a pas les dates Firestore pour trier.
  */
 export async function partiesDuJeton(token: string) {

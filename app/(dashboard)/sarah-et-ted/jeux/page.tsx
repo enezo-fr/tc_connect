@@ -21,7 +21,7 @@ const couleurRang = (rang: number) =>
  * Accueil du module Jeux.
  *
  * Trois entrées, dans l'ordre où on s'en sert un soir de jeux : la partie en
- * cours, la soirée qui les regroupe, puis l'archive. Chaque partie mène à SA
+ * cours, la session qui les regroupe, puis l'archive. Chaque partie mène à SA
  * page — l'ancienne liste dépliable devenait illisible dès quelques parties.
  */
 export default function JeuxPage() {
@@ -48,7 +48,7 @@ export default function JeuxPage() {
             <h1 className="text-2xl font-bold text-gray-900">Jeux</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               {items.length === 0
-                ? 'Les scores de vos parties, soirée par soirée.'
+                ? 'Les scores de vos parties, session par session.'
                 : `${items.length} partie${items.length > 1 ? 's' : ''} · ${nbJouees} avec un résultat`}
             </p>
           </div>
@@ -127,10 +127,10 @@ export default function JeuxPage() {
               )}
             </section>
 
-            {/* Soirées */}
+            {/* Sessions */}
             {soirees.length > 0 && (
               <section className="space-y-2">
-                <h2 className="text-sm font-semibold text-gray-700">{`Soirées · ${soirees.length}`}</h2>
+                <h2 className="text-sm font-semibold text-gray-700">{`Sessions · ${soirees.length}`}</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {soirees.map((s) => {
                     const ecart = ecartSoiree(classementSoiree(s.parties, s.bareme))
