@@ -11,12 +11,13 @@ import type { DuoActivite } from '@/types'
  * Mêmes précautions que la carte des bières : import dynamique `ssr: false`, et
  * des `CircleMarker` plutôt que les icônes par défaut de Leaflet.
  *
- * 🔑 Trois choses rendent cette carte lisible, et il ne faut pas les défaire :
- *  1. le cadrage s'AJUSTE aux points (`Ajuster`) — un zoom fixe montrait toute
+ * 🔑 Quatre choses rendent cette carte lisible, et il ne faut pas les défaire :
+ *  1. DEUX couleurs seulement — fait / à faire (cf. `ETATS`) ;
+ *  2. le cadrage s'AJUSTE aux points (`Ajuster`) — un zoom fixe montrait toute
  *     la façade atlantique pour sept lieux tous situés autour de Vannes ;
- *  2. les activités au même endroit sont REGROUPÉES en un seul rond, sinon les
+ *  3. les activités au même endroit sont REGROUPÉES en un seul rond, sinon les
  *     unes recouvrent les autres et le compteur ment ;
- *  3. la légende est construite depuis la même table `ETATS` que les marqueurs,
+ *  4. la légende est construite depuis la même table `ETATS` que les marqueurs,
  *     donc elles ne peuvent pas se désynchroniser.
  *
  * Ce qui reste à faire ressort (rond plein, cerné de blanc) ; ce qui est fait
@@ -24,34 +25,28 @@ import type { DuoActivite } from '@/types'
  * distinguer les couleurs).
  */
 
-export type EtatCarte = 'absolument' | 'a_faire' | 'revoir' | 'eviter' | 'fait'
+/**
+ * DEUX couleurs, pas plus : fait ou à faire.
+ *
+ * Une palette par priorité avait été essayée — cinq teintes, illisible d'un
+ * coup d'œil. La carte répond à une seule question (« qu'est-ce qu'il nous
+ * reste ? ») ; la priorité et le prix restent dans la bulle et dans la liste,
+ * où on a le temps de lire.
+ */
+export type EtatCarte = 'a_faire' | 'fait'
 
 export const ETATS: { cle: EtatCarte; libelle: string; couleur: string; fait: boolean }[] = [
-  { cle: 'absolument', libelle: 'À faire absolument', couleur: '#059669', fait: false },
   { cle: 'a_faire', libelle: 'À faire', couleur: '#e11d48', fait: false },
-  { cle: 'eviter', libelle: 'À ne pas faire', couleur: '#a1a1aa', fait: false },
-  { cle: 'revoir', libelle: 'Fait — à revoir', couleur: '#f59e0b', fait: true },
   { cle: 'fait', libelle: 'Déjà fait', couleur: '#64748b', fait: true },
 ]
 
-/** L'état d'une activité sur la carte. La priorité prime sur le reste. */
-export function etatDe(a: DuoActivite): EtatCarte {
-  if (a.priorite === 'A revoir') return 'revoir'
-  if (a.fait) return 'fait'
-  if (a.priorite === 'A ne pas faire') return 'eviter'
-  if (a.priorite === 'A faire absolument') return 'absolument'
-  return 'a_faire'
-}
+export const etatDe = (a: DuoActivite): EtatCarte => (a.fait ? 'fait' : 'a_faire')
 
-const infosEtat = (cle: EtatCarte) => ETATS.find((e) => e.cle === cle) ?? ETATS[1]
+const infosEtat = (cle: EtatCarte) => ETATS.find((e) => e.cle === cle) ?? ETATS[0]
 
-/** Ce qui reste à faire l'emporte sur le reste : un groupe attire l'œil si UNE seule y reste. */
-const ORDRE: EtatCarte[] = ['absolument', 'a_faire', 'eviter', 'revoir', 'fait']
-
-const etatDuGroupe = (g: GroupeActivites): EtatCarte => {
-  const etats = g.activites.map(etatDe)
-  return ORDRE.find((e) => etats.includes(e)) ?? 'fait'
-}
+/** Un endroit reste « à faire » tant qu'UNE seule de ses activités l'est. */
+const etatDuGroupe = (g: GroupeActivites): EtatCarte =>
+  g.activites.some((a) => !a.fait) ? 'a_faire' : 'fait'
 
 /**
  * Cadre la vue sur les points affichés, à chaque changement de filtre.
@@ -171,9 +166,13 @@ export default function CarteActivites({ points, onOuvrir }: {
                           {a.adresse && nb === 1 && (
                             <p className="text-xs text-gray-400 break-words mt-0.5">{a.adresse}</p>
                           )}
+                          {/* La priorité et le prix ne colorent plus le rond :
+                              ils se lisent ici, au calme. */}
                           <p className="text-xs mt-0.5" style={{ color: e.couleur }}>
                             <strong>{e.libelle}</strong>
-                            {a.gammePrix && <span className="text-gray-500">{` · ${a.gammePrix}`}</span>}
+                            {[a.priorite, a.gammePrix].filter(Boolean).map((t) => (
+                              <span key={t} className="text-gray-500">{` · ${t}`}</span>
+                            ))}
                           </p>
                           {onOuvrir && (
                             <button onClick={() => onOuvrir(a)}
