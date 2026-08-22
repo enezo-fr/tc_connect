@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useDuoFilms, useDuoActivites, useDuoParties } from '@/hooks/useDuo'
 import { useDuoCouple } from '@/hooks/useDuoCouple'
@@ -10,12 +11,12 @@ import AutoTextarea from '@/components/ui/AutoTextarea'
 import { DuoShareModal } from '@/components/duo/DuoShareModal'
 import { Timestamp } from 'firebase/firestore'
 import {
-  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, Trophy, X, ChevronLeft, Users,
+  Plus, Pencil, Trash2, Search, MapPin, Film, Compass, Dices, Check, ChevronLeft, Users,
   Star, Eye, LocateFixed,
 } from 'lucide-react'
 import {
   TYPES_FILM, PLATEFORMES, CATEGORIES_FILM, SAISONS_PARTIES, TYPES_ACTIVITE, PRIORITES, GAMMES_PRIX,
-  JEUX_COURANTS, categoriesFilm, classementPartie, palmares,
+  categoriesFilm,
 } from '@/lib/duoModel'
 import { positionActuelle, formatCoords } from '@/lib/geoloc'
 import type { DuoActivite, DuoFilm, DuoPartie } from '@/types'
@@ -209,6 +210,7 @@ const versTimestamp = (s: string) => {
 }
 
 export default function ADeuxPage() {
+  const router = useRouter()
   const { currentUser } = useAuth()
   const uid = currentUser?.uid
   const films = useDuoFilms(uid)
@@ -220,7 +222,7 @@ export default function ADeuxPage() {
    * trois listes empilées derrière des onglets donnaient l'impression que tout
    * était mélangé, alors que ce sont trois usages distincts.
    */
-  const [section, setSection] = useState<'films' | 'activites' | 'jeux' | null>(null)
+  const [section, setSection] = useState<'films' | 'activites' | null>(null)
   const [recherche, setRecherche] = useState('')
   const [partageOuvert, setPartageOuvert] = useState(false)
 
@@ -365,70 +367,10 @@ export default function ADeuxPage() {
     setActOuverte(false)
   }
 
-  // ── Scores ─────────────────────────────────────────────────────────────────
-  const [partieOuverte, setPartieOuverte] = useState(false)
-  const [partieForm, setPartieForm] = useState({ jeu: '', date: '', joueurs: [''], scoreBasGagne: false })
-  const [partieActive, setPartieActive] = useState<string | null>(null)
-  const [tourForm, setTourForm] = useState<Record<string, string>>({})
-
-  const listeParties = useMemo(
-    () => (parties.items as DuoPartie[]).sort((a, b) => (b.date?.seconds ?? 0) - (a.date?.seconds ?? 0)),
-    [parties.items],
-  )
-  const classementGeneral = useMemo(() => palmares(parties.items as DuoPartie[]), [parties.items])
-
-  const creerPartie = async () => {
-    if (!base || !partieForm.jeu.trim()) return
-    const joueurs = partieForm.joueurs.map((j) => j.trim()).filter(Boolean)
-    if (joueurs.length < 2) return
-    const id = await parties.ajouter({
-      ...base, jeu: partieForm.jeu.trim(),
-      date: versTimestamp(partieForm.date) ?? Timestamp.now(),
-      joueurs, tours: [], scoreBasGagne: partieForm.scoreBasGagne, termine: false,
-    })
-    setPartieOuverte(false)
-    setPartieActive(id)
-  }
-
-  /** Joueurs déjà vus : on les propose en pastilles plutôt que de les retaper */
-  const joueursConnus = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const p of parties.items as DuoPartie[]) {
-      for (const j of p.joueurs) m.set(j, (m.get(j) ?? 0) + 1)
-    }
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([j]) => j)
-  }, [parties.items])
-
-  /** Partie et index du tour en cours de saisie (index null = nouveau tour) */
-  const [tourPour, setTourPour] = useState<{ partie: DuoPartie; index: number | null } | null>(null)
-
-  const ouvrirTour = (partie: DuoPartie, index: number | null) => {
-    const t = index !== null ? partie.tours?.[index] : null
-    setTourForm(Object.fromEntries(
-      partie.joueurs.map((j) => [j, String(t?.scores.find((s) => s.joueur === j)?.points ?? '')]),
-    ))
-    setTourPour({ partie, index })
-  }
-
-  const enregistrerTour = async () => {
-    if (!tourPour) return
-    const { partie, index } = tourPour
-    const scores = partie.joueurs.map((j) => ({ joueur: j, points: Number(tourForm[j] ?? 0) || 0 }))
-    const tours = [...(partie.tours ?? [])]
-    if (index === null) tours.push({ scores })
-    else tours[index] = { scores }
-    await parties.modifier(partie.id, { tours })
-    setTourPour(null)
-    setTourForm({})
-  }
-
-  const retirerTour = async (p: DuoPartie, index: number) => {
-    await parties.modifier(p.id, { tours: (p.tours ?? []).filter((_, i) => i !== index) })
-  }
-
-  /** Total actuel d'un joueur, hors tour en cours d'édition */
-  const totalAvant = (p: DuoPartie, joueur: string, sauf: number | null) =>
-    (p.tours ?? []).reduce((s, t, i) => (i === sauf ? s : s + (t.scores.find((x) => x.joueur === joueur)?.points ?? 0)), 0)
+  // ── Jeux ───────────────────────────────────────────────────────────────────
+  // Le module a sa propre section d'écrans (`/sarah-et-ted/jeux`) : une partie
+  // par page, avec ses soirées, son partage et ses statistiques. Ici, la carte
+  // d'accueil ne fait plus que compter et ouvrir.
 
   const [aSupprimer, setASupprimer] = useState<{ quoi: string; nom: string; go: () => Promise<void> } | null>(null)
 
@@ -477,15 +419,25 @@ export default function ADeuxPage() {
                   resteLabel: 'à faire',
                 },
                 {
+                  // Les jeux ne sont plus une section dépliée ici : ils ont leurs
+                  // propres écrans, une partie par page.
                   k: 'jeux', icon: Dices, titre: 'Jeux',
                   desc: 'Les scores des parties', couleur: 'bg-amber-100 text-amber-600',
-                  total: (parties.items as DuoPartie[]).length,
-                  reste: 0, resteLabel: '',
+                  total: parties.items.length,
+                  reste: (parties.items as DuoPartie[]).filter((p) => !p.termine).length,
+                  resteLabel: 'en cours',
+                  unite: 'partie',
                 },
               ] as const).map((s) => {
                 const Icon = s.icon
+                const unite = 'unite' in s ? s.unite : 'enregistré'
                 return (
-                  <button key={s.k} onClick={() => { setSection(s.k); setRecherche('') }}
+                  <button key={s.k}
+                    onClick={() => {
+                      if (s.k === 'jeux') { router.push('/sarah-et-ted/jeux'); return }
+                      setSection(s.k)
+                      setRecherche('')
+                    }}
                     className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:shadow-md hover:border-rose-200 transition active:scale-[0.99]">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${s.couleur}`}>
                       <Icon size={22} />
@@ -493,7 +445,7 @@ export default function ADeuxPage() {
                     <p className="text-base font-semibold text-gray-900">{s.titre}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
                     <p className="text-sm text-gray-700 mt-3">
-                      <strong>{s.total}</strong> {s.k === 'jeux' ? `partie${s.total > 1 ? 's' : ''}` : 'enregistré' + (s.total > 1 ? 's' : '')}
+                      <strong>{s.total}</strong> {`${unite}${s.total > 1 ? 's' : ''}`}
                       {s.reste > 0 && (
                         <span className="text-rose-600 font-medium"> · {s.reste} {s.resteLabel}</span>
                       )}
@@ -513,23 +465,21 @@ export default function ADeuxPage() {
                   <ChevronLeft size={14} />Sarah &amp; Ted
                 </button>
                 <h1 className="text-xl font-bold text-gray-900">
-                  {section === 'films' ? 'Films & séries' : section === 'activites' ? 'Activités' : 'Jeux'}
+                  {section === 'films' ? 'Films & séries' : 'Activités'}
                 </h1>
               </div>
               <button
-                onClick={() => (section === 'films' ? ouvrirFilm() : section === 'activites' ? ouvrirActivite() : setPartieOuverte(true))}
+                onClick={() => (section === 'films' ? ouvrirFilm() : ouvrirActivite())}
                 className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-2 rounded-xl transition shrink-0">
                 <Plus size={16} />Ajouter
               </button>
             </div>
 
-            {section !== 'jeux' && (
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-                  placeholder="Rechercher…" className={`${champCls} pl-9`} />
-              </div>
-            )}
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+                placeholder="Rechercher…" className={`${champCls} pl-9`} />
+            </div>
           </>
         )}
 
@@ -650,179 +600,7 @@ export default function ADeuxPage() {
             )}
           </>
         )}
-
-        {/* ══ SCORES ══ */}
-        {section === 'jeux' && (
-          <>
-            {classementGeneral.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Trophy size={13} />Palmarès — toutes parties
-                </p>
-                <div className="space-y-1.5">
-                  {classementGeneral.map((j) => (
-                    <div key={j.joueur} className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-700">{j.joueur}</span>
-                      <span className="text-xs text-gray-500">
-                        <strong className="text-gray-800">{j.victoires}</strong> victoire{j.victoires > 1 ? 's' : ''} / {j.parties}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {listeParties.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                <Dices size={28} className="text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">Aucune partie enregistrée.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* En cours d'abord : c'est là qu'on saisit, le reste est de l'archive */}
-                {([
-                  { titre: 'Parties en cours', liste: listeParties.filter((p) => !p.termine) },
-                  { titre: 'Parties terminées', liste: listeParties.filter((p) => p.termine) },
-                ]).filter((g) => g.liste.length > 0).map((groupe) => (
-                  <div key={groupe.titre} className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      {groupe.titre} · {groupe.liste.length}
-                    </p>
-                    {groupe.liste.map((p) => {
-                  const ouvert = partieActive === p.id
-                  const cl = classementPartie(p)
-                  const vainqueur = p.tours?.length ? cl[0] : null
-                  return (
-                    <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                      <button onClick={() => { setPartieActive(ouvert ? null : p.id); setTourForm({}) }}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-left">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800">{p.jeu}</p>
-                          <p className="text-xs text-gray-500">
-                            {p.date?.toDate().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            {' · '}{p.joueurs.join(', ')}
-                            {' · '}{p.tours?.length ?? 0} tour{(p.tours?.length ?? 0) > 1 ? 's' : ''}
-                          </p>
-                        </div>
-                        {vainqueur && (
-                          <span className="text-xs bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 font-medium shrink-0">
-                            🏆 {vainqueur.joueur} · {vainqueur.total}
-                          </span>
-                        )}
-                      </button>
-
-                      {ouvert && (
-                        <div className="border-t border-gray-50 px-4 py-3 space-y-3">
-                          {/* Bouton principal : saisir un tour, sans avoir à viser un champ */}
-                          {!p.termine && (
-                            <button onClick={() => ouvrirTour(p, null)}
-                              className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium py-2.5 rounded-xl transition">
-                              <Plus size={16} />Ajouter un tour
-                            </button>
-                          )}
-
-                          {/* Classement */}
-                          <div className="space-y-1">
-                            {cl.map((c) => (
-                              <div key={c.joueur} className="flex items-center gap-2">
-                                <span className={`text-xs font-bold w-5 ${c.rang === 1 && p.tours?.length ? 'text-amber-500' : 'text-gray-300'}`}>
-                                  {c.rang}
-                                </span>
-                                <span className="text-sm text-gray-700 flex-1 truncate">{c.joueur}</span>
-                                <span className="text-sm font-semibold text-gray-800">{c.total}</span>
-                              </div>
-                            ))}
-                            <p className="text-[11px] text-gray-400 pt-1">
-                              {p.scoreBasGagne ? 'Le plus petit score gagne.' : 'Le plus grand score gagne.'}
-                            </p>
-                          </div>
-
-                          {/* Tours joués — cliquer un tour le corrige */}
-                          {(p.tours?.length ?? 0) > 0 && (
-                            <div className="border-t border-dashed border-gray-200 pt-2 space-y-1">
-                              {p.tours.map((t, i) => (
-                                <div key={i} className="flex items-center gap-2 text-xs">
-                                  <button onClick={() => ouvrirTour(p, i)}
-                                    className="flex-1 flex items-center gap-2 text-left hover:bg-gray-50 rounded-lg px-1 py-1 transition">
-                                    <span className="text-gray-400 w-12 shrink-0">Tour {i + 1}</span>
-                                    <span className="flex-1 text-gray-600 truncate">
-                                      {t.scores.map((s) => `${s.joueur} ${s.points}`).join(' · ')}
-                                    </span>
-                                    <Pencil size={11} className="text-gray-300 shrink-0" />
-                                  </button>
-                                  <button onClick={() => retirerTour(p, i)}
-                                    className="p-1 text-gray-300 hover:text-red-500 transition"><X size={12} /></button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="border-t border-dashed border-gray-200 pt-3">
-                            <div className="flex flex-wrap gap-2">
-                              <button onClick={() => parties.modifier(p.id, { termine: !p.termine })}
-                                className="border border-gray-300 text-gray-700 text-xs px-3 py-2 rounded-xl hover:bg-gray-50 transition">
-                                {p.termine ? 'Rouvrir la partie' : 'Terminer la partie'}
-                              </button>
-                              <button onClick={() => setASupprimer({ quoi: 'cette partie', nom: p.jeu, go: () => parties.supprimer(p.id) })}
-                                className="text-xs text-gray-400 hover:text-red-600 px-3 py-2 transition">
-                                Supprimer
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </div>
-
-      {/* ── Modale saisie d'un tour ────────────────────────────────────────── */}
-      <Modal isOpen={!!tourPour} onClose={() => setTourPour(null)}
-        title={tourPour ? (tourPour.index === null
-          ? `Tour ${(tourPour.partie.tours?.length ?? 0) + 1} — ${tourPour.partie.jeu}`
-          : `Corriger le tour ${tourPour.index + 1} — ${tourPour.partie.jeu}`) : ''}>
-        {tourPour && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              {tourPour.partie.joueurs.map((j) => {
-                const avant = totalAvant(tourPour.partie, j, tourPour.index)
-                const saisi = Number(tourForm[j] ?? 0) || 0
-                return (
-                  <div key={j} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{j}</p>
-                      {/* Le total à jour évite de compter de tête entre deux manches */}
-                      <p className="text-[11px] text-gray-400">
-                        {avant} → <span className="text-gray-700 font-medium">{avant + saisi}</span>
-                      </p>
-                    </div>
-                    <input type="number" inputMode="numeric" value={tourForm[j] ?? ''}
-                      onChange={(e) => setTourForm((f) => ({ ...f, [j]: e.target.value }))}
-                      placeholder="0"
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-base text-right focus:outline-none focus:ring-2 focus:ring-rose-500" />
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setTourPour(null)}
-                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
-                Annuler
-              </button>
-              <button onClick={enregistrerTour}
-                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-sm font-medium transition">
-                {tourPour.index === null ? 'Ajouter le tour' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* ── Modale film / série ────────────────────────────────────────────── */}
       <Modal isOpen={filmOuvert} onClose={() => setFilmOuvert(false)} title={filmEdite ? 'Modifier' : 'Ajouter un film ou une série'}>
@@ -944,90 +722,6 @@ export default function ADeuxPage() {
             <button onClick={() => setActOuverte(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
             <button onClick={enregistrerActivite} disabled={!actForm.nom.trim()}
               className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">Enregistrer</button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ── Modale nouvelle partie ─────────────────────────────────────────── */}
-      <Modal isOpen={partieOuverte} onClose={() => setPartieOuverte(false)} title="Nouvelle partie">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Jeu</label>
-            <input value={partieForm.jeu} onChange={(e) => setPartieForm((f) => ({ ...f, jeu: e.target.value }))}
-              placeholder="Uno, SkyJo…" className={champCls} autoFocus />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {JEUX_COURANTS.map((j) => (
-                <button key={j} type="button" onClick={() => setPartieForm((f) => ({ ...f, jeu: j }))}
-                  className="px-2.5 py-1 rounded-lg text-xs border border-gray-200 text-gray-600 hover:border-rose-300 transition">
-                  {j}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input type="date" value={partieForm.date || dateInput(new Date())}
-              onChange={(e) => setPartieForm((f) => ({ ...f, date: e.target.value }))} className={champCls} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Joueurs</label>
-            {/* Les joueurs déjà vus se rajoutent d'un clic : on rejoue souvent
-                avec les mêmes, les retaper à chaque partie est le vrai irritant. */}
-            {joueursConnus.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {joueursConnus.map((j) => {
-                  const present = partieForm.joueurs.some((x) => x.trim() === j)
-                  return (
-                    <button key={j} type="button"
-                      onClick={() => setPartieForm((f) => ({
-                        ...f,
-                        joueurs: present
-                          ? f.joueurs.filter((x) => x.trim() !== j)
-                          // On remplace la première ligne vide plutôt que d'en empiler une
-                          : f.joueurs.some((x) => !x.trim())
-                            ? f.joueurs.map((x, i) => (i === f.joueurs.findIndex((y) => !y.trim()) ? j : x))
-                            : [...f.joueurs, j],
-                      }))}
-                      className={`px-3 py-1.5 rounded-xl text-sm border transition ${
-                        present ? 'bg-rose-600 text-white border-rose-600' : 'border-gray-200 text-gray-700 hover:border-rose-300'
-                      }`}>
-                      {j}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            <div className="space-y-2">
-              {partieForm.joueurs.map((j, i) => (
-                <div key={i} className="flex gap-2">
-                  <input value={j} placeholder={`Joueur ${i + 1}`}
-                    onChange={(e) => setPartieForm((f) => ({ ...f, joueurs: f.joueurs.map((x, k) => (k === i ? e.target.value : x)) }))}
-                    className={champCls} />
-                  {partieForm.joueurs.length > 1 && (
-                    <button type="button" onClick={() => setPartieForm((f) => ({ ...f, joueurs: f.joueurs.filter((_, k) => k !== i) }))}
-                      className="px-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition shrink-0"><Trash2 size={15} /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button type="button" onClick={() => setPartieForm((f) => ({ ...f, joueurs: [...f.joueurs, ''] }))}
-              className="mt-2 px-3 py-2 rounded-lg text-sm border hover:bg-gray-50 transition">+ Ajouter un joueur</button>
-          </div>
-          <label className="flex items-start gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={partieForm.scoreBasGagne}
-              onChange={(e) => setPartieForm((f) => ({ ...f, scoreBasGagne: e.target.checked }))} className="accent-rose-600 mt-0.5" />
-            <span>
-              Le plus petit score gagne
-              <span className="block text-xs text-gray-400">SkyJo, 6 qui prend… sans ça, le classement désigne le perdant.</span>
-            </span>
-          </label>
-          <div className="flex gap-3 pt-1">
-            <button onClick={() => setPartieOuverte(false)} className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">Annuler</button>
-            <button onClick={creerPartie}
-              disabled={!partieForm.jeu.trim() || partieForm.joueurs.filter((j) => j.trim()).length < 2}
-              className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-medium transition">
-              Commencer
-            </button>
           </div>
         </div>
       </Modal>

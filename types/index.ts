@@ -1125,6 +1125,8 @@ export interface DuoActivite extends DuoBase {
 /** Un tour de jeu : le score de chaque joueur sur ce tour */
 export interface DuoTour {
   scores: { joueur: string; points: number }[]
+  /** Libellé libre du tour (« Manche 3 », « Reprise »…) — facultatif */
+  nom?: string
 }
 
 /**
@@ -1144,6 +1146,37 @@ export interface DuoPartie extends DuoBase {
   /** Au SkyJo le plus PETIT score gagne — l'inverse de la plupart des jeux */
   scoreBasGagne?: boolean
   termine?: boolean
+
+  /**
+   * Partie sans points : on ne note que l'ordre d'arrivée (`ordre`). Beaucoup de
+   * jeux de soirée n'ont pas de score — sans ça, ils resteraient hors du
+   * classement d'une soirée.
+   */
+  sansPoints?: boolean
+  /** Ordre d'arrivée, vainqueur en tête. Vide = personne n'est encore départagé. */
+  ordre?: string[]
+  /** Score cible facultatif : atteint, l'app propose de terminer la partie. */
+  objectif?: number | null
+  /** Notes libres sur la partie. */
+  infos?: string
+
+  /**
+   * Soirée jeux : parties liées par un même `soireeId`, recopié sur chacune (pas
+   * de collection dédiée — même patron que les séries de belote). Une soirée
+   * peut mélanger plusieurs jeux, d'où le barème de classement.
+   */
+  soireeId?: string | null
+  soireeName?: string | null
+  /** 'victoires' | 'places' | 'points' — cf. `lib/duoJeux.ts`. */
+  soireeBareme?: string
+
+  /**
+   * Jeton du lien public / QR : ouvre la partie (et toute sa soirée) SANS COMPTE,
+   * en lecture ET en saisie. Absent = aucun lien actif.
+   */
+  shareToken?: string
+  /** Adresses à qui le lien a été envoyé — mémo d'envoi, aucun droit en soi. */
+  sharedEmails?: string[]
 }
 
 // ─── Commandes au bar ─────────────────────────────────────────────────────────
