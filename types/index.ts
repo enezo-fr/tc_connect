@@ -1369,8 +1369,8 @@ export interface Bebe {
   createdAt: Timestamp
   /** Photo du bébé (URL Firebase Storage) */
   photoUrl?: string
-  /** Sommeil en cours — défini au "Start", supprimé au "Réveillé !" */
-  activeSleep?: { startTime: Timestamp } | null
+  /** Sommeil en cours — "Start", ou saisie « fin en attente » ; supprimé au "Réveillé !" */
+  activeSleep?: { startTime: Timestamp; note?: string } | null
 
   // ── Arrivée du bébé (faire-part) ──────────────────────────────────────────
   /** Sexe — sert à accorder les messages ({ne} → né/née) */

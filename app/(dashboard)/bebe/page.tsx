@@ -7,7 +7,7 @@ import { useBebeEvents } from '@/hooks/useBebeEvents'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
-import { Milk, Pill, Baby } from 'lucide-react'
+import { Milk, Pill, Baby, Hourglass } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
 import { BarChart } from '@/components/bebe/BarChart'
@@ -654,7 +654,14 @@ export default function BebePage() {
     const startTs = selectedBaby.activeSleep.startTime
     const endTs   = Timestamp.now()
     const durationMin = Math.max(1, Math.floor((endTs.toMillis() - startTs.toMillis()) / 60_000))
-    await addEvent({ type: 'sleep', data: { startTime: startTs, durationMin }, timestamp: endTs, createdBy: currentUser.uid })
+    // La note écrite au coucher (sommeil saisi « fin en attente ») suit l'événement
+    const note = selectedBaby.activeSleep.note?.trim()
+    await addEvent({
+      type: 'sleep',
+      data: { startTime: startTs, durationMin, ...(note ? { note } : {}) },
+      timestamp: endTs,
+      createdBy: currentUser.uid,
+    })
     await updateBebe(selectedBabyId, { activeSleep: null })
   }
 
@@ -684,7 +691,9 @@ export default function BebePage() {
     return { kind: t.data.kind as 'sein_g' | 'sein_d', at: t.timestamp }
   }, [events])
   const [diaperForm, setDiaperForm] = useState({ kind: 'urine' })
-  const [sleepForm,  setSleepForm]  = useState({ startTime: nowTimeStr(), endTime: nowTimeStr() })
+  // `enAttente` = on connaît le coucher mais pas encore le réveil : au lieu d'un
+  // événement, on repose le sommeil EN COURS du bébé, clos plus tard par « Réveillé ! ».
+  const [sleepForm,  setSleepForm]  = useState({ startTime: nowTimeStr(), endTime: nowTimeStr(), enAttente: false })
   const [medsForm,   setMedsForm]   = useState({ name: '', dose: '' })
   const [medsSearch, setMedsSearch] = useState('')
   // Une mesure porte une DATE (pesée à la PMI notée le soir), pas l'heure courante
@@ -712,7 +721,7 @@ export default function BebePage() {
       setBottleForm({ amount: String(defauts.bottleAmount), kind, duration: String(defauts.bottleDurationMin), wasted: '' })
     }
     if (type === 'diaper') setDiaperForm({ kind: defauts.diaperKind })
-    if (type === 'sleep')  setSleepForm({ startTime: nowTimeStr(), endTime: nowTimeStr() })
+    if (type === 'sleep')  setSleepForm({ startTime: nowTimeStr(), endTime: nowTimeStr(), enAttente: false })
     if (type === 'meds')   { setMedsForm({ name: '', dose: '' }); setMedsSearch('') }
     if (type === 'growth') setGrowthForm({ weight: '', height: '', head: '', date: dateInputStr(new Date()) })
     if (type === 'temp')    setTempForm('')
@@ -738,7 +747,7 @@ export default function BebePage() {
     if (event.type === 'sleep') {
       const startStr = event.data?.startTime ? tsToTimeStr(event.data.startTime as Timestamp) : nowTimeStr()
       const endStr   = tsToTimeStr(event.timestamp)
-      setSleepForm({ startTime: startStr, endTime: endStr })
+      setSleepForm({ startTime: startStr, endTime: endStr, enAttente: false })
     }
     if (event.type === 'meds') { setMedsForm({ name: event.data?.name ?? '', dose: event.data?.dose ?? '' }); setMedsSearch('') }
     if (event.type === 'growth') {
@@ -798,6 +807,18 @@ export default function BebePage() {
         data = { kind: diaperForm.kind }
       } else if (modalType === 'sleep') {
         const startTs = timeStrToTs(sleepForm.startTime, whenForm.date)
+        // Fin « en attente » : rien à historiser, on pose le sommeil en cours sur le
+        // bébé (même mécanique que « Commencer maintenant », mais à l'heure voulue).
+        if (sleepForm.enAttente && selectedBabyId) {
+          const noteAttente = noteForm.trim()
+          // On repartait d'un événement déjà enregistré : il redevient « en cours »
+          if (editingEvent) await deleteEvent(editingEvent.id)
+          await updateBebe(selectedBabyId, {
+            activeSleep: { startTime: startTs, ...(noteAttente ? { note: noteAttente } : {}) },
+          })
+          closeModal()
+          return
+        }
         let endDate   = timeStrToTs(sleepForm.endTime, whenForm.date).toDate()
         // Fin ≤ début ⇒ le sommeil a franchi minuit : la fin est le LENDEMAIN.
         // (avant, seule la durée était corrigée, la date de fin restait au jour du début)
@@ -2004,19 +2025,44 @@ export default function BebePage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <p className="text-xs text-gray-400 mt-1">Jour du COUCHER — une fin plus tôt que le début passe au lendemain.</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={sleepForm.enAttente ? '' : 'grid grid-cols-2 gap-3'}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Début</label>
               <input type="time" value={sleepForm.startTime} onChange={e => setSleepForm(f => ({ ...f, startTime: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fin</label>
-              <input type="time" value={sleepForm.endTime} onChange={e => setSleepForm(f => ({ ...f, endTime: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+            {!sleepForm.enAttente && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fin</label>
+                <input type="time" value={sleepForm.endTime} onChange={e => setSleepForm(f => ({ ...f, endTime: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            )}
           </div>
-          {sleepForm.startTime && (
+          {/* Fin pas encore connue : le bébé dort toujours au moment de la saisie */}
+          {!selectedBaby?.activeSleep && (
+            <button type="button" onClick={() => setSleepForm(f => ({ ...f, enAttente: !f.enAttente }))}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition ${
+                sleepForm.enAttente
+                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                  : 'border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600'}`}>
+              <Hourglass size={15} />
+              {sleepForm.enAttente ? 'Indiquer une heure de fin' : 'Fin en attente — il dort encore'}
+            </button>
+          )}
+          {sleepForm.enAttente && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5">
+              <p className="text-xs text-indigo-700">
+                Enregistré comme sommeil en cours depuis {sleepForm.startTime || '—'}. Le réveil se note avec « Réveillé ! » sur l&apos;accueil, et la durée se calcule toute seule.
+              </p>
+            </div>
+          )}
+          {selectedBaby?.activeSleep && !editingEvent && (
+            <p className="text-xs text-gray-400">
+              Un sommeil est déjà en cours depuis {formatTime(selectedBaby.activeSleep.startTime)} — clôturez-le avec « Réveillé ! » pour en mettre un autre en attente.
+            </p>
+          )}
+          {!sleepForm.enAttente && sleepForm.startTime && (
             <div>
               <p className="text-xs text-gray-500 mb-1.5">Raccourcis durée</p>
               <div className="flex gap-1.5 flex-wrap">
@@ -2033,7 +2079,7 @@ export default function BebePage() {
               </div>
             </div>
           )}
-          {sleepForm.startTime && sleepForm.endTime && (() => {
+          {!sleepForm.enAttente && sleepForm.startTime && sleepForm.endTime && (() => {
             const [sh, sm] = sleepForm.startTime.split(':').map(Number)
             const [eh, em] = sleepForm.endTime.split(':').map(Number)
             let diff = (eh * 60 + em) - (sh * 60 + sm)
