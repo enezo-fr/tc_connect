@@ -10,8 +10,14 @@ import type { BebeEvent } from '@/types'
 
 // Couvre ~3 semaines pour un bébé actif (~18 événements/jour)
 const EVENTS_LIMIT = 400
+/** Mode « tout l'historique » (planning complet, stats sur tout) : ~9 mois de suivi.
+ *  Plafond haut mais FINI — un abonnement temps réel sans limite ferait grossir la
+ *  mémoire de l'onglet indéfiniment sur un bébé suivi depuis longtemps. */
+export const EVENTS_LIMIT_ALL = 5000
 
-export function useBebeEvents(babyId: string | null) {
+/** @param tout charge tout l'historique (dans la limite d'EVENTS_LIMIT_ALL) au lieu des ~3 dernières semaines */
+export function useBebeEvents(babyId: string | null, tout = false) {
+  const max = tout ? EVENTS_LIMIT_ALL : EVENTS_LIMIT
   const [events, setEvents] = useState<BebeEvent[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -20,14 +26,14 @@ export function useBebeEvents(babyId: string | null) {
     const q = query(
       collection(db, 'babies', babyId, 'events'),
       orderBy('timestamp', 'desc'),
-      limit(EVENTS_LIMIT),
+      limit(max),
     )
     const unsub = onSnapshot(q, (snap) => {
       setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() } as BebeEvent)))
       setLoading(false)
     })
     return unsub
-  }, [babyId])
+  }, [babyId, max])
 
   const addEvent = (data: Omit<BebeEvent, 'id'>) => {
     if (!babyId) return Promise.reject(new Error('Aucun bébé sélectionné'))
@@ -45,5 +51,7 @@ export function useBebeEvents(babyId: string | null) {
     return deleteDoc(doc(db, 'babies', babyId, 'events', eventId))
   }
 
-  return { events, loading, addEvent, updateEvent, deleteEvent }
+  // Vrai quand le plafond est atteint : l'écran « tout l'historique » doit le DIRE
+  // plutôt que de laisser croire qu'il montre vraiment tout.
+  return { events, loading, plafondAtteint: events.length >= max, addEvent, updateEvent, deleteEvent }
 }

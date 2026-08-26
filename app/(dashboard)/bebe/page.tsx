@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useBebe } from '@/hooks/useBebe'
-import { useBebeEvents } from '@/hooks/useBebeEvents'
+import { useBebeEvents, EVENTS_LIMIT_ALL } from '@/hooks/useBebeEvents'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
@@ -214,10 +214,26 @@ function formatDuration(min: number): string {
   return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
 }
 
+/**
+ * Écart en JOURS CIVILS entre deux dates : J+1 = le lendemain, quelle que soit
+ * l'heure de chacune.
+ *
+ * ⚠️ Comparer les millisecondes bruts se trompe d'un jour dès que les heures
+ * diffèrent : une naissance datée à minuit et une mesure notée à 12 h donnaient
+ * 1,5 jour → arrondi à « J+2 » le lendemain de la naissance. On ramène les deux
+ * dates à minuit avant de compter. (`Math.round` absorbe les journées de 23 h/25 h
+ * des changements d'heure.)
+ */
+function joursEntre(depuis: Date, jusqua: Date): number {
+  const a = new Date(depuis); a.setHours(0, 0, 0, 0)
+  const b = new Date(jusqua); b.setHours(0, 0, 0, 0)
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000)
+}
+
 function getBabyAge(birthDate: Timestamp): string {
   const b = birthDate?.toDate?.()
   if (!b) return ''
-  const days = Math.floor((Date.now() - b.getTime()) / 86_400_000)
+  const days = joursEntre(b, new Date())
   if (days < 7)  return `${days}j`
   const w = Math.floor(days / 7)
   if (w < 8)     return `${w} sem.`
@@ -498,7 +514,14 @@ export default function BebePage() {
   }, [babies, primaryId, selectedBabyId])
 
   const selectedBaby = babies.find(b => b.id === selectedBabyId) ?? null
-  const { events, addEvent, updateEvent, deleteEvent } = useBebeEvents(selectedBabyId)
+
+  // Plages d'affichage — déclarées ici car elles pilotent la PROFONDEUR du chargement :
+  // « tout » (planning complet ou stats sur tout) rouvre l'abonnement avec un plafond élevé.
+  const [planningRange, setPlanningRange] = useState<'7j' | '30j' | 'tout'>('7j')
+  const [statsRange,    setStatsRange]    = useState<'7j' | '30j' | 'tout'>('7j')
+  const historiqueComplet = planningRange === 'tout' || statsRange === 'tout'
+
+  const { events, plafondAtteint, addEvent, updateEvent, deleteEvent } = useBebeEvents(selectedBabyId, historiqueComplet)
 
   // ── Partage co-parent ─────────────────────────────────────────────────────
   const [showShareModal, setShowShareModal] = useState(false)
@@ -523,7 +546,6 @@ export default function BebePage() {
 
   // ── Vue ───────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'dashboard' | 'planning' | 'stats' | 'growth' | 'arrival'>('dashboard')
-  const [planningRange, setPlanningRange] = useState<'7j' | '30j'>('7j')
 
   // ── Timer sommeil actif ───────────────────────────────────────────────────
   const [tick, setTick] = useState(0)
@@ -588,7 +610,10 @@ export default function BebePage() {
     const b = selectedBaby.birthDate?.toDate?.()
     setEditBabyForm({
       name: selectedBaby.name,
-      birthDate: b ? b.toISOString().split('T')[0] : '',
+      // ⚠️ PAS `toISOString()` : il convertit en UTC, et une naissance datée à minuit
+      // en heure française revient au 23 pour un bébé né le 24 — réenregistrer la fiche
+      // décalait alors la naissance d'un jour VERS L'ARRIÈRE, à chaque passage.
+      birthDate: b ? dateInputStr(b) : '',
       bottleKind:   selectedBaby.defauts?.bottleKind   ?? DEFAUTS_FALLBACK.bottleKind,
       bottleAmount: String(selectedBaby.defauts?.bottleAmount ?? DEFAUTS_FALLBACK.bottleAmount),
       bottleDuration: String(selectedBaby.defauts?.bottleDurationMin ?? DEFAUTS_FALLBACK.bottleDurationMin),
@@ -697,7 +722,7 @@ export default function BebePage() {
   const [medsForm,   setMedsForm]   = useState({ name: '', dose: '' })
   const [medsSearch, setMedsSearch] = useState('')
   // Une mesure porte une DATE (pesée à la PMI notée le soir), pas l'heure courante
-  const [growthForm, setGrowthForm] = useState({ weight: '', height: '', head: '', date: '' })
+  const [growthForm, setGrowthForm] = useState({ weight: '', height: '', head: '', date: '', time: '' })
   // Observations libres — commun à TOUS les types d'événement (`data.note`)
   const [noteForm, setNoteForm] = useState('')
   const [tempForm, setTempForm] = useState('')
@@ -705,7 +730,7 @@ export default function BebePage() {
   // (biberon, couche, médicament, bain, température) ; on note souvent après coup.
   const [whenForm, setWhenForm] = useState({ date: '', time: '' })
   // Vaccin : porte une date (souvent saisi le soir, après le rendez-vous)
-  const [vaccineForm, setVaccineForm] = useState({ name: '', date: '' })
+  const [vaccineForm, setVaccineForm] = useState({ name: '', date: '', time: '' })
   const [pumpForm, setPumpForm] = useState({ amount: '100', kind: 'les_deux' })
   // Lait maternel jeté (action à part) — sort de la réserve sans avoir été bu
   const [wasteForm, setWasteForm] = useState({ amount: '' })
@@ -723,9 +748,9 @@ export default function BebePage() {
     if (type === 'diaper') setDiaperForm({ kind: defauts.diaperKind })
     if (type === 'sleep')  setSleepForm({ startTime: nowTimeStr(), endTime: nowTimeStr(), enAttente: false })
     if (type === 'meds')   { setMedsForm({ name: '', dose: '' }); setMedsSearch('') }
-    if (type === 'growth') setGrowthForm({ weight: '', height: '', head: '', date: dateInputStr(new Date()) })
+    if (type === 'growth') setGrowthForm({ weight: '', height: '', head: '', date: dateInputStr(new Date()), time: nowTimeStr() })
     if (type === 'temp')    setTempForm('')
-    if (type === 'vaccine') setVaccineForm({ name: '', date: dateInputStr(new Date()) })
+    if (type === 'vaccine') setVaccineForm({ name: '', date: dateInputStr(new Date()), time: nowTimeStr() })
     if (type === 'pump')    setPumpForm({ amount: '100', kind: 'les_deux' })
     if (type === 'waste')   setWasteForm({ amount: '' })
     setWhenForm({ date: dateInputStr(new Date()), time: nowTimeStr() })
@@ -756,6 +781,7 @@ export default function BebePage() {
         height: event.data?.heightCm ? String(event.data.heightCm) : '',
         head: event.data?.headCm ? String(event.data.headCm) : '',
         date: dateInputStr(event.timestamp?.toDate?.() ?? new Date()),
+        time: tsToTimeStr(event.timestamp),
       })
     }
     if (event.type === 'temp') setTempForm(event.data?.tempC ? String(event.data.tempC) : '')
@@ -770,6 +796,7 @@ export default function BebePage() {
       setVaccineForm({
         name: event.data?.name ?? '',
         date: dateInputStr(event.timestamp?.toDate?.() ?? new Date()),
+        time: tsToTimeStr(event.timestamp),
       })
     }
     // Pour un sommeil, le « jour » est celui du COUCHER (l'événement est stocké à
@@ -839,9 +866,9 @@ export default function BebePage() {
           ...(heightCm ? { heightCm } : {}),
           ...(headCm ? { headCm } : {}),
         }
-        // Midi : évite qu'un décalage de fuseau fasse basculer la mesure de un jour
-        const [gy, gm, gd] = growthForm.date.split('-').map(Number)
-        ts = Timestamp.fromDate(new Date(gy, gm - 1, gd, 12, 0, 0))
+        // Heure réelle de la pesée : sans elle la mesure se rangeait à midi dans le
+        // planning. Repli sur 12 h si le champ est vide (comportement d'avant).
+        ts = timeStrToTs(growthForm.time || '12:00', growthForm.date)
       } else if (modalType === 'pump') {
         data = {
           amount: Number(pumpForm.amount) || 0,
@@ -855,8 +882,7 @@ export default function BebePage() {
         data = { tempC: Number(tempForm.replace(',', '.')) }
       } else if (modalType === 'vaccine') {
         data = { name: vaccineForm.name.trim() }
-        const [vy, vm, vd] = vaccineForm.date.split('-').map(Number)
-        ts = Timestamp.fromDate(new Date(vy, vm - 1, vd, 12, 0, 0))
+        ts = timeStrToTs(vaccineForm.time || '12:00', vaccineForm.date)
       }
 
       // Saisies « instantanées » : l'horodatage vient des champs date + heure
@@ -943,9 +969,7 @@ export default function BebePage() {
     return { predictedAt: new Date(predictedMs), avgIntervalMin: avgMin, lastBottle: b[0], diffMin: Math.floor((predictedMs - Date.now()) / 60_000) }
   }, [events])
 
-  // ── Statistiques sur une période ───────────────────────────────────────────
-  const [statsRange, setStatsRange] = useState<'7j' | '30j' | 'tout'>('7j')
-
+  // ── Statistiques sur une période (`statsRange` est déclaré plus haut) ───────
   const stats = useMemo(() => {
     const cutoff = new Date()
     if (statsRange !== 'tout') {
@@ -1092,8 +1116,10 @@ export default function BebePage() {
 
   // Planning : regroupement par jour
   const planningDays = useMemo(() => {
-    const days = planningRange === '7j' ? 7 : 30
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days); cutoff.setHours(0,0,0,0)
+    // « tout » : aucun seuil, on remonte aussi loin que l'historique chargé
+    const cutoff = new Date()
+    if (planningRange === 'tout') cutoff.setTime(0)
+    else { cutoff.setDate(cutoff.getDate() - (planningRange === '7j' ? 7 : 30)); cutoff.setHours(0, 0, 0, 0) }
     // Regroupement par jour civil de la date de RATTACHEMENT : un sommeil compte
     // au jour de son coucher, donc une nuit à cheval sur minuit reste entière.
     const groups: Record<string, { label: string; date: Date; events: BebeEvent[] }> = {}
@@ -1473,14 +1499,26 @@ export default function BebePage() {
         {/* ═══ VUE PLANNING ═══ */}
         {viewMode === 'planning' && (
           <>
-            {/* Sélecteur plage */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-              {[{ k: '7j', l: '7 derniers jours' }, { k: '30j', l: '30 derniers jours' }].map(r => (
-                <button key={r.k} onClick={() => setPlanningRange(r.k as any)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${planningRange === r.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {r.l}
-                </button>
-              ))}
+            {/* Sélecteur plage — libellés courts sur mobile, sinon les 3 boutons débordent */}
+            <div>
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+                {([
+                  { k: '7j',   court: '7 j',  l: '7 derniers jours' },
+                  { k: '30j',  court: '30 j', l: '30 derniers jours' },
+                  { k: 'tout', court: 'Tout', l: 'Planning complet' },
+                ] as const).map(r => (
+                  <button key={r.k} onClick={() => setPlanningRange(r.k)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${planningRange === r.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                    <span className="sm:hidden">{r.court}</span>
+                    <span className="hidden sm:inline">{r.l}</span>
+                  </button>
+                ))}
+              </div>
+              {planningRange === 'tout' && plafondAtteint && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Historique très fourni : seuls les {EVENTS_LIMIT_ALL.toLocaleString('fr-FR')} événements les plus récents sont affichés.
+                </p>
+              )}
             </div>
 
             {planningDays.length === 0 ? (
@@ -1590,13 +1628,20 @@ export default function BebePage() {
         {/* ═══ VUE STATS ═══ */}
         {viewMode === 'stats' && (
           <>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-              {([{ k: '7j', l: '7 jours' }, { k: '30j', l: '30 jours' }, { k: 'tout', l: 'Tout' }] as const).map(r => (
-                <button key={r.k} onClick={() => setStatsRange(r.k)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${statsRange === r.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {r.l}
-                </button>
-              ))}
+            <div>
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+                {([{ k: '7j', l: '7 jours' }, { k: '30j', l: '30 jours' }, { k: 'tout', l: 'Tout' }] as const).map(r => (
+                  <button key={r.k} onClick={() => setStatsRange(r.k)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${statsRange === r.k ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                    {r.l}
+                  </button>
+                ))}
+              </div>
+              {statsRange === 'tout' && plafondAtteint && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Calculé sur les {EVENTS_LIMIT_ALL.toLocaleString('fr-FR')} événements les plus récents.
+                </p>
+              )}
             </div>
 
             {stats.repas + stats.couches + stats.sommeilMin === 0 ? (
@@ -1745,7 +1790,8 @@ export default function BebePage() {
                     const dPoids  = m.weightG  && prec?.weightG  ? m.weightG  - prec.weightG  : null
                     const dTaille = m.heightCm && prec?.heightCm ? m.heightCm - prec.heightCm : null
                     const dPC     = m.headCm   && prec?.headCm   ? m.headCm   - prec.headCm   : null
-                    const jours = Math.round((m.date.getTime() - (selectedBaby?.birthDate?.toDate?.()?.getTime() ?? m.date.getTime())) / 86_400_000)
+                    const naiss = selectedBaby?.birthDate?.toDate?.()
+                    const jours = naiss ? joursEntre(naiss, m.date) : 0
                     return (
                       <div key={m.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${m.origine ? 'bg-gray-100' : 'bg-violet-100'}`}>
@@ -1808,9 +1854,8 @@ export default function BebePage() {
                 <div className="space-y-2">
                   {vaccins.map(v => {
                     const d = v.timestamp?.toDate?.()
-                    const jours = d && selectedBaby?.birthDate?.toDate?.()
-                      ? Math.round((d.getTime() - selectedBaby.birthDate.toDate().getTime()) / 86_400_000)
-                      : null
+                    const naiss = selectedBaby?.birthDate?.toDate?.()
+                    const jours = d && naiss ? joursEntre(naiss, d) : null
                     return (
                       <div key={v.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
@@ -2242,12 +2287,9 @@ export default function BebePage() {
       {/* ── Modale Vaccin ───────────────────────────────────────────────────── */}
       <Modal isOpen={modalType === 'vaccine'} onClose={closeModal} title={editingEvent ? 'Modifier — Vaccin' : 'Vaccin'}>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input type="date" value={vaccineForm.date}
-              onChange={e => setVaccineForm(f => ({ ...f, date: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
+          <WhenField date={vaccineForm.date} time={vaccineForm.time}
+            onDate={v => setVaccineForm(f => ({ ...f, date: v }))}
+            onTime={v => setVaccineForm(f => ({ ...f, time: v }))} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Vaccin</label>
             <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50 mb-2">
@@ -2275,12 +2317,10 @@ export default function BebePage() {
       {/* ── Modale Mesure (poids / taille) ──────────────────────────────────── */}
       <Modal isOpen={modalType === 'growth'} onClose={closeModal} title={editingEvent ? 'Modifier — Mesure' : 'Mesure'}>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date de la mesure</label>
-            <input type="date" value={growthForm.date}
-              onChange={e => setGrowthForm(f => ({ ...f, date: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
+          <WhenField date={growthForm.date} time={growthForm.time}
+            onDate={v => setGrowthForm(f => ({ ...f, date: v }))}
+            onTime={v => setGrowthForm(f => ({ ...f, time: v }))}
+            label="Date et heure de la mesure" />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Poids (kg)</label>
