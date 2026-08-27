@@ -1371,8 +1371,9 @@ export interface Bebe {
   photoUrl?: string
   /** Sommeil en cours — "Start", ou saisie « fin en attente » ; supprimé au "Réveillé !" */
   activeSleep?: { startTime: Timestamp; note?: string } | null
-  /** Traitements réguliers en cours (vitamine D quotidienne, sirop matin et soir…) */
-  traitements?: BebeTraitement[]
+  /** Routines : ce qui revient régulièrement (vitamine D, bain tous les 2 jours, soin de la peau…).
+   *  ⚠️ Le champ s'appelle encore `traitements` pour ne pas migrer les documents existants. */
+  traitements?: BebeRoutine[]
 
   // ── Arrivée du bébé (faire-part) ──────────────────────────────────────────
   /** Sexe — sert à accorder les messages ({ne} → né/née) */
@@ -1428,22 +1429,27 @@ export type BebeDiaperKind = 'seche' | 'urine' | 'selles' | 'mixte'
  * historiques (biberon / 120 ml / urine).
  */
 /**
- * Traitement régulier : ce qu'il faut donner tous les jours, et à quels moments.
+ * Routine : ce qu'il faut refaire régulièrement — un médicament, le bain, un soin.
  * Rangé DANS le document du bébé (pas de sous-collection) : la liste tient en
  * quelques lignes, tout le monde la lit déjà avec le bébé, et aucune règle
  * Firestore n'est à redéployer (la règle `update` de `babies` accepte tout
  * champ hors `members`/`createdBy`).
  */
-export interface BebeTraitement {
-  /** Identifiant local, posé à la création — relie les prises notées au traitement */
+export interface BebeRoutine {
+  /** Identifiant local, posé à la création — relie les fois où c'est fait à la routine */
   id: string
   nom: string
+  /** Type d'événement créé quand on coche la ligne (absent = 'meds', pour les fiches d'origine) */
+  type?: Extract<BebeEventType, 'meds' | 'bath' | 'soin'>
   quantite?: number
   /** Unité au singulier (« goutte », « ml »…) — l'accord se fait à l'affichage */
   unite?: string
-  /** Moments de la journée, « HH:MM ». Une entrée par prise quotidienne. */
+  /** Périodicité : 1 = chaque jour, 2 = un jour sur deux… (absent = 1) */
+  tousLesNJours?: number
+  /** Moments de la journée, « HH:MM ». Une entrée par prise quotidienne ;
+   *  au-delà d'un jour sur deux, seule la première sert de repère horaire. */
   heures: string[]
-  /** Dernier jour du traitement, INCLUS (ex. les 18 mois du bébé) ; absent = sans fin */
+  /** Dernier jour, INCLUS (ex. les 18 mois du bébé) ; absent = sans fin */
   jusquAu?: Timestamp
 }
 
@@ -1512,6 +1518,8 @@ export interface BebeContact {
  */
 export type BebeEventType =
   | 'bottle' | 'diaper' | 'sleep' | 'meds' | 'growth' | 'bath' | 'temp' | 'vaccine' | 'pump' | 'waste'
+  /** Soin libre (peau, cordon, nez, ongles…) — porte son intitulé dans `data.name` */
+  | 'soin'
 
 /** Document Firestore : babies/{babyId}/events/{eventId} */
 export interface BebeEvent {

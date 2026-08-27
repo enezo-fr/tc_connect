@@ -7,7 +7,7 @@ import { useBebeEvents, EVENTS_LIMIT_ALL } from '@/hooks/useBebeEvents'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
-import { Milk, Pill, Baby, Hourglass, Check } from 'lucide-react'
+import { Milk, Pill, Baby, Hourglass, Check, Sparkles } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
 import { BarChart } from '@/components/bebe/BarChart'
@@ -16,7 +16,7 @@ import { Timestamp } from 'firebase/firestore'
 import { uploadImage } from '@/lib/uploadImage'
 import { ArrivalSection } from '@/components/bebe/ArrivalSection'
 import { ShareBabyModal } from '@/components/bebe/ShareBabyModal'
-import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind, BebeTraitement } from '@/types'
+import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind, BebeRoutine } from '@/types'
 
 // ─── Icône couche (SVG custom rempli — aucun équivalent dans lucide) ──────────
 
@@ -43,6 +43,7 @@ const EVENT_ICONS: Record<BebeEventType, React.ElementType> = {
   vaccine: Syringe,
   pump:    Droplet,
   waste:   Trash2,
+  soin:    Sparkles,
 }
 
 const EVENT_LABELS: Record<BebeEventType, string> = {
@@ -57,6 +58,7 @@ const EVENT_LABELS: Record<BebeEventType, string> = {
   vaccine: 'Vaccin',
   pump:    'Tirage',
   waste:   'Lait jeté',
+  soin:    'Soin',
 }
 
 const EVENT_COLORS: Record<BebeEventType, { bg: string; text: string }> = {
@@ -70,6 +72,7 @@ const EVENT_COLORS: Record<BebeEventType, { bg: string; text: string }> = {
   vaccine: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
   pump:    { bg: 'bg-pink-100',    text: 'text-pink-600'    },
   waste:   { bg: 'bg-gray-100',    text: 'text-gray-500'    },
+  soin:    { bg: 'bg-amber-100',   text: 'text-amber-600'   },
 }
 
 /**
@@ -109,6 +112,7 @@ const NOTE_PLACEHOLDERS: Record<BebeEventType, string> = {
   vaccine: 'bien supporté, cuisse gauche, fièvre le soir…',
   pump:    'peu de lait ce matin, tire-lait manuel…',
   waste:   'périmé, biberon non terminé, laissé dehors…',
+  soin:    'rougeurs, crème appliquée, cordon sec…',
 }
 
 /** Couleurs des deux courbes (valeurs CSS : le SVG ne lit pas les classes Tailwind) */
@@ -170,6 +174,12 @@ const DEFAUTS_FALLBACK: Required<BebeDefauts> = {
 
 /** Journée par défaut quand elle n'a pas été réglée pour ce bébé */
 const JOURNEE_FALLBACK: BebeJournee = { debut: '07:00', fin: '20:00' }
+
+/** Soins courants du nourrisson — repères de saisie, la liste reste libre */
+const SOINS_SUGGESTIONS = [
+  'Soin de la peau', 'Crème hydratante', 'Cordon ombilical', 'Nez (sérum physiologique)',
+  'Yeux', 'Ongles', 'Massage', 'Change de pansement',
+]
 
 /** Unités de prise — au SINGULIER : l'accord se fait à l'affichage (`formatDose`) */
 const UNITES_MEDS = ['goutte', 'ml', 'mg', 'comprimé', 'sachet', 'dosette', 'suppositoire', 'pulvérisation']
@@ -352,6 +362,8 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
     }
     case 'meds':
       return [data.name, formatDose(data.quantite, data.unite) || data.dose].filter(Boolean).join(' · ') || 'Médicament'
+    case 'soin':
+      return data.name || 'Soin'
     case 'growth':
       return [
         data.weightG ? formatKg(data.weightG) : null,
@@ -731,14 +743,19 @@ export default function BebePage() {
   const [traitEditId,    setTraitEditId]    = useState<string | null>(null)
   const [traitDelete,    setTraitDelete]    = useState<string | null>(null)
   const [savingTrait,    setSavingTrait]    = useState(false)
-  const [traitForm,      setTraitForm]      = useState({ nom: '', quantite: '', unite: '', heures: ['08:00'], jusquAu: '' })
+  const [traitForm,      setTraitForm]      = useState<{
+    nom: string; type: 'meds' | 'bath' | 'soin'; quantite: string; unite: string
+    tousLes: string; heures: string[]; jusquAu: string
+  }>({ nom: '', type: 'meds', quantite: '', unite: '', tousLes: '1', heures: ['08:00'], jusquAu: '' })
 
-  const openTraitModal = (t?: BebeTraitement) => {
+  const openTraitModal = (t?: BebeRoutine) => {
     setTraitEditId(t?.id ?? null)
     setTraitForm({
       nom: t?.nom ?? '',
+      type: t?.type ?? 'meds',
       quantite: t?.quantite != null ? String(t.quantite).replace('.', ',') : '',
       unite: t?.unite ?? '',
+      tousLes: String(t?.tousLesNJours ?? 1),
       heures: t?.heures?.length ? [...t.heures] : ['08:00'],
       jusquAu: t?.jusquAu?.toDate ? dateInputStr(t.jusquAu.toDate()) : '',
     })
@@ -753,12 +770,16 @@ export default function BebePage() {
       const heures = traitForm.heures.filter(Boolean).sort()
       // Clés absentes plutôt qu'`undefined` : `updateBebe` écrit l'objet tel quel
       // dans Firestore, qui refuse `undefined`.
-      const t: BebeTraitement = {
+      const n = Math.max(1, Math.round(Number(traitForm.tousLes) || 1))
+      const t: BebeRoutine = {
         id: traitEditId ?? `t${Date.now().toString(36)}`,
         nom: traitForm.nom.trim(),
-        heures: heures.length ? heures : ['08:00'],
-        ...(Number.isFinite(q) && traitForm.quantite.trim() ? { quantite: q } : {}),
-        ...(traitForm.unite.trim() ? { unite: traitForm.unite.trim() } : {}),
+        type: traitForm.type,
+        tousLesNJours: n,
+        // Au-delà du quotidien, une seule heure sert de repère
+        heures: n > 1 ? (heures.length ? [heures[0]] : []) : (heures.length ? heures : ['08:00']),
+        ...(traitForm.type === 'meds' && Number.isFinite(q) && traitForm.quantite.trim() ? { quantite: q } : {}),
+        ...(traitForm.type === 'meds' && traitForm.unite.trim() ? { unite: traitForm.unite.trim() } : {}),
         ...(traitForm.jusquAu ? { jusquAu: Timestamp.fromDate(dateFromInput(traitForm.jusquAu)) } : {}),
       }
       const liste = selectedBaby?.traitements ?? []
@@ -819,6 +840,8 @@ export default function BebePage() {
   const [pumpForm, setPumpForm] = useState({ amount: '100', kind: 'les_deux' })
   // Lait maternel jeté (action à part) — sort de la réserve sans avoir été bu
   const [wasteForm, setWasteForm] = useState({ amount: '' })
+  // Soin libre : seul son intitulé le distingue (peau, cordon, ongles…)
+  const [soinForm, setSoinForm] = useState({ name: '' })
 
   const openNewModal = (type: BebeEventType) => {
     setEditingEvent(null)
@@ -838,6 +861,7 @@ export default function BebePage() {
     if (type === 'vaccine') setVaccineForm({ name: '', date: dateInputStr(new Date()), time: nowTimeStr() })
     if (type === 'pump')    setPumpForm({ amount: '100', kind: 'les_deux' })
     if (type === 'waste')   setWasteForm({ amount: '' })
+    if (type === 'soin')    setSoinForm({ name: '' })
     setWhenForm({ date: dateInputStr(new Date()), time: nowTimeStr() })
     setNoteForm('')
     setModalType(type)
@@ -886,6 +910,7 @@ export default function BebePage() {
       })
     }
     if (event.type === 'waste') setWasteForm({ amount: String(event.data?.amount ?? '') })
+    if (event.type === 'soin')  setSoinForm({ name: event.data?.name ?? '' })
     if (event.type === 'vaccine') {
       setVaccineForm({
         name: event.data?.name ?? '',
@@ -977,6 +1002,8 @@ export default function BebePage() {
         }
       } else if (modalType === 'waste') {
         data = { amount: Number(wasteForm.amount) || 0 }
+      } else if (modalType === 'soin') {
+        data = { name: soinForm.name.trim() }
       } else if (modalType === 'bath') {
         data = {}
       } else if (modalType === 'temp') {
@@ -988,7 +1015,7 @@ export default function BebePage() {
 
       // Saisies « instantanées » : l'horodatage vient des champs date + heure
       // (le sommeil pose le sien depuis ses bornes, mesure et vaccin depuis leur date).
-      if ((['bottle', 'diaper', 'meds', 'bath', 'temp', 'pump', 'waste'] as BebeEventType[]).includes(modalType)
+      if ((['bottle', 'diaper', 'meds', 'bath', 'soin', 'temp', 'pump', 'waste'] as BebeEventType[]).includes(modalType)
           && whenForm.date && whenForm.time) {
         ts = timeStrToTs(whenForm.time, whenForm.date)
       }
@@ -1234,46 +1261,85 @@ export default function BebePage() {
     return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [events, planningRange])
 
+  /** Libellé de périodicité, partagé par la carte d'accueil et la liste de l'onglet Santé */
+  const libelleRecurrence = (r: BebeRoutine) => {
+    const n = Math.max(1, r.tousLesNJours ?? 1)
+    if (n > 1) return n === 7 ? 'chaque semaine' : `tous les ${n} jours`
+    return r.heures?.length > 1 ? `${r.heures.length}×/jour — ${r.heures.join(', ')}` : 'chaque jour'
+  }
+
+  /** Depuis combien de jours cette routine a-t-elle été faite pour la dernière fois ? */
+  const dernierFait = (r: BebeRoutine): number | null => {
+    const d = events
+      .filter(e => e.data?.traitementId === r.id)
+      .map(e => e.timestamp?.toDate?.())
+      .filter((x): x is Date => !!x)
+      .sort((a, b) => b.getTime() - a.getTime())[0]
+    return d ? joursEntre(d, new Date()) : null
+  }
+
   /**
-   * Ce qu'il reste à donner aujourd'hui : une ligne par PRISE (un traitement à
-   * deux horaires en produit deux). Une prise est « faite » quand un événement
-   * médicament du jour porte le même `traitementId` ET le même horaire prévu —
-   * c'est ce qui permet de cocher matin et soir séparément.
+   * Ce qu'il reste à faire aujourd'hui : une ligne par échéance.
+   *
+   * 🔑 Une routine à plus d'un jour d'intervalle se recale sur la DERNIÈRE fois
+   * où elle a été faite, jamais sur un calendrier fixe : un bain « tous les 2
+   * jours » sauté reste dû le lendemain (et s'affiche en retard) au lieu de
+   * disparaître jusqu'à la prochaine case du planning.
+   *
+   * Une ligne quotidienne est « faite » quand un événement du jour porte le même
+   * `traitementId` ET le même horaire prévu — c'est ce qui permet de cocher
+   * matin et soir séparément.
    */
   const prisesDuJour = useMemo(() => {
-    const traitements = selectedBaby?.traitements ?? []
-    if (!traitements.length) return []
+    const routines = selectedBaby?.traitements ?? []
+    if (!routines.length) return []
     const debutJour = new Date(); debutJour.setHours(0, 0, 0, 0)
     const aujourdhui = new Date()
-    const medsDuJour = events.filter(e => {
+    const duJour = events.filter(e => {
       const d = e.timestamp?.toDate?.()
-      return e.type === 'meds' && d && d >= debutJour
+      return d && d >= debutJour
     })
-    const lignes = traitements.flatMap(t => {
-      // La date de fin est INCLUSE : le traitement disparaît le lendemain
-      const fin = t.jusquAu?.toDate?.()
+    const lignes = routines.flatMap(r => {
+      // La date de fin est INCLUSE : la routine disparaît le lendemain
+      const fin = r.jusquAu?.toDate?.()
       if (fin && joursEntre(fin, aujourdhui) > 0) return []
-      const heures = t.heures?.length ? t.heures : ['']
-      return heures.map(h => ({
-        cle: `${t.id}-${h}`,
-        traitement: t,
-        heure: h,
-        event: medsDuJour.find(e => e.data?.traitementId === t.id && (e.data?.prise ?? '') === h) ?? null,
-      }))
+      const n = Math.max(1, r.tousLesNJours ?? 1)
+
+      if (n === 1) {
+        const heures = r.heures?.length ? r.heures : ['']
+        return heures.map(h => ({
+          cle: `${r.id}-${h}`, routine: r, heure: h, tousLes: 1, retard: 0, depuis: null as number | null,
+          event: duJour.find(e => e.data?.traitementId === r.id && (e.data?.prise ?? '') === h) ?? null,
+        }))
+      }
+
+      const depuis = dernierFait(r)
+      const faitAujourdhui = depuis === 0
+      // Pas encore l'échéance : la ligne ne s'affiche pas du tout
+      if (!faitAujourdhui && depuis !== null && depuis < n) return []
+      const h = r.heures?.[0] ?? ''
+      return [{
+        cle: `${r.id}-${h}`, routine: r, heure: h, tousLes: n, depuis,
+        retard: faitAujourdhui || depuis === null ? 0 : depuis - n,
+        event: faitAujourdhui ? (duJour.find(e => e.data?.traitementId === r.id) ?? null) : null,
+      }]
     })
     return lignes.sort((a, b) => (a.heure || '99:99').localeCompare(b.heure || '99:99'))
   }, [selectedBaby, events])
 
-  const noterPrise = async (ligne: { traitement: BebeTraitement; heure: string }) => {
+  /** Cocher une ligne écrit un VRAI événement du type de la routine (médicament, bain, soin) */
+  const noterPrise = async (ligne: { routine: BebeRoutine; heure: string }) => {
     if (!currentUser) return
-    const t = ligne.traitement
+    const r = ligne.routine
+    const type = r.type ?? 'meds'
     await addEvent({
-      type: 'meds',
+      type,
       data: {
-        name: t.nom,
-        ...(t.quantite != null ? { quantite: t.quantite } : {}),
-        ...(t.unite ? { unite: t.unite } : {}),
-        traitementId: t.id,
+        // Le bain n'a pas d'intitulé propre : son type suffit à le nommer
+        ...(type === 'bath' ? {} : { name: r.nom }),
+        ...(type === 'meds' && r.quantite != null ? { quantite: r.quantite } : {}),
+        ...(type === 'meds' && r.unite ? { unite: r.unite } : {}),
+        traitementId: r.id,
         ...(ligne.heure ? { prise: ligne.heure } : {}),
       },
       timestamp: Timestamp.now(),
@@ -1518,45 +1584,64 @@ export default function BebePage() {
               )
             })()}
 
-            {/* Traitements réguliers du jour — une coche = la prise est notée */}
+            {/* Routines du jour — une coche = c'est noté dans l'historique */}
             {prisesDuJour.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <Pill size={16} className="text-rose-500" />
-                    <p className="text-sm font-semibold text-gray-800">À donner aujourd&apos;hui</p>
+                    <Check size={16} className="text-rose-500" />
+                    <p className="text-sm font-semibold text-gray-800">À faire aujourd&apos;hui</p>
                   </div>
-                  <span className="text-xs text-gray-400">
-                    {`${prisesDuJour.filter(l => l.event).length}/${prisesDuJour.length}`}
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-gray-400">
+                      {`${prisesDuJour.filter(l => l.event).length}/${prisesDuJour.length}`}
+                    </span>
+                    <button onClick={() => setViewMode('growth')}
+                      className="text-xs font-medium text-rose-600 hover:text-rose-700 transition">
+                      Gérer
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {prisesDuJour.map(l => {
                     const fait = !!l.event
-                    const dose = formatDose(l.traitement.quantite, l.traitement.unite)
+                    const Icone = EVENT_ICONS[l.routine.type ?? 'meds']
+                    const coul  = EVENT_COLORS[l.routine.type ?? 'meds']
+                    const dose  = formatDose(l.routine.quantite, l.routine.unite)
+                    const sousTitre = fait
+                      ? `fait à ${formatTime(l.event!.timestamp)}`
+                      : l.tousLes > 1
+                        ? [
+                            libelleRecurrence(l.routine),
+                            l.depuis === null ? 'jamais fait' : `dernier il y a ${l.depuis} j`,
+                          ].join(' · ')
+                        : (l.heure ? `vers ${l.heure}` : 'dans la journée')
                     return (
                       <div key={l.cle} className="flex items-center gap-3">
                         <button
                           onClick={() => (fait ? deleteEvent(l.event!.id) : noterPrise(l))}
-                          title={fait ? 'Annuler cette prise' : 'Noter cette prise'}
+                          title={fait ? 'Annuler' : 'Noter comme fait'}
                           className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
                             fait ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
                           <Check size={14} />
                         </button>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${fait ? 'bg-gray-100' : coul.bg}`}>
+                          <Icone size={15} className={fait ? 'text-gray-400' : coul.text} />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
-                            {[l.traitement.nom, dose].filter(Boolean).join(' · ')}
+                            {[l.routine.nom, dose].filter(Boolean).join(' · ')}
                           </p>
-                          <p className="text-xs text-gray-400">
-                            {fait
-                              ? `donné à ${formatTime(l.event!.timestamp)}`
-                              : (l.heure ? `vers ${l.heure}` : 'dans la journée')}
+                          <p className={`text-xs ${!fait && l.retard > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
+                            {!fait && l.retard > 0
+                              ? `en retard de ${l.retard} j · ${sousTitre}`
+                              : sousTitre}
                           </p>
                         </div>
                         {!fait && (
                           <button onClick={() => noterPrise(l)}
                             className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
-                            Donné
+                            Fait
                           </button>
                         )}
                       </div>
@@ -1620,7 +1705,7 @@ export default function BebePage() {
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Ajouter</p>
               <div className="grid grid-cols-3 gap-2">
-                {(['bottle', 'pump', 'waste', 'diaper', 'sleep', 'bath', 'temp', 'meds', 'growth', 'vaccine'] as BebeEventType[]).map(type => {
+                {(['bottle', 'pump', 'waste', 'diaper', 'sleep', 'bath', 'soin', 'temp', 'meds', 'growth', 'vaccine'] as BebeEventType[]).map(type => {
                   const Icon = EVENT_ICONS[type]
                   const c    = EVENT_COLORS[type]
                   return (
@@ -2030,11 +2115,11 @@ export default function BebePage() {
               </>
             )}
 
-            {/* ── Traitements réguliers ───────────────────────────────────── */}
+            {/* ── Routines (ce qui revient régulièrement) ──────────────────── */}
             <div className="pt-2">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Traitements en cours · {(selectedBaby?.traitements ?? []).length}
+                  À faire régulièrement · {(selectedBaby?.traitements ?? []).length}
                 </p>
                 <button onClick={() => openTraitModal()}
                   className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 transition">
@@ -2043,10 +2128,11 @@ export default function BebePage() {
               </div>
               {(selectedBaby?.traitements ?? []).length === 0 ? (
                 <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
-                  <Pill size={26} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Aucun traitement régulier.</p>
+                  <Check size={26} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Rien de régulier pour l&apos;instant.</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Ce qui revient tous les jours (vitamine D…) apparaîtra sur l&apos;accueil, à cocher une fois donné.
+                    Vitamine D chaque jour, bain un jour sur deux, soin de la peau… Tout ce qui revient
+                    s&apos;affiche sur l&apos;accueil, à cocher une fois fait.
                   </p>
                 </div>
               ) : (
@@ -2054,10 +2140,19 @@ export default function BebePage() {
                   {(selectedBaby?.traitements ?? []).map(t => {
                     const fin = t.jusquAu?.toDate?.()
                     const termine = fin ? joursEntre(fin, new Date()) > 0 : false
+                    const Icone = EVENT_ICONS[t.type ?? 'meds']
+                    const coul  = EVENT_COLORS[t.type ?? 'meds']
+                    // Prochaine échéance, comptée depuis la dernière fois où ça a été fait
+                    const n = Math.max(1, t.tousLesNJours ?? 1)
+                    const depuis = dernierFait(t)
+                    const dans = depuis === null ? 0 : Math.max(0, n - depuis)
+                    const echeance = termine || n === 1
+                      ? null
+                      : dans === 0 ? 'à faire aujourd\u2019hui' : dans === 1 ? 'à faire demain' : `à faire dans ${dans} jours`
                     return (
                       <div key={t.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${termine ? 'bg-gray-100' : 'bg-rose-100'}`}>
-                          <Pill size={16} className={termine ? 'text-gray-400' : 'text-rose-600'} />
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${termine ? 'bg-gray-100' : coul.bg}`}>
+                          <Icone size={16} className={termine ? 'text-gray-400' : coul.text} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium break-words ${termine ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
@@ -2065,7 +2160,8 @@ export default function BebePage() {
                           </p>
                           <p className="text-xs text-gray-400">
                             {[
-                              t.heures?.length ? `${t.heures.length}×/jour — ${t.heures.join(', ')}` : 'chaque jour',
+                              libelleRecurrence(t),
+                              echeance,
                               fin ? `${termine ? 'terminé le' : 'jusqu\u2019au'} ${fin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : null,
                             ].filter(Boolean).join(' · ')}
                           </p>
@@ -2452,14 +2548,71 @@ export default function BebePage() {
 
       {/* ── Modale Traitement régulier ──────────────────────────────────────── */}
       <Modal isOpen={showTraitModal} onClose={() => setShowTraitModal(false)}
-        title={traitEditId ? 'Modifier — Traitement' : 'Traitement régulier'}>
+        title={traitEditId ? 'Modifier — Routine' : 'À faire régulièrement'}>
         <div className="space-y-4">
+          {/* Le type choisi décide de l'événement écrit dans l'historique quand on coche */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Médicament</label>
-            <input type="text" placeholder="Vitamine D (Adrigyl)" value={traitForm.nom}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { k: 'meds', l: 'Médicament' },
+                { k: 'bath', l: 'Bain' },
+                { k: 'soin', l: 'Soin' },
+              ] as const).map(o => {
+                const Icone = EVENT_ICONS[o.k]
+                const actif = traitForm.type === o.k
+                return (
+                  <button key={o.k} type="button"
+                    onClick={() => setTraitForm(f => ({ ...f, type: o.k, nom: f.nom || (o.k === 'bath' ? 'Bain' : '') }))}
+                    className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition ${
+                      actif ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300'}`}>
+                    <Icone size={16} />
+                    {o.l}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Intitulé</label>
+            <input type="text"
+              placeholder={traitForm.type === 'meds' ? 'Vitamine D (Adrigyl)' : traitForm.type === 'bath' ? 'Bain' : 'Soin de la peau'}
+              value={traitForm.nom}
               onChange={e => setTraitForm(f => ({ ...f, nom: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {traitForm.type === 'soin' && (
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {SOINS_SUGGESTIONS.map(x => (
+                  <button key={x} type="button" onClick={() => setTraitForm(f => ({ ...f, nom: x }))}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition ${traitForm.nom === x ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}>
+                    {x}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+          {/* Périodicité : au-delà du quotidien, l'échéance se recale sur la dernière fois faite */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tous les combien ?</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[{ n: '1', l: 'chaque jour' }, { n: '2', l: '1 jour sur 2' }, { n: '3', l: 'tous les 3 j' }, { n: '7', l: 'chaque semaine' }].map(o => (
+                <button key={o.n} type="button" onClick={() => setTraitForm(f => ({ ...f, tousLes: o.n }))}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${traitForm.tousLes === o.n ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-600'}`}>
+                  {o.l}
+                </button>
+              ))}
+              <input type="text" inputMode="numeric" value={traitForm.tousLes}
+                onChange={e => setTraitForm(f => ({ ...f, tousLes: e.target.value.replace(/\D/g, '') }))}
+                className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            {Number(traitForm.tousLes) > 1 && (
+              <p className="text-xs text-gray-400 mt-1.5">
+                L&apos;échéance se recale sur la dernière fois où ça a été fait : si le jour prévu est sauté,
+                ça reste à faire le lendemain, signalé en retard.
+              </p>
+            )}
+          </div>
+          {traitForm.type === 'meds' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Dose à chaque prise</label>
             <div className="grid grid-cols-3 gap-2">
@@ -2479,27 +2632,34 @@ export default function BebePage() {
               ))}
             </div>
           </div>
+          )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Moments de la journée</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {Number(traitForm.tousLes) > 1 ? 'Heure indicative' : 'Moments de la journée'}
+            </label>
             <div className="space-y-2">
-              {traitForm.heures.map((h, i) => (
+              {(Number(traitForm.tousLes) > 1 ? traitForm.heures.slice(0, 1) : traitForm.heures).map((h, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input type="time" value={h}
                     onChange={e => setTraitForm(f => ({ ...f, heures: f.heures.map((x, j) => (j === i ? e.target.value : x)) }))}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  {traitForm.heures.length > 1 && (
+                  {Number(traitForm.tousLes) <= 1 && traitForm.heures.length > 1 && (
                     <button type="button" onClick={() => setTraitForm(f => ({ ...f, heures: f.heures.filter((_, j) => j !== i) }))}
                       className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
                   )}
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => setTraitForm(f => ({ ...f, heures: [...f.heures, '20:00'] }))}
-              className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 transition mt-2">
-              <Plus size={14} />Ajouter une prise
-            </button>
+            {Number(traitForm.tousLes) <= 1 && (
+              <button type="button" onClick={() => setTraitForm(f => ({ ...f, heures: [...f.heures, '20:00'] }))}
+                className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 transition mt-2">
+                <Plus size={14} />Ajouter une prise
+              </button>
+            )}
             <p className="text-xs text-gray-400 mt-1">
-              Une ligne par prise quotidienne — l&apos;heure sert de repère, elle ne déclenche aucune alerte.
+              {Number(traitForm.tousLes) > 1
+                ? 'Simple repère dans la liste — aucune alerte n\u2019est déclenchée.'
+                : 'Une ligne par prise quotidienne — l\u2019heure sert de repère, elle ne déclenche aucune alerte.'}
             </p>
           </div>
           <div>
@@ -2606,6 +2766,31 @@ export default function BebePage() {
           </p>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
+        </div>
+      </Modal>
+
+      {/* ── Modale Soin ─────────────────────────────────────────────────────── */}
+      <Modal isOpen={modalType === 'soin'} onClose={closeModal} title={editingEvent ? 'Modifier — Soin' : 'Soin'}>
+        <div className="space-y-4">
+          <WhenField date={whenForm.date} time={whenForm.time}
+            onDate={v => setWhenForm(f => ({ ...f, date: v }))} onTime={v => setWhenForm(f => ({ ...f, time: v }))} />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Quel soin ?</label>
+            <input type="text" placeholder="Soin de la peau" value={soinForm.name}
+              onChange={e => setSoinForm({ name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex gap-1.5 flex-wrap mt-2">
+              {SOINS_SUGGESTIONS.map(x => (
+                <button key={x} type="button" onClick={() => setSoinForm({ name: x })}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition ${soinForm.name === x ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}>
+                  {x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
+          <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent}
+            disabled={!soinForm.name.trim()} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
         </div>
       </Modal>
 
