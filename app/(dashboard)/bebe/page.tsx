@@ -171,22 +171,27 @@ const DEFAUTS_FALLBACK: Required<BebeDefauts> = {
 /** Journée par défaut quand elle n'a pas été réglée pour ce bébé */
 const JOURNEE_FALLBACK: BebeJournee = { debut: '07:00', fin: '20:00' }
 
+/** Unités de prise — au SINGULIER : l'accord se fait à l'affichage (`formatDose`) */
+const UNITES_MEDS = ['goutte', 'ml', 'mg', 'comprimé', 'sachet', 'dosette', 'suppositoire', 'pulvérisation']
+/** Symboles invariables : « 5 mls » n'existe pas */
+const UNITES_INVARIABLES = new Set(['ml', 'mg', 'g', 'kg', 'UI', 'µg'])
+
 const MEDS_SUGGESTIONS = [
-  { name: 'Doliprane nourrisson',  dose: '2.5 ml' },
-  { name: 'Doliprane nourrisson',  dose: '5 ml'   },
-  { name: 'Efferalgan nourrisson', dose: '2.5 ml' },
-  { name: 'Advil nourrisson',      dose: '2.5 ml' },
-  { name: 'Advil nourrisson',      dose: '5 ml'   },
-  { name: 'Spasfon',               dose: '1 suppositoire' },
-  { name: 'Smecta',                dose: '1 sachet' },
-  { name: 'Maalox nourrisson',     dose: '5 ml'   },
-  { name: 'Lactobacillus',         dose: '5 gouttes' },
-  { name: 'Vitamine D (Zymad)',    dose: '1 goutte' },
-  { name: 'Vitamine D (Adrigyl)',  dose: '1 goutte' },
-  { name: 'Physiomer nourrisson',  dose: '1 jet/narine' },
-  { name: 'Rhinathiol nourrisson', dose: '2.5 ml' },
-  { name: 'Dafalgan pédiatrique',  dose: '5 ml'   },
-  { name: 'Homéopathie dentition', dose: '1 dose' },
+  { name: 'Doliprane nourrisson',  quantite: '2,5', unite: 'ml' },
+  { name: 'Doliprane nourrisson',  quantite: '5',   unite: 'ml' },
+  { name: 'Efferalgan nourrisson', quantite: '2,5', unite: 'ml' },
+  { name: 'Advil nourrisson',      quantite: '2,5', unite: 'ml' },
+  { name: 'Advil nourrisson',      quantite: '5',   unite: 'ml' },
+  { name: 'Spasfon',               quantite: '1',   unite: 'suppositoire' },
+  { name: 'Smecta',                quantite: '1',   unite: 'sachet' },
+  { name: 'Maalox nourrisson',     quantite: '5',   unite: 'ml' },
+  { name: 'Lactobacillus',         quantite: '5',   unite: 'goutte' },
+  { name: 'Vitamine D (Zymad)',    quantite: '1',   unite: 'goutte' },
+  { name: 'Vitamine D (Adrigyl)',  quantite: '2',   unite: 'goutte' },
+  { name: 'Physiomer nourrisson',  quantite: '1',   unite: 'jet/narine' },
+  { name: 'Rhinathiol nourrisson', quantite: '2,5', unite: 'ml' },
+  { name: 'Dafalgan pédiatrique',  quantite: '5',   unite: 'ml' },
+  { name: 'Homéopathie dentition', quantite: '1',   unite: 'dose' },
 ]
 
 const STORAGE_KEY = 'bebe_primary_id'
@@ -240,6 +245,30 @@ function getBabyAge(birthDate: Timestamp): string {
   const mo = Math.floor(days / 30.44)
   if (mo < 24)   return `${mo} mois`
   return `${Math.floor(mo / 12)} ans`
+}
+
+/**
+ * « 2 » + « goutte » → « 2 gouttes ». L'unité est stockée au singulier et
+ * accordée ici : sinon « 1 gouttes » ou « 5 mls » finissent à l'écran.
+ */
+function formatDose(quantite?: number | string | null, unite?: string | null): string {
+  const q = typeof quantite === 'number' ? quantite : Number(String(quantite ?? '').replace(',', '.'))
+  const u = (unite ?? '').trim()
+  if (!Number.isFinite(q) || !String(quantite ?? '').trim()) return u
+  const qTxt = String(q).replace('.', ',')
+  if (!u) return qTxt
+  const accord = q > 1 && !UNITES_INVARIABLES.has(u) && !/[sx]$/.test(u)
+  return `${qTxt} ${u}${accord ? 's' : ''}`
+}
+
+/**
+ * Ancien format : la dose était UNE chaîne libre (« 2.5 ml », « 1 suppositoire »).
+ * On la redécoupe à l'ouverture d'une fiche pour ne pas perdre la saisie d'origine.
+ */
+function parserDose(dose: string): { quantite: string; unite: string } {
+  const m = dose.trim().match(/^([\d.,]+)\s*(.*)$/)
+  if (!m) return { quantite: '', unite: dose.trim() }
+  return { quantite: m[1].replace('.', ','), unite: m[2].trim().replace(/s$/, '') }
 }
 
 function nowTimeStr(): string {
@@ -315,7 +344,7 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
       return [nature, dur, start ? `depuis ${start}` : null].filter(Boolean).join(' · ') || 'Sommeil'
     }
     case 'meds':
-      return [data.name, data.dose].filter(Boolean).join(' · ') || 'Médicament'
+      return [data.name, formatDose(data.quantite, data.unite) || data.dose].filter(Boolean).join(' · ') || 'Médicament'
     case 'growth':
       return [
         data.weightG ? formatKg(data.weightG) : null,
@@ -719,7 +748,7 @@ export default function BebePage() {
   // `enAttente` = on connaît le coucher mais pas encore le réveil : au lieu d'un
   // événement, on repose le sommeil EN COURS du bébé, clos plus tard par « Réveillé ! ».
   const [sleepForm,  setSleepForm]  = useState({ startTime: nowTimeStr(), endTime: nowTimeStr(), enAttente: false })
-  const [medsForm,   setMedsForm]   = useState({ name: '', dose: '' })
+  const [medsForm,   setMedsForm]   = useState({ name: '', quantite: '', unite: '' })
   const [medsSearch, setMedsSearch] = useState('')
   // Une mesure porte une DATE (pesée à la PMI notée le soir), pas l'heure courante
   const [growthForm, setGrowthForm] = useState({ weight: '', height: '', head: '', date: '', time: '' })
@@ -747,7 +776,7 @@ export default function BebePage() {
     }
     if (type === 'diaper') setDiaperForm({ kind: defauts.diaperKind })
     if (type === 'sleep')  setSleepForm({ startTime: nowTimeStr(), endTime: nowTimeStr(), enAttente: false })
-    if (type === 'meds')   { setMedsForm({ name: '', dose: '' }); setMedsSearch('') }
+    if (type === 'meds')   { setMedsForm({ name: '', quantite: '', unite: '' }); setMedsSearch('') }
     if (type === 'growth') setGrowthForm({ weight: '', height: '', head: '', date: dateInputStr(new Date()), time: nowTimeStr() })
     if (type === 'temp')    setTempForm('')
     if (type === 'vaccine') setVaccineForm({ name: '', date: dateInputStr(new Date()), time: nowTimeStr() })
@@ -774,7 +803,16 @@ export default function BebePage() {
       const endStr   = tsToTimeStr(event.timestamp)
       setSleepForm({ startTime: startStr, endTime: endStr, enAttente: false })
     }
-    if (event.type === 'meds') { setMedsForm({ name: event.data?.name ?? '', dose: event.data?.dose ?? '' }); setMedsSearch('') }
+    if (event.type === 'meds') {
+      // Fiche d'avant la séparation quantité/unité : on redécoupe sa dose libre
+      const ancien = event.data?.dose ? parserDose(String(event.data.dose)) : null
+      setMedsForm({
+        name: event.data?.name ?? '',
+        quantite: event.data?.quantite != null ? String(event.data.quantite).replace('.', ',') : (ancien?.quantite ?? ''),
+        unite: event.data?.unite ?? ancien?.unite ?? '',
+      })
+      setMedsSearch('')
+    }
     if (event.type === 'growth') {
       setGrowthForm({
         weight: event.data?.weightG ? (event.data.weightG / 1000).toFixed(3).replace('.', ',') : '',
@@ -854,7 +892,14 @@ export default function BebePage() {
         const durationMin = Math.max(1, Math.floor((endTs.toMillis() - startTs.toMillis()) / 60_000))
         data = { startTime: startTs, durationMin }; ts = endTs
       } else if (modalType === 'meds') {
-        data = { name: medsForm.name.trim(), dose: medsForm.dose.trim() }
+        // Quantité et unité SÉPARÉES : corriger « 2 gouttes » en 3 ne doit pas
+        // obliger à réécrire l'unité. Champ vide = clé absente.
+        const qMeds = Number(medsForm.quantite.replace(',', '.'))
+        data = {
+          name: medsForm.name.trim(),
+          ...(Number.isFinite(qMeds) && medsForm.quantite.trim() ? { quantite: qMeds } : {}),
+          ...(medsForm.unite.trim() ? { unite: medsForm.unite.trim() } : {}),
+        }
       } else if (modalType === 'growth') {
         const weightG  = kgToGrams(growthForm.weight)
         const heightCm = growthForm.height ? Number(growthForm.height) : undefined
@@ -2151,10 +2196,10 @@ export default function BebePage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
             <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
               {filteredMeds.map((s, i) => (
-                <button key={i} type="button" onClick={() => { setMedsForm({ name: s.name, dose: s.dose }); setMedsSearch('') }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-blue-50 transition ${medsForm.name === s.name && medsForm.dose === s.dose ? 'bg-blue-50' : ''}`}>
+                <button key={i} type="button" onClick={() => { setMedsForm({ name: s.name, quantite: s.quantite, unite: s.unite }); setMedsSearch('') }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-blue-50 transition ${medsForm.name === s.name && medsForm.quantite === s.quantite && medsForm.unite === s.unite ? 'bg-blue-50' : ''}`}>
                   <span className="text-sm text-gray-800">{s.name}</span>
-                  {s.dose && <span className="text-xs text-gray-400 ml-2">{s.dose}</span>}
+                  <span className="text-xs text-gray-400 ml-2">{formatDose(s.quantite, s.unite)}</span>
                 </button>
               ))}
               {filteredMeds.length === 0 && <p className="text-sm text-gray-400 px-3 py-2 italic">Aucun résultat</p>}
@@ -2164,8 +2209,26 @@ export default function BebePage() {
             <p className="text-xs font-medium text-gray-500">Saisie personnalisée</p>
             <input type="text" placeholder="Nom du médicament" value={medsForm.name} onChange={e => setMedsForm(f => ({ ...f, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="text" placeholder="Dose (ex : 5 ml, 1 suppositoire…)" value={medsForm.dose} onChange={e => setMedsForm(f => ({ ...f, dose: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {/* Quantité et unité séparées : on ne corrige que le chiffre d'une prise à l'autre */}
+            <div className="grid grid-cols-3 gap-2">
+              <input type="text" inputMode="decimal" placeholder="2" value={medsForm.quantite}
+                onChange={e => setMedsForm(f => ({ ...f, quantite: e.target.value.replace(/[^\d,.]/g, '') }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="gouttes, ml…" value={medsForm.unite}
+                onChange={e => setMedsForm(f => ({ ...f, unite: e.target.value }))}
+                className="col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {UNITES_MEDS.map(u => (
+                <button key={u} type="button" onClick={() => setMedsForm(f => ({ ...f, unite: u }))}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition ${medsForm.unite === u ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}>
+                  {u}
+                </button>
+              ))}
+            </div>
+            {(medsForm.quantite.trim() || medsForm.unite.trim()) && (
+              <p className="text-xs text-gray-400">{`Sera noté : ${formatDose(medsForm.quantite, medsForm.unite)}`}</p>
+            )}
           </div>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent} disabled={!medsForm.name.trim()} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
