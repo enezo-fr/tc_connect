@@ -7,7 +7,7 @@ import { useBebeEvents, EVENTS_LIMIT_ALL } from '@/hooks/useBebeEvents'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
-import { Milk, Pill, Baby, Hourglass } from 'lucide-react'
+import { Milk, Pill, Baby, Hourglass, Check } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
 import { BarChart } from '@/components/bebe/BarChart'
@@ -16,7 +16,7 @@ import { Timestamp } from 'firebase/firestore'
 import { uploadImage } from '@/lib/uploadImage'
 import { ArrivalSection } from '@/components/bebe/ArrivalSection'
 import { ShareBabyModal } from '@/components/bebe/ShareBabyModal'
-import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind } from '@/types'
+import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind, BebeTraitement } from '@/types'
 
 // ─── Icône couche (SVG custom rempli — aucun équivalent dans lucide) ──────────
 
@@ -269,6 +269,13 @@ function parserDose(dose: string): { quantite: string; unite: string } {
   const m = dose.trim().match(/^([\d.,]+)\s*(.*)$/)
   if (!m) return { quantite: '', unite: dose.trim() }
   return { quantite: m[1].replace('.', ','), unite: m[2].trim().replace(/s$/, '') }
+}
+
+/** Date à laquelle le bébé aura `mois` mois — sert aux raccourcis de fin de traitement */
+function dateAgeMois(naissance: Date, mois: number): Date {
+  const d = new Date(naissance)
+  d.setMonth(d.getMonth() + mois)
+  return d
 }
 
 function nowTimeStr(): string {
@@ -717,6 +724,55 @@ export default function BebePage() {
       createdBy: currentUser.uid,
     })
     await updateBebe(selectedBabyId, { activeSleep: null })
+  }
+
+  // ── Traitements réguliers ─────────────────────────────────────────────────
+  const [showTraitModal, setShowTraitModal] = useState(false)
+  const [traitEditId,    setTraitEditId]    = useState<string | null>(null)
+  const [traitDelete,    setTraitDelete]    = useState<string | null>(null)
+  const [savingTrait,    setSavingTrait]    = useState(false)
+  const [traitForm,      setTraitForm]      = useState({ nom: '', quantite: '', unite: '', heures: ['08:00'], jusquAu: '' })
+
+  const openTraitModal = (t?: BebeTraitement) => {
+    setTraitEditId(t?.id ?? null)
+    setTraitForm({
+      nom: t?.nom ?? '',
+      quantite: t?.quantite != null ? String(t.quantite).replace('.', ',') : '',
+      unite: t?.unite ?? '',
+      heures: t?.heures?.length ? [...t.heures] : ['08:00'],
+      jusquAu: t?.jusquAu?.toDate ? dateInputStr(t.jusquAu.toDate()) : '',
+    })
+    setShowTraitModal(true)
+  }
+
+  const saveTraitement = async () => {
+    if (!selectedBabyId || !traitForm.nom.trim()) return
+    setSavingTrait(true)
+    try {
+      const q = Number(traitForm.quantite.replace(',', '.'))
+      const heures = traitForm.heures.filter(Boolean).sort()
+      // Clés absentes plutôt qu'`undefined` : `updateBebe` écrit l'objet tel quel
+      // dans Firestore, qui refuse `undefined`.
+      const t: BebeTraitement = {
+        id: traitEditId ?? `t${Date.now().toString(36)}`,
+        nom: traitForm.nom.trim(),
+        heures: heures.length ? heures : ['08:00'],
+        ...(Number.isFinite(q) && traitForm.quantite.trim() ? { quantite: q } : {}),
+        ...(traitForm.unite.trim() ? { unite: traitForm.unite.trim() } : {}),
+        ...(traitForm.jusquAu ? { jusquAu: Timestamp.fromDate(dateFromInput(traitForm.jusquAu)) } : {}),
+      }
+      const liste = selectedBaby?.traitements ?? []
+      await updateBebe(selectedBabyId, {
+        traitements: traitEditId ? liste.map(x => (x.id === traitEditId ? t : x)) : [...liste, t],
+      })
+      setShowTraitModal(false)
+    } finally { setSavingTrait(false) }
+  }
+
+  const supprimerTraitement = async (id: string) => {
+    if (!selectedBabyId) return
+    await updateBebe(selectedBabyId, { traitements: (selectedBaby?.traitements ?? []).filter(x => x.id !== id) })
+    setTraitDelete(null)
   }
 
   // ── Modales événements ────────────────────────────────────────────────────
@@ -1178,6 +1234,53 @@ export default function BebePage() {
     return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [events, planningRange])
 
+  /**
+   * Ce qu'il reste à donner aujourd'hui : une ligne par PRISE (un traitement à
+   * deux horaires en produit deux). Une prise est « faite » quand un événement
+   * médicament du jour porte le même `traitementId` ET le même horaire prévu —
+   * c'est ce qui permet de cocher matin et soir séparément.
+   */
+  const prisesDuJour = useMemo(() => {
+    const traitements = selectedBaby?.traitements ?? []
+    if (!traitements.length) return []
+    const debutJour = new Date(); debutJour.setHours(0, 0, 0, 0)
+    const aujourdhui = new Date()
+    const medsDuJour = events.filter(e => {
+      const d = e.timestamp?.toDate?.()
+      return e.type === 'meds' && d && d >= debutJour
+    })
+    const lignes = traitements.flatMap(t => {
+      // La date de fin est INCLUSE : le traitement disparaît le lendemain
+      const fin = t.jusquAu?.toDate?.()
+      if (fin && joursEntre(fin, aujourdhui) > 0) return []
+      const heures = t.heures?.length ? t.heures : ['']
+      return heures.map(h => ({
+        cle: `${t.id}-${h}`,
+        traitement: t,
+        heure: h,
+        event: medsDuJour.find(e => e.data?.traitementId === t.id && (e.data?.prise ?? '') === h) ?? null,
+      }))
+    })
+    return lignes.sort((a, b) => (a.heure || '99:99').localeCompare(b.heure || '99:99'))
+  }, [selectedBaby, events])
+
+  const noterPrise = async (ligne: { traitement: BebeTraitement; heure: string }) => {
+    if (!currentUser) return
+    const t = ligne.traitement
+    await addEvent({
+      type: 'meds',
+      data: {
+        name: t.nom,
+        ...(t.quantite != null ? { quantite: t.quantite } : {}),
+        ...(t.unite ? { unite: t.unite } : {}),
+        traitementId: t.id,
+        ...(ligne.heure ? { prise: ligne.heure } : {}),
+      },
+      timestamp: Timestamp.now(),
+      createdBy: currentUser.uid,
+    })
+  }
+
   const filteredMeds = MEDS_SUGGESTIONS.filter(m => !medsSearch.trim() || m.name.toLowerCase().includes(medsSearch.toLowerCase()))
 
   // ─── Rendu ────────────────────────────────────────────────────────────────
@@ -1414,6 +1517,54 @@ export default function BebePage() {
                 </div>
               )
             })()}
+
+            {/* Traitements réguliers du jour — une coche = la prise est notée */}
+            {prisesDuJour.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Pill size={16} className="text-rose-500" />
+                    <p className="text-sm font-semibold text-gray-800">À donner aujourd&apos;hui</p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {`${prisesDuJour.filter(l => l.event).length}/${prisesDuJour.length}`}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {prisesDuJour.map(l => {
+                    const fait = !!l.event
+                    const dose = formatDose(l.traitement.quantite, l.traitement.unite)
+                    return (
+                      <div key={l.cle} className="flex items-center gap-3">
+                        <button
+                          onClick={() => (fait ? deleteEvent(l.event!.id) : noterPrise(l))}
+                          title={fait ? 'Annuler cette prise' : 'Noter cette prise'}
+                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                            fait ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
+                          <Check size={14} />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
+                            {[l.traitement.nom, dose].filter(Boolean).join(' · ')}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {fait
+                              ? `donné à ${formatTime(l.event!.timestamp)}`
+                              : (l.heure ? `vers ${l.heure}` : 'dans la journée')}
+                          </p>
+                        </div>
+                        {!fait && (
+                          <button onClick={() => noterPrise(l)}
+                            className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
+                            Donné
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Stats */}
             <div>
@@ -1879,6 +2030,70 @@ export default function BebePage() {
               </>
             )}
 
+            {/* ── Traitements réguliers ───────────────────────────────────── */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Traitements en cours · {(selectedBaby?.traitements ?? []).length}
+                </p>
+                <button onClick={() => openTraitModal()}
+                  className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 transition">
+                  <Plus size={14} />Ajouter
+                </button>
+              </div>
+              {(selectedBaby?.traitements ?? []).length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+                  <Pill size={26} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Aucun traitement régulier.</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Ce qui revient tous les jours (vitamine D…) apparaîtra sur l&apos;accueil, à cocher une fois donné.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(selectedBaby?.traitements ?? []).map(t => {
+                    const fin = t.jusquAu?.toDate?.()
+                    const termine = fin ? joursEntre(fin, new Date()) > 0 : false
+                    return (
+                      <div key={t.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${termine ? 'bg-gray-100' : 'bg-rose-100'}`}>
+                          <Pill size={16} className={termine ? 'text-gray-400' : 'text-rose-600'} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium break-words ${termine ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                            {[t.nom, formatDose(t.quantite, t.unite)].filter(Boolean).join(' · ')}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {[
+                              t.heures?.length ? `${t.heures.length}×/jour — ${t.heures.join(', ')}` : 'chaque jour',
+                              fin ? `${termine ? 'terminé le' : 'jusqu\u2019au'} ${fin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : null,
+                            ].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        {traitDelete === t.id ? (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => setTraitDelete(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1">Annuler</button>
+                            <button onClick={() => supprimerTraitement(t.id)}
+                              className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition">
+                              Supprimer
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => openTraitModal(t)}
+                              className="p-1.5 rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition"><Pencil size={14} /></button>
+                            <button onClick={() => setTraitDelete(t.id)}
+                              className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* ── Vaccins ─────────────────────────────────────────────────── */}
             <div className="pt-2">
               <div className="flex items-center justify-between gap-3 mb-2">
@@ -2232,6 +2447,86 @@ export default function BebePage() {
           </div>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent} disabled={!medsForm.name.trim()} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
+        </div>
+      </Modal>
+
+      {/* ── Modale Traitement régulier ──────────────────────────────────────── */}
+      <Modal isOpen={showTraitModal} onClose={() => setShowTraitModal(false)}
+        title={traitEditId ? 'Modifier — Traitement' : 'Traitement régulier'}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Médicament</label>
+            <input type="text" placeholder="Vitamine D (Adrigyl)" value={traitForm.nom}
+              onChange={e => setTraitForm(f => ({ ...f, nom: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Dose à chaque prise</label>
+            <div className="grid grid-cols-3 gap-2">
+              <input type="text" inputMode="decimal" placeholder="2" value={traitForm.quantite}
+                onChange={e => setTraitForm(f => ({ ...f, quantite: e.target.value.replace(/[^\d,.]/g, '') }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="gouttes, ml…" value={traitForm.unite}
+                onChange={e => setTraitForm(f => ({ ...f, unite: e.target.value }))}
+                className="col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex gap-1.5 flex-wrap mt-2">
+              {UNITES_MEDS.map(u => (
+                <button key={u} type="button" onClick={() => setTraitForm(f => ({ ...f, unite: u }))}
+                  className={`px-2.5 py-1 text-xs rounded-lg border transition ${traitForm.unite === u ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-600'}`}>
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Moments de la journée</label>
+            <div className="space-y-2">
+              {traitForm.heures.map((h, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="time" value={h}
+                    onChange={e => setTraitForm(f => ({ ...f, heures: f.heures.map((x, j) => (j === i ? e.target.value : x)) }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  {traitForm.heures.length > 1 && (
+                    <button type="button" onClick={() => setTraitForm(f => ({ ...f, heures: f.heures.filter((_, j) => j !== i) }))}
+                      className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition"><Trash2 size={14} /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={() => setTraitForm(f => ({ ...f, heures: [...f.heures, '20:00'] }))}
+              className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 transition mt-2">
+              <Plus size={14} />Ajouter une prise
+            </button>
+            <p className="text-xs text-gray-400 mt-1">
+              Une ligne par prise quotidienne — l&apos;heure sert de repère, elle ne déclenche aucune alerte.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Jusqu&apos;au (inclus)</label>
+            <input type="date" value={traitForm.jusquAu}
+              onChange={e => setTraitForm(f => ({ ...f, jusquAu: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {selectedBaby?.birthDate?.toDate && (
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {[6, 12, 18, 24, 36].map(mois => (
+                  <button key={mois} type="button"
+                    onClick={() => setTraitForm(f => ({ ...f, jusquAu: dateInputStr(dateAgeMois(selectedBaby.birthDate!.toDate(), mois)) }))}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-600 transition">
+                    {mois < 24 ? `ses ${mois} mois` : `ses ${mois / 12} ans`}
+                  </button>
+                ))}
+                {traitForm.jusquAu && (
+                  <button type="button" onClick={() => setTraitForm(f => ({ ...f, jusquAu: '' }))}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition">
+                    sans fin
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <ModalFooter onCancel={() => setShowTraitModal(false)} onSave={saveTraitement} saving={savingTrait}
+            disabled={!traitForm.nom.trim()} label={traitEditId ? 'Enregistrer' : 'Ajouter'} />
         </div>
       </Modal>
 

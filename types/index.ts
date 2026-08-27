@@ -1371,6 +1371,8 @@ export interface Bebe {
   photoUrl?: string
   /** Sommeil en cours — "Start", ou saisie « fin en attente » ; supprimé au "Réveillé !" */
   activeSleep?: { startTime: Timestamp; note?: string } | null
+  /** Traitements réguliers en cours (vitamine D quotidienne, sirop matin et soir…) */
+  traitements?: BebeTraitement[]
 
   // ── Arrivée du bébé (faire-part) ──────────────────────────────────────────
   /** Sexe — sert à accorder les messages ({ne} → né/née) */
@@ -1425,6 +1427,26 @@ export type BebeDiaperKind = 'seche' | 'urine' | 'selles' | 'mixte'
  * ces gestes se répètent 8 fois par jour. Absent = repli sur les valeurs
  * historiques (biberon / 120 ml / urine).
  */
+/**
+ * Traitement régulier : ce qu'il faut donner tous les jours, et à quels moments.
+ * Rangé DANS le document du bébé (pas de sous-collection) : la liste tient en
+ * quelques lignes, tout le monde la lit déjà avec le bébé, et aucune règle
+ * Firestore n'est à redéployer (la règle `update` de `babies` accepte tout
+ * champ hors `members`/`createdBy`).
+ */
+export interface BebeTraitement {
+  /** Identifiant local, posé à la création — relie les prises notées au traitement */
+  id: string
+  nom: string
+  quantite?: number
+  /** Unité au singulier (« goutte », « ml »…) — l'accord se fait à l'affichage */
+  unite?: string
+  /** Moments de la journée, « HH:MM ». Une entrée par prise quotidienne. */
+  heures: string[]
+  /** Dernier jour du traitement, INCLUS (ex. les 18 mois du bébé) ; absent = sans fin */
+  jusquAu?: Timestamp
+}
+
 export interface BebeDefauts {
   bottleKind?: BebeBottleKind
   /** Quantité en ml (biberon / tire-lait) */
