@@ -17,6 +17,19 @@ function fmt(n: number) {
   return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * Date qui compte pour l'URSSAF : celle de l'ENCAISSEMENT.
+ *
+ * 🔑 En micro-entreprise, on déclare ce qui a été ENCAISSÉ dans le mois, pas ce
+ * qui a été facturé : une facture émise le 31/07 et réglée en septembre se
+ * déclare en septembre. On prend donc `paymentDate` en priorité ; la date du
+ * document ne sert que de repli pour les factures d'avant ce champ (elles sont
+ * signalées à l'écran pour être corrigées).
+ */
+function dateEncaissement(f: { paymentDate?: Timestamp; date?: Timestamp; createdAt?: Timestamp }) {
+  return f.paymentDate ?? f.date ?? f.createdAt ?? null;
+}
+
 function fmtDate(ts?: Timestamp) {
   if (!ts) return null;
   return new Date(ts.seconds * 1000).toLocaleDateString("fr-FR");
@@ -57,7 +70,7 @@ export default function BilanUrssafPage() {
         .filter((f) => {
           if ((f.type ?? "facture") !== "facture") return false;
           if (f.status !== "paid") return false;
-          const ts = f.date ?? f.createdAt;
+          const ts = dateEncaissement(f);
           if (!ts) return false;
           const d = new Date(ts.seconds * 1000);
           return d.getFullYear() === annee && d.getMonth() === i;
@@ -68,6 +81,16 @@ export default function BilanUrssafPage() {
       return { mois, ca, taux, cotisations, periode };
     });
   }, [invoices, periodes, annee, defaultTaux]);
+
+  /** Factures « Payée » sans date de paiement : rangées par défaut à leur date d'émission */
+  const sansDatePaiement = useMemo(
+    () => invoices.filter((f) => {
+      if ((f.type ?? "facture") !== "facture" || f.status !== "paid" || f.paymentDate) return false;
+      const ts = f.date ?? f.createdAt;
+      return !!ts && new Date(ts.seconds * 1000).getFullYear() === annee;
+    }),
+    [invoices, annee],
+  );
 
   const totalCA = months.reduce((s, m) => s + m.ca, 0);
   const totalCotisations = months.reduce((s, m) => s + m.cotisations, 0);
@@ -371,11 +394,43 @@ export default function BilanUrssafPage() {
         </div>{/* overflow-x-auto */}
       </div>
 
+      {/* Factures encaissées dont on ignore la date de règlement */}
+      {sansDatePaiement.length > 0 && (
+        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm font-semibold text-amber-800">
+            {sansDatePaiement.length === 1
+              ? "1 facture payée sans date de règlement"
+              : `${sansDatePaiement.length} factures payées sans date de règlement`}
+          </p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Faute de mieux, elles sont comptées au mois de leur émission — ce qui peut les placer
+            dans le mauvais mois de déclaration. Ouvrez-les et renseignez la date à laquelle
+            l&apos;argent est arrivé.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {sansDatePaiement.map((f) => (
+              <Link key={f.id} href={`/facturation/${f.id}`}
+                className="text-xs font-medium bg-white border border-amber-200 text-amber-800 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition">
+                {f.number} · {fmt(f.total ?? 0)} €
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* INFOS BAS */}
       <div className="mt-4 bg-gray-50 border rounded-xl px-4 py-3 text-xs text-gray-500 space-y-1">
         <p>
-          <strong>Comment ça marche :</strong> le CA est calculé automatiquement à partir de vos
-          factures ayant le statut <em>Payée</em> sur la date du document.
+          <strong>Comment ça marche :</strong> le CA est calculé à partir de vos factures ayant le
+          statut <em>Payée</em>, rangées au mois de leur <strong>date de paiement</strong> — en
+          micro-entreprise on déclare ce qui a été <strong>encaissé</strong> dans le mois, pas ce
+          qui a été facturé.
+        </p>
+        <p>
+          Une facture émise le 31/07 et réglée en septembre se déclare donc en septembre : laissez-la
+          en <em>Envoyée</em> ou <em>À encaisser</em> tant qu&apos;elle n&apos;est pas réglée, puis
+          passez-la en <em>Payée</em> — la date du jour est posée automatiquement, et reste
+          modifiable dans la fiche (bloc <em>Règlement</em>).
         </p>
         <p>
           Cochez <strong>Déclarer</strong> après chaque déclaration mensuelle sur autoentrepreneur.urssaf.fr,

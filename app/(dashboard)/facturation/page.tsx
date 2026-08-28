@@ -190,7 +190,15 @@ function StatusChanger({ facture }: { facture: Facture }) {
           {statuses.filter((s) => s !== facture.status).map((s) => (
             <button
               key={s}
-              onClick={(e) => { e.stopPropagation(); updateFacture(facture.id, { status: s }); setOpen(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                // « Payée » pose la date de règlement du jour si elle manque : c'est
+                // elle qui décide du mois de déclaration URSSAF (encaissement).
+                updateFacture(facture.id, s === "paid" && !facture.paymentDate
+                  ? { status: s, paymentDate: Timestamp.now() }
+                  : { status: s });
+                setOpen(false);
+              }}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition border-b border-gray-50 last:border-0"
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[s].split(" ")[0].replace("100", "400")}`} />

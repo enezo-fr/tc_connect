@@ -156,7 +156,9 @@ export default function PilotagePage() {
     const now = new Date()
     const caYear = invoices
       .filter((f) => (f.type ?? 'facture') === 'facture' && f.status === 'paid')
-      .filter((f) => { const ts = f.date ?? f.createdAt; return ts && new Date(ts.seconds * 1000).getFullYear() === now.getFullYear() })
+      // Année de l'ENCAISSEMENT, comme le bilan URSSAF : le plafond micro se juge
+      // sur ce qui est entré sur le compte, pas sur ce qui a été facturé.
+      .filter((f) => { const ts = f.paymentDate ?? f.date ?? f.createdAt; return ts && new Date(ts.seconds * 1000).getFullYear() === now.getFullYear() })
       .reduce((s, f) => s + (f.total ?? 0), 0)
     // Projection annualisée à partir du CA RÉEL uniquement (jamais les contrats → pas de double comptage)
     const moisEcoules = now.getMonth() + 1

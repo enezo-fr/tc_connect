@@ -554,8 +554,13 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
 
   const changeStatus = async (status: FactureStatus) => {
     try {
-      await updateFacture(id, { status });
-      setFacture((p) => p ? { ...p, status } : null);
+      // Passer en « Payée » sans date de règlement fausserait le bilan URSSAF, qui
+      // range au mois de l'ENCAISSEMENT : on pose le jour même, modifiable ensuite.
+      const poseReglement = status === "paid" && !facture?.paymentDate;
+      const patch = poseReglement ? { status, paymentDate: Timestamp.now() } : { status };
+      await updateFacture(id, patch);
+      setFacture((p) => p ? { ...p, ...patch } : null);
+      if (poseReglement) setPaymentDate(toDateInputValue(Timestamp.now()));
       showToast(`Statut : ${statusLabels[status]}`);
     } catch {
       showToast("Erreur lors du changement de statut", false);
