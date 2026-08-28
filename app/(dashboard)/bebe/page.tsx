@@ -1094,6 +1094,14 @@ export default function BebePage() {
         if (routineEnCours.prise) data.prise = routineEnCours.prise
       }
 
+      // ⚠️ `updateEvent` remplace TOUT le `data` : sans cette recopie, corriger
+      // l'heure d'une prise la décrochait de sa routine et la ligne du jour
+      // repassait « à faire » alors qu'elle venait d'être cochée.
+      if (editingEvent?.data?.traitementId) {
+        data.traitementId = editingEvent.data.traitementId
+        if (editingEvent.data.prise) data.prise = editingEvent.data.prise
+      }
+
       // Observations : commun à tous les types. Chaîne vide = clé absente, pour
       // qu'une note effacée disparaisse vraiment au lieu de rester en `''`.
       const note = noteForm.trim()
