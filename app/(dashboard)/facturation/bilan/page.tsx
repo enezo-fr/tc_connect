@@ -57,6 +57,9 @@ export default function BilanUrssafPage() {
   const [annee, setAnnee] = useState(currentYear);
   const [defaultTaux, setDefaultTaux] = useState(24.2);
 
+  /** Mois dont on affiche le détail des factures (un seul à la fois) */
+  const [moisOuvert, setMoisOuvert] = useState<number | null>(null);
+
   // Taux editing state
   const [editingMois, setEditingMois] = useState<number | null>(null);
   const [editTauxValue, setEditTauxValue] = useState("");
@@ -66,7 +69,9 @@ export default function BilanUrssafPage() {
     return Array.from({ length: 12 }, (_, i) => {
       const mois = i + 1;
       const periode = periodes.find((p) => p.annee === annee && p.mois === mois);
-      const ca = invoices
+      // Gardées, et pas seulement additionnées : on veut pouvoir montrer À QUOI
+      // correspond le montant d'un mois sans aller fouiller la liste des factures.
+      const factures = invoices
         .filter((f) => {
           if ((f.type ?? "facture") !== "facture") return false;
           if (f.status !== "paid") return false;
@@ -75,10 +80,11 @@ export default function BilanUrssafPage() {
           const d = new Date(ts.seconds * 1000);
           return d.getFullYear() === annee && d.getMonth() === i;
         })
-        .reduce((acc, f) => acc + (f.total ?? 0), 0);
+        .sort((a, b) => (dateEncaissement(a)?.seconds ?? 0) - (dateEncaissement(b)?.seconds ?? 0));
+      const ca = factures.reduce((acc, f) => acc + (f.total ?? 0), 0);
       const taux = periode?.taux ?? defaultTaux;
       const cotisations = Math.round(ca * taux) / 100;
-      return { mois, ca, taux, cotisations, periode };
+      return { mois, ca, taux, cotisations, periode, factures };
     });
   }, [invoices, periodes, annee, defaultTaux]);
 
@@ -249,16 +255,18 @@ export default function BilanUrssafPage() {
             ))}
 
           {!loading &&
-            months.map(({ mois, ca, taux, cotisations, periode }) => {
+            months.map(({ mois, ca, taux, cotisations, periode, factures }) => {
               const isCurrentMonth =
                 annee === currentYear && mois === new Date().getMonth() + 1;
               const isFuture =
                 annee > currentYear ||
                 (annee === currentYear && mois > new Date().getMonth() + 1);
 
+              const ouvert = moisOuvert === mois;
+
               return (
+                <div key={mois}>
                 <div
-                  key={mois}
                   className={`grid grid-cols-[110px_1fr_80px_1fr_130px_140px] px-4 py-3.5 gap-3 items-center text-sm transition-colors ${
                     isCurrentMonth ? "bg-blue-50/50" : ""
                   } ${isFuture ? "opacity-40" : ""}`}
@@ -273,9 +281,20 @@ export default function BilanUrssafPage() {
                     )}
                   </div>
 
-                  {/* CA */}
-                  <div className={`font-medium ${ca > 0 ? "text-green-700" : "text-gray-300"}`}>
-                    {ca > 0 ? `${fmt(ca)} €` : "—"}
+                  {/* CA — cliquable : il ouvre le détail des factures du mois */}
+                  <div className="font-medium">
+                    {ca > 0 ? (
+                      <button
+                        onClick={() => setMoisOuvert((m) => (m === mois ? null : mois))}
+                        title="Voir les factures de ce mois"
+                        className="flex items-center gap-1 text-green-700 hover:text-green-800 hover:underline transition"
+                      >
+                        {`${fmt(ca)} €`}
+                        <span className={`text-[10px] text-green-600/70 transition-transform ${ouvert ? "rotate-180" : ""}`}>▾</span>
+                      </button>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </div>
 
                   {/* Taux */}
@@ -371,6 +390,33 @@ export default function BilanUrssafPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Détail : les factures encaissées ce mois-là */}
+                {ouvert && (
+                  <div className="px-4 pb-3 pt-1 bg-gray-50/70 space-y-1.5">
+                    {factures.map((f) => (
+                      <Link
+                        key={f.id}
+                        href={`/facturation/${f.id}`}
+                        className="flex items-center justify-between gap-3 bg-white border rounded-lg px-3 py-2 hover:border-blue-300 transition"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate">
+                            {`${f.number} · ${f.clientName ?? ""}`}
+                          </p>
+                          <p className="text-[11px] text-gray-400">
+                            {`émise le ${fmtDate(f.date ?? f.createdAt) ?? "—"}`}
+                            {f.paymentDate
+                              ? ` · encaissée le ${fmtDate(f.paymentDate)}`
+                              : " · aucune date de règlement, comptée sur sa date d'émission"}
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold text-green-700 shrink-0">{`${fmt(f.total ?? 0)} €`}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                </div>
               );
             })}
         </div>
@@ -431,6 +477,10 @@ export default function BilanUrssafPage() {
           en <em>Envoyée</em> ou <em>À encaisser</em> tant qu&apos;elle n&apos;est pas réglée, puis
           passez-la en <em>Payée</em> — la date du jour est posée automatiquement, et reste
           modifiable dans la fiche (bloc <em>Règlement</em>).
+        </p>
+        <p>
+          <strong>Cliquez sur un montant de CA</strong> pour voir les factures qui le composent,
+          avec leur date d&apos;émission et leur date d&apos;encaissement.
         </p>
         <p>
           Cochez <strong>Déclarer</strong> après chaque déclaration mensuelle sur autoentrepreneur.urssaf.fr,
