@@ -16,7 +16,7 @@ import { Timestamp } from 'firebase/firestore'
 import { uploadImage } from '@/lib/uploadImage'
 import { ArrivalSection } from '@/components/bebe/ArrivalSection'
 import { ShareBabyModal } from '@/components/bebe/ShareBabyModal'
-import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind, BebeRoutine } from '@/types'
+import type { BebeEvent, BebeEventType, BebeDefauts, BebeJournee, BebeBottleKind, BebeDiaperKind, BebeRoutine, BebeMedicament } from '@/types'
 
 // ─── Icône couche (SVG custom rempli — aucun équivalent dans lucide) ──────────
 
@@ -187,22 +187,26 @@ const UNITES_MEDS = ['goutte', 'ml', 'mg', 'comprimé', 'sachet', 'dosette', 'su
 const UNITES_INVARIABLES = new Set(['ml', 'mg', 'g', 'kg', 'UI', 'µg'])
 
 const MEDS_SUGGESTIONS = [
-  { name: 'Doliprane nourrisson',  quantite: '2,5', unite: 'ml' },
-  { name: 'Doliprane nourrisson',  quantite: '5',   unite: 'ml' },
-  { name: 'Efferalgan nourrisson', quantite: '2,5', unite: 'ml' },
-  { name: 'Advil nourrisson',      quantite: '2,5', unite: 'ml' },
-  { name: 'Advil nourrisson',      quantite: '5',   unite: 'ml' },
-  { name: 'Spasfon',               quantite: '1',   unite: 'suppositoire' },
-  { name: 'Smecta',                quantite: '1',   unite: 'sachet' },
-  { name: 'Maalox nourrisson',     quantite: '5',   unite: 'ml' },
-  { name: 'Lactobacillus',         quantite: '5',   unite: 'goutte' },
-  { name: 'Vitamine D (Zymad)',    quantite: '1',   unite: 'goutte' },
-  { name: 'Vitamine D (Adrigyl)',  quantite: '2',   unite: 'goutte' },
-  { name: 'Physiomer nourrisson',  quantite: '1',   unite: 'jet/narine' },
-  { name: 'Rhinathiol nourrisson', quantite: '2,5', unite: 'ml' },
-  { name: 'Dafalgan pédiatrique',  quantite: '5',   unite: 'ml' },
-  { name: 'Homéopathie dentition', quantite: '1',   unite: 'dose' },
+  { nom: 'Doliprane nourrisson',  quantite: '2,5', unite: 'ml' },
+  { nom: 'Doliprane nourrisson',  quantite: '5',   unite: 'ml' },
+  { nom: 'Efferalgan nourrisson', quantite: '2,5', unite: 'ml' },
+  { nom: 'Advil nourrisson',      quantite: '2,5', unite: 'ml' },
+  { nom: 'Advil nourrisson',      quantite: '5',   unite: 'ml' },
+  { nom: 'Spasfon',               quantite: '1',   unite: 'suppositoire' },
+  { nom: 'Smecta',                quantite: '1',   unite: 'sachet' },
+  { nom: 'Maalox nourrisson',     quantite: '5',   unite: 'ml' },
+  { nom: 'Lactobacillus',         quantite: '5',   unite: 'goutte' },
+  { nom: 'Vitamine D (Zymad)',    quantite: '1',   unite: 'goutte' },
+  { nom: 'Vitamine D (Adrigyl)',  quantite: '2',   unite: 'goutte' },
+  { nom: 'Physiomer nourrisson',  quantite: '1',   unite: 'jet/narine' },
+  { nom: 'Rhinathiol nourrisson', quantite: '2,5', unite: 'ml' },
+  { nom: 'Dafalgan pédiatrique',  quantite: '5',   unite: 'ml' },
+  { nom: 'Homéopathie dentition', quantite: '1',   unite: 'dose' },
 ]
+
+/** Clé de comparaison d'un médicament : même nom, même dose = même entrée */
+const cleMed = (nom: string, quantite: string, unite: string) =>
+  `${nom.trim().toLowerCase()}|${quantite.trim().replace('.', ',')}|${unite.trim().toLowerCase()}`
 
 const STORAGE_KEY = 'bebe_primary_id'
 
@@ -738,13 +742,16 @@ export default function BebePage() {
     await updateBebe(selectedBabyId, { activeSleep: null })
   }
 
+  /** Routine en attente de saisie (température) : rattache l'événement à venir */
+  const [routineEnCours, setRoutineEnCours] = useState<{ id: string; prise: string } | null>(null)
+
   // ── Traitements réguliers ─────────────────────────────────────────────────
   const [showTraitModal, setShowTraitModal] = useState(false)
   const [traitEditId,    setTraitEditId]    = useState<string | null>(null)
   const [traitDelete,    setTraitDelete]    = useState<string | null>(null)
   const [savingTrait,    setSavingTrait]    = useState(false)
   const [traitForm,      setTraitForm]      = useState<{
-    nom: string; type: 'meds' | 'bath' | 'soin'; quantite: string; unite: string
+    nom: string; type: 'meds' | 'bath' | 'soin' | 'temp'; quantite: string; unite: string
     tousLes: string; heures: string[]; jusquAu: string
   }>({ nom: '', type: 'meds', quantite: '', unite: '', tousLes: '1', heures: ['08:00'], jusquAu: '' })
 
@@ -781,6 +788,9 @@ export default function BebePage() {
         ...(traitForm.type === 'meds' && Number.isFinite(q) && traitForm.quantite.trim() ? { quantite: q } : {}),
         ...(traitForm.type === 'meds' && traitForm.unite.trim() ? { unite: traitForm.unite.trim() } : {}),
         ...(traitForm.jusquAu ? { jusquAu: Timestamp.fromDate(dateFromInput(traitForm.jusquAu)) } : {}),
+      }
+      if (traitForm.type === 'meds') {
+        await memoriserMedicament(traitForm.nom, traitForm.quantite, traitForm.unite)
       }
       const liste = selectedBaby?.traitements ?? []
       await updateBebe(selectedBabyId, {
@@ -927,7 +937,7 @@ export default function BebePage() {
     setModalType(event.type)
   }
 
-  const closeModal = () => { setModalType(null); setEditingEvent(null) }
+  const closeModal = () => { setModalType(null); setEditingEvent(null); setRoutineEnCours(null) }
 
   const handleSaveEvent = async () => {
     if (!currentUser || !modalType) return
@@ -981,6 +991,8 @@ export default function BebePage() {
           ...(Number.isFinite(qMeds) && medsForm.quantite.trim() ? { quantite: qMeds } : {}),
           ...(medsForm.unite.trim() ? { unite: medsForm.unite.trim() } : {}),
         }
+        // Un médicament saisi à la main rejoint la liste proposée la prochaine fois
+        await memoriserMedicament(medsForm.name, medsForm.quantite, medsForm.unite)
       } else if (modalType === 'growth') {
         const weightG  = kgToGrams(growthForm.weight)
         const heightCm = growthForm.height ? Number(growthForm.height) : undefined
@@ -1018,6 +1030,13 @@ export default function BebePage() {
       if ((['bottle', 'diaper', 'meds', 'bath', 'soin', 'temp', 'pump', 'waste'] as BebeEventType[]).includes(modalType)
           && whenForm.date && whenForm.time) {
         ts = timeStrToTs(whenForm.time, whenForm.date)
+      }
+
+      // Saisie ouverte depuis une routine (température) : on l'y rattache pour
+      // que la ligne du jour se coche toute seule.
+      if (routineEnCours && !editingEvent) {
+        data.traitementId = routineEnCours.id
+        if (routineEnCours.prise) data.prise = routineEnCours.prise
       }
 
       // Observations : commun à tous les types. Chaîne vide = clé absente, pour
@@ -1264,7 +1283,13 @@ export default function BebePage() {
   /** Libellé de périodicité, partagé par la carte d'accueil et la liste de l'onglet Santé */
   const libelleRecurrence = (r: BebeRoutine) => {
     const n = Math.max(1, r.tousLesNJours ?? 1)
-    if (n > 1) return n === 7 ? 'chaque semaine' : `tous les ${n} jours`
+    if (n > 1) {
+      if (n === 7) return 'chaque semaine'
+      if (n === 14) return 'toutes les 2 semaines'
+      if (n === 30) return 'chaque mois'
+      if (n % 30 === 0) return `tous les ${n / 30} mois`
+      return `tous les ${n} jours`
+    }
     return r.heures?.length > 1 ? `${r.heures.length}×/jour — ${r.heures.join(', ')}` : 'chaque jour'
   }
 
@@ -1332,6 +1357,13 @@ export default function BebePage() {
     if (!currentUser) return
     const r = ligne.routine
     const type = r.type ?? 'meds'
+    // Une température ne se coche pas : on ouvre la saisie, l'événement créé
+    // sera rattaché à la routine par `routineEnCours`.
+    if (type === 'temp') {
+      setRoutineEnCours({ id: r.id, prise: ligne.heure })
+      openNewModal('temp')
+      return
+    }
     await addEvent({
       type,
       data: {
@@ -1347,7 +1379,49 @@ export default function BebePage() {
     })
   }
 
-  const filteredMeds = MEDS_SUGGESTIONS.filter(m => !medsSearch.trim() || m.name.toLowerCase().includes(medsSearch.toLowerCase()))
+  /**
+   * Liste proposée partout où l'on saisit un médicament : les suggestions
+   * intégrées + celles ajoutées par les parents (`Bebe.medicaments`). Un
+   * médicament saisi à la main rejoint la liste à l'enregistrement, il n'y a
+   * donc rien à « créer » explicitement.
+   */
+  const medsConnus = useMemo(() => {
+    const perso = (selectedBaby?.medicaments ?? []).map(m => ({
+      nom: m.nom,
+      quantite: m.quantite != null ? String(m.quantite).replace('.', ',') : '',
+      unite: m.unite ?? '',
+      perso: true,
+    }))
+    const vus = new Set(perso.map(m => cleMed(m.nom, m.quantite, m.unite)))
+    const integres = MEDS_SUGGESTIONS
+      .filter(m => !vus.has(cleMed(m.nom, m.quantite, m.unite)))
+      .map(m => ({ ...m, perso: false }))
+    return [...perso, ...integres]
+  }, [selectedBaby])
+
+  /** Ajoute le médicament saisi à la liste du bébé s'il n'y figure pas déjà */
+  const memoriserMedicament = async (nom: string, quantite: string, unite: string) => {
+    if (!selectedBabyId || !nom.trim()) return
+    if (medsConnus.some(m => cleMed(m.nom, m.quantite, m.unite) === cleMed(nom, quantite, unite))) return
+    const q = Number(quantite.replace(',', '.'))
+    const entree: BebeMedicament = {
+      nom: nom.trim(),
+      ...(Number.isFinite(q) && quantite.trim() ? { quantite: q } : {}),
+      ...(unite.trim() ? { unite: unite.trim() } : {}),
+    }
+    await updateBebe(selectedBabyId, { medicaments: [...(selectedBaby?.medicaments ?? []), entree] })
+  }
+
+  const oublierMedicament = async (nom: string, quantite: string, unite: string) => {
+    if (!selectedBabyId) return
+    await updateBebe(selectedBabyId, {
+      medicaments: (selectedBaby?.medicaments ?? []).filter(
+        m => cleMed(m.nom, m.quantite != null ? String(m.quantite) : '', m.unite ?? '') !== cleMed(nom, quantite, unite),
+      ),
+    })
+  }
+
+  const filteredMeds = medsConnus.filter(m => !medsSearch.trim() || m.nom.toLowerCase().includes(medsSearch.toLowerCase()))
 
   // ─── Rendu ────────────────────────────────────────────────────────────────
 
@@ -1801,6 +1875,56 @@ export default function BebePage() {
                 </p>
               )}
             </div>
+
+            {/* Moyennes de la période affichée — la dose de lait par jour d'abord */}
+            {planningDays.length > 0 && (() => {
+              const jours = planningDays.length
+              const somme = (f: (e: BebeEvent) => number) =>
+                planningDays.reduce((n, d) => n + d.events.reduce((m, e) => m + f(e), 0), 0)
+              const ml     = somme(e => (e.type === 'bottle' ? ((e.data?.amount as number) ?? 0) : 0))
+              const repas  = somme(e => (e.type === 'bottle' ? 1 : 0))
+              const dodo   = somme(e => (e.type === 'sleep' ? ((e.data?.durationMin as number) ?? 0) : 0))
+              const moy = (v: number) => Math.round(v / jours)
+              return (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Moyennes par jour
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center shrink-0">
+                        <Milk size={14} className="text-sky-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{`${moy(ml)} ml`}</p>
+                        <p className="text-[11px] text-gray-400">de lait</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center shrink-0">
+                        <Milk size={14} className="text-sky-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{`${(repas / jours).toFixed(1).replace('.', ',')}`}</p>
+                        <p className="text-[11px] text-gray-400">repas</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
+                        <Moon size={14} className="text-indigo-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{formatDuration(moy(dodo))}</p>
+                        <p className="text-[11px] text-gray-400">de sommeil</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-2">
+                    {`Sur ${jours} jour${jours > 1 ? 's' : ''} où quelque chose a été noté — les jours vides ne comptent pas.`}
+                  </p>
+                </div>
+              )
+            })()}
 
             {planningDays.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
@@ -2502,22 +2626,34 @@ export default function BebePage() {
           <WhenField date={whenForm.date} time={whenForm.time}
             onDate={v => setWhenForm(f => ({ ...f, date: v }))} onTime={v => setWhenForm(f => ({ ...f, time: v }))} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Suggestions</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Médicaments</label>
             <input type="text" placeholder="Rechercher…" value={medsSearch} onChange={e => setMedsSearch(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
             <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
               {filteredMeds.map((s, i) => (
-                <button key={i} type="button" onClick={() => { setMedsForm({ name: s.name, quantite: s.quantite, unite: s.unite }); setMedsSearch('') }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-blue-50 transition ${medsForm.name === s.name && medsForm.quantite === s.quantite && medsForm.unite === s.unite ? 'bg-blue-50' : ''}`}>
-                  <span className="text-sm text-gray-800">{s.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">{formatDose(s.quantite, s.unite)}</span>
-                </button>
+                <div key={i}
+                  className={`w-full flex items-center ${medsForm.name === s.nom && medsForm.quantite === s.quantite && medsForm.unite === s.unite ? 'bg-blue-50' : ''}`}>
+                  <button type="button"
+                    onClick={() => { setMedsForm({ name: s.nom, quantite: s.quantite, unite: s.unite }); setMedsSearch('') }}
+                    className="flex-1 min-w-0 flex items-center justify-between px-3 py-2 text-left hover:bg-blue-50 transition">
+                    <span className="text-sm text-gray-800 truncate">{s.nom}</span>
+                    <span className="text-xs text-gray-400 ml-2 shrink-0">{formatDose(s.quantite, s.unite)}</span>
+                  </button>
+                  {/* Seules les entrées ajoutées par les parents peuvent être retirées */}
+                  {s.perso && (
+                    <button type="button" onClick={() => oublierMedicament(s.nom, s.quantite, s.unite)}
+                      title="Retirer de la liste"
+                      className="p-2 text-gray-300 hover:text-red-500 transition shrink-0"><Trash2 size={13} /></button>
+                  )}
+                </div>
               ))}
               {filteredMeds.length === 0 && <p className="text-sm text-gray-400 px-3 py-2 italic">Aucun résultat</p>}
             </div>
           </div>
           <div className="border-t border-dashed border-gray-200 pt-3 space-y-2">
-            <p className="text-xs font-medium text-gray-500">Saisie personnalisée</p>
+            <p className="text-xs font-medium text-gray-500">
+              Saisie personnalisée <span className="font-normal text-gray-400">— ajoutée à la liste en enregistrant</span>
+            </p>
             <input type="text" placeholder="Nom du médicament" value={medsForm.name} onChange={e => setMedsForm(f => ({ ...f, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             {/* Quantité et unité séparées : on ne corrige que le chiffre d'une prise à l'autre */}
@@ -2553,17 +2689,21 @@ export default function BebePage() {
           {/* Le type choisi décide de l'événement écrit dans l'historique quand on coche */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {([
                 { k: 'meds', l: 'Médicament' },
                 { k: 'bath', l: 'Bain' },
                 { k: 'soin', l: 'Soin' },
+                { k: 'temp', l: 'Température' },
               ] as const).map(o => {
                 const Icone = EVENT_ICONS[o.k]
                 const actif = traitForm.type === o.k
                 return (
                   <button key={o.k} type="button"
-                    onClick={() => setTraitForm(f => ({ ...f, type: o.k, nom: f.nom || (o.k === 'bath' ? 'Bain' : '') }))}
+                    onClick={() => setTraitForm(f => ({
+                      ...f, type: o.k,
+                      nom: f.nom || (o.k === 'bath' ? 'Bain' : o.k === 'temp' ? 'Température' : ''),
+                    }))}
                     className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition ${
                       actif ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300'}`}>
                     <Icone size={16} />
@@ -2576,10 +2716,22 @@ export default function BebePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intitulé</label>
             <input type="text"
-              placeholder={traitForm.type === 'meds' ? 'Vitamine D (Adrigyl)' : traitForm.type === 'bath' ? 'Bain' : 'Soin de la peau'}
+              placeholder={traitForm.type === 'meds' ? 'Vitamine D (Adrigyl)' : traitForm.type === 'bath' ? 'Bain' : traitForm.type === 'temp' ? 'Température' : 'Soin de la peau'}
               value={traitForm.nom}
               onChange={e => setTraitForm(f => ({ ...f, nom: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {traitForm.type === 'meds' && (
+              <div className="mt-2 max-h-32 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
+                {medsConnus.map((m, i) => (
+                  <button key={i} type="button"
+                    onClick={() => setTraitForm(f => ({ ...f, nom: m.nom, quantite: m.quantite, unite: m.unite }))}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-rose-50 transition ${traitForm.nom === m.nom && traitForm.quantite === m.quantite ? 'bg-rose-50' : ''}`}>
+                    <span className="text-sm text-gray-800 truncate">{m.nom}</span>
+                    <span className="text-xs text-gray-400 ml-2 shrink-0">{formatDose(m.quantite, m.unite)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {traitForm.type === 'soin' && (
               <div className="flex gap-1.5 flex-wrap mt-2">
                 {SOINS_SUGGESTIONS.map(x => (
@@ -2595,7 +2747,13 @@ export default function BebePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tous les combien ?</label>
             <div className="flex gap-1.5 flex-wrap">
-              {[{ n: '1', l: 'chaque jour' }, { n: '2', l: '1 jour sur 2' }, { n: '3', l: 'tous les 3 j' }, { n: '7', l: 'chaque semaine' }].map(o => (
+              {[
+                { n: '1', l: 'chaque jour' }, { n: '2', l: '1 jour sur 2' }, { n: '3', l: 'tous les 3 j' },
+                { n: '4', l: 'tous les 4 j' }, { n: '5', l: 'tous les 5 j' }, { n: '7', l: 'chaque semaine' },
+                { n: '10', l: 'tous les 10 j' }, { n: '14', l: 'toutes les 2 sem.' }, { n: '15', l: 'tous les 15 j' },
+                { n: '21', l: 'toutes les 3 sem.' }, { n: '30', l: 'chaque mois' }, { n: '60', l: 'tous les 2 mois' },
+                { n: '90', l: 'tous les 3 mois' },
+              ].map(o => (
                 <button key={o.n} type="button" onClick={() => setTraitForm(f => ({ ...f, tousLes: o.n }))}
                   className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${traitForm.tousLes === o.n ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-600'}`}>
                   {o.l}
@@ -2605,6 +2763,11 @@ export default function BebePage() {
                 onChange={e => setTraitForm(f => ({ ...f, tousLes: e.target.value.replace(/\D/g, '') }))}
                 className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
+            {traitForm.type === 'temp' && (
+              <p className="text-xs text-gray-400 mt-1.5">
+                Une température se saisit : cocher la ligne ouvrira la fenêtre de saisie.
+              </p>
+            )}
             {Number(traitForm.tousLes) > 1 && (
               <p className="text-xs text-gray-400 mt-1.5">
                 L&apos;échéance se recale sur la dernière fois où ça a été fait : si le jour prévu est sauté,

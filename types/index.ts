@@ -1371,6 +1371,8 @@ export interface Bebe {
   photoUrl?: string
   /** Sommeil en cours — "Start", ou saisie « fin en attente » ; supprimé au "Réveillé !" */
   activeSleep?: { startTime: Timestamp; note?: string } | null
+  /** Médicaments ajoutés à la main, qui viennent compléter la liste proposée partout */
+  medicaments?: BebeMedicament[]
   /** Routines : ce qui revient régulièrement (vitamine D, bain tous les 2 jours, soin de la peau…).
    *  ⚠️ Le champ s'appelle encore `traitements` pour ne pas migrer les documents existants. */
   traitements?: BebeRoutine[]
@@ -1435,12 +1437,20 @@ export type BebeDiaperKind = 'seche' | 'urine' | 'selles' | 'mixte'
  * Firestore n'est à redéployer (la règle `update` de `babies` accepte tout
  * champ hors `members`/`createdBy`).
  */
+/** Entrée de la liste de médicaments d'un bébé (s'ajoute aux suggestions intégrées) */
+export interface BebeMedicament {
+  nom: string
+  quantite?: number
+  /** Unité au singulier (« goutte », « ml »…) */
+  unite?: string
+}
+
 export interface BebeRoutine {
   /** Identifiant local, posé à la création — relie les fois où c'est fait à la routine */
   id: string
   nom: string
   /** Type d'événement créé quand on coche la ligne (absent = 'meds', pour les fiches d'origine) */
-  type?: Extract<BebeEventType, 'meds' | 'bath' | 'soin'>
+  type?: Extract<BebeEventType, 'meds' | 'bath' | 'soin' | 'temp'>
   quantite?: number
   /** Unité au singulier (« goutte », « ml »…) — l'accord se fait à l'affichage */
   unite?: string
