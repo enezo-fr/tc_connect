@@ -2702,7 +2702,15 @@ export default function BebePage() {
                   <button key={o.k} type="button"
                     onClick={() => setTraitForm(f => ({
                       ...f, type: o.k,
-                      nom: f.nom || (o.k === 'bath' ? 'Bain' : o.k === 'temp' ? 'Température' : ''),
+                      // Bain et température n'ont qu'un intitulé sensé : on le pose.
+                      // Pour les deux autres, on efface celui qui avait été posé
+                      // automatiquement — sinon un « Bain » reste collé après un
+                      // changement de type — mais on garde ce qui a été tapé à la main.
+                      nom: o.k === 'bath' ? 'Bain'
+                        : o.k === 'temp' ? 'Température'
+                        : (f.nom === 'Bain' || f.nom === 'Température') ? '' : f.nom,
+                      // La dose n'a de sens que pour un médicament
+                      ...(o.k === 'meds' ? {} : { quantite: '', unite: '' }),
                     }))}
                     className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition ${
                       actif ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500 hover:border-rose-300'}`}>
