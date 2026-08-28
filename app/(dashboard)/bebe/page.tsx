@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
 import { Milk, Pill, Baby, Hourglass, Check, Sparkles } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
+import { NoteAide } from '@/components/ui/NoteAide'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
 import { BarChart } from '@/components/bebe/BarChart'
 import { predireProchainSommeil } from '@/lib/bebeSommeil'
@@ -99,6 +100,59 @@ const VACCINS_SUGGESTIONS = [
 
 /** Seuil de fièvre (°C) — signalé dans la timeline, jamais interprété médicalement */
 const SEUIL_FIEVRE = 38
+/** Plage habituelle chez le nourrisson (°C) */
+const TEMP_NORMALE = { min: 36, max: 37.5 }
+
+/**
+ * Zone dans laquelle tombe une température, avec sa couleur et le geste utile.
+ *
+ * ⚠️ Ce sont des REPÈRES DE SAISIE, jamais un avis médical : l'app signale ce qui
+ * sort de la plage habituelle et rappelle d'appeler un médecin, elle ne
+ * diagnostique rien. Toute formulation qui ressemblerait à une consigne de soin
+ * doit rester à ce niveau-là.
+ */
+function zoneTemperature(t: number): {
+  cle: 'tres_basse' | 'basse' | 'normale' | 'elevee' | 'fievre' | 'fievre_forte'
+  titre: string; message: string; court: string; alerte: boolean
+  bg: string; texte: string; sousTexte: string; pastille: string; icone: string
+} {
+  if (t < 35.5) return {
+    cle: 'tres_basse', alerte: true, court: 'très basse', titre: 'Température très basse',
+    message: 'Un nourrisson se refroidit vite. Réchauffez-le (peau à peau, couverture, bonnet) et reprenez la mesure. Si elle ne remonte pas, appelez un médecin.',
+    bg: 'bg-blue-50 border-blue-200', texte: 'text-blue-800', sousTexte: 'text-blue-700',
+    pastille: 'bg-blue-100', icone: 'text-blue-600',
+  }
+  if (t < TEMP_NORMALE.min) return {
+    cle: 'basse', alerte: true, court: 'basse', titre: 'Température basse',
+    message: `En dessous de ${TEMP_NORMALE.min} °C. Couvrez-le un peu plus et reprenez la mesure dans 20 à 30 minutes.`,
+    bg: 'bg-sky-50 border-sky-200', texte: 'text-sky-800', sousTexte: 'text-sky-700',
+    pastille: 'bg-sky-100', icone: 'text-sky-600',
+  }
+  if (t <= TEMP_NORMALE.max) return {
+    cle: 'normale', alerte: false, court: '', titre: 'Température normale',
+    message: `Plage habituelle : ${String(TEMP_NORMALE.min).replace('.', ',')} à ${String(TEMP_NORMALE.max).replace('.', ',')} °C.`,
+    bg: 'bg-emerald-50 border-emerald-200', texte: 'text-emerald-800', sousTexte: 'text-emerald-700',
+    pastille: 'bg-emerald-100', icone: 'text-emerald-600',
+  }
+  if (t < SEUIL_FIEVRE) return {
+    cle: 'elevee', alerte: true, court: 'élevée', titre: 'Température un peu élevée',
+    message: 'Découvrez-le un peu, proposez-lui à boire, et reprenez la mesure un peu plus tard.',
+    bg: 'bg-amber-50 border-amber-200', texte: 'text-amber-800', sousTexte: 'text-amber-700',
+    pastille: 'bg-amber-100', icone: 'text-amber-600',
+  }
+  if (t < 39) return {
+    cle: 'fievre', alerte: true, court: 'fièvre', titre: `Fièvre — au-dessus de ${SEUIL_FIEVRE} °C`,
+    message: 'Avant 3 mois, une fièvre justifie un avis médical rapide. Ne donnez un médicament que sur avis du médecin.',
+    bg: 'bg-orange-50 border-orange-200', texte: 'text-orange-800', sousTexte: 'text-orange-700',
+    pastille: 'bg-orange-100', icone: 'text-orange-600',
+  }
+  return {
+    cle: 'fievre_forte', alerte: true, court: 'forte fièvre', titre: 'Fièvre élevée',
+    message: 'Appelez le médecin, ou le 15 s\u2019il est très abattu, geignard, difficile à réveiller ou marbré.',
+    bg: 'bg-red-50 border-red-200', texte: 'text-red-800', sousTexte: 'text-red-700',
+    pastille: 'bg-red-100', icone: 'text-red-600',
+  }
+}
 
 /** Exemples d'observation propres à chaque saisie (texte grisé du champ) */
 const NOTE_PLACEHOLDERS: Record<BebeEventType, string> = {
@@ -379,7 +433,8 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
     case 'temp': {
       if (!data.tempC) return ''
       const t = Number(data.tempC)
-      return `${t.toFixed(1).replace('.', ',')} °C${t >= SEUIL_FIEVRE ? ' · fièvre' : ''}`
+      const z = zoneTemperature(t)
+      return `${t.toFixed(1).replace('.', ',')} °C${z.court ? ` · ${z.court}` : ''}`
     }
     case 'vaccine':
       return data.name ?? ''
@@ -1185,6 +1240,7 @@ export default function BebePage() {
       meds: par('meds').length,
       temps: par('temp').length,
       fievres: par('temp').filter(e => Number(e.data?.tempC) >= SEUIL_FIEVRE).length,
+      tempsBasses: par('temp').filter(e => Number(e.data?.tempC) < TEMP_NORMALE.min).length,
     }
   }, [events, statsRange, journee])
 
@@ -1651,6 +1707,36 @@ export default function BebePage() {
                         Vers {predictedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                         {' · '}Moy. {formatDuration(avgIntervalMin)}
                         {' · '}Dernier {formatTime(lastBottle.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Dernière température du jour hors plage habituelle — signalée tout de suite */}
+            {(() => {
+              const debutJour = new Date(); debutJour.setHours(0, 0, 0, 0)
+              const derniere = events
+                .filter(e => e.type === 'temp' && (e.timestamp?.toDate?.() ?? debutJour) >= debutJour)
+                .sort((a, b) => (b.timestamp?.seconds ?? 0) - (a.timestamp?.seconds ?? 0))[0]
+              const val = Number(derniere?.data?.tempC)
+              if (!derniere || !Number.isFinite(val)) return null
+              const z = zoneTemperature(val)
+              if (!z.alerte) return null
+              return (
+                <div className={`rounded-2xl border p-4 ${z.bg}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${z.pastille}`}>
+                      <Thermometer size={18} className={z.icone} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold ${z.texte}`}>
+                        {`${z.titre} — ${val.toFixed(1).replace('.', ',')} °C à ${formatTime(derniere.timestamp)}`}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${z.sousTexte}`}>{z.message}</p>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Repère de saisie, jamais un avis médical.
                       </p>
                     </div>
                   </div>
@@ -2134,7 +2220,13 @@ export default function BebePage() {
                     lignes={[
                       { l: 'Bains', v: String(stats.bains) },
                       { l: 'Médicaments', v: String(stats.meds) },
-                      { l: 'Températures', v: stats.temps > 0 ? `${stats.temps}${stats.fievres > 0 ? ` · ${stats.fievres} au-dessus de ${SEUIL_FIEVRE} °C` : ''}` : '0' },
+                      { l: 'Températures', v: stats.temps > 0
+                          ? [
+                              String(stats.temps),
+                              stats.fievres > 0 ? `${stats.fievres} au-dessus de ${SEUIL_FIEVRE} °C` : null,
+                              stats.tempsBasses > 0 ? `${stats.tempsBasses} sous ${TEMP_NORMALE.min} °C` : null,
+                            ].filter(Boolean).join(' · ')
+                          : '0' },
                       ...(stats.tirages > 0 ? [
                         { l: 'Tirages', v: String(stats.tirages) },
                         { l: 'Lait tiré', v: `${stats.tirageMl} ml` },
@@ -2382,15 +2474,16 @@ export default function BebePage() {
                 <div className="space-y-2">
                   {temperatures.slice(0, 20).map(t => {
                     const val = Number(t.data?.tempC)
-                    const fievre = val >= SEUIL_FIEVRE
+                    const z = zoneTemperature(val)
+                    const hors = z.alerte
                     return (
-                      <div key={t.id} className={`rounded-xl border shadow-sm px-4 py-3 flex items-center gap-3 ${fievre ? 'bg-orange-50/60 border-orange-100' : 'bg-white border-gray-100'}`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${fievre ? 'bg-orange-100' : 'bg-gray-100'}`}>
-                          <Thermometer size={16} className={fievre ? 'text-orange-600' : 'text-gray-400'} />
+                      <div key={t.id} className={`rounded-xl border shadow-sm px-4 py-3 flex items-center gap-3 ${hors ? z.bg : 'bg-white border-gray-100'}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${hors ? z.pastille : 'bg-gray-100'}`}>
+                          <Thermometer size={16} className={hors ? z.icone : 'text-gray-400'} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium ${fievre ? 'text-orange-700' : 'text-gray-800'}`}>
-                            {val.toFixed(1).replace('.', ',')} °C{fievre && ' · fièvre'}
+                          <p className={`text-sm font-medium ${hors ? z.texte : 'text-gray-800'}`}>
+                            {`${val.toFixed(1).replace('.', ',')} °C${z.court ? ` · ${z.court}` : ''}`}
                           </p>
                           <p className="text-xs text-gray-400">
                             {t.timestamp?.toDate?.().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} à {formatTime(t.timestamp)}
@@ -2932,6 +3025,14 @@ export default function BebePage() {
         <div className="space-y-4">
           <WhenField date={whenForm.date} time={whenForm.time}
             onDate={v => setWhenForm(f => ({ ...f, date: v }))} onTime={v => setWhenForm(f => ({ ...f, time: v }))} />
+          <NoteAide titre="Les repères du bain" ouvert>
+            <p>Eau à <strong>37 °C</strong> — vérifiez au thermomètre de bain, ou avec le coude ou l&apos;intérieur du poignet, jamais avec la main.</p>
+            <p>Pièce à <strong>22 à 24 °C</strong>, sans courant d&apos;air, et tout préparé à portée de main avant de commencer.</p>
+            <p><strong>Ne le laissez jamais seul</strong>, même une seconde et même avec très peu d&apos;eau : on emmène le bébé avec soi.</p>
+            <p>Un bain <strong>court</strong> suffit, 5 à 10 minutes ; <strong>2 à 3 fois par semaine</strong> chez un nourrisson.</p>
+            <p>Remplissez avant de le mettre dedans (froide puis chaude), et séchez bien <strong>les plis</strong> : cou, aisselles, aine, derrière les oreilles.</p>
+            <p>Tant que le cordon n&apos;est pas tombé, on le sèche soigneusement après le bain.</p>
+          </NoteAide>
           <p className="text-sm text-gray-500">
             Ajoutez une observation si besoin (eau trop chaude, a pleuré, premier bain…).
           </p>
@@ -2984,14 +3085,29 @@ export default function BebePage() {
               ))}
             </div>
           </div>
-          {Number(tempForm.replace(',', '.')) >= SEUIL_FIEVRE && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5">
-              <p className="text-sm font-medium text-orange-700">Au-dessus de {SEUIL_FIEVRE} °C</p>
-              <p className="text-xs text-orange-600 mt-0.5">
-                Repère de saisie uniquement — en cas de doute, c&apos;est le médecin qui tranche.
-              </p>
-            </div>
-          )}
+          {/* Lecture immédiate de la valeur saisie — c'est là qu'on veut être alerté */}
+          {(() => {
+            const v = Number(tempForm.replace(',', '.'))
+            if (!tempForm.trim() || !Number.isFinite(v) || v <= 0) return null
+            const z = zoneTemperature(v)
+            return (
+              <div className={`rounded-xl border px-4 py-2.5 ${z.bg}`}>
+                <p className={`text-sm font-semibold ${z.texte}`}>{z.titre}</p>
+                <p className={`text-xs mt-0.5 ${z.sousTexte}`}>{z.message}</p>
+                {z.alerte && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Repère de saisie uniquement — en cas de doute, c&apos;est le médecin qui tranche.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+          <NoteAide titre="Bien prendre la température">
+            <p>La voie <strong>rectale</strong> est la référence chez le nourrisson : c&apos;est la plus fiable.</p>
+            <p>Sous le bras ou au front, on lit environ <strong>0,3 à 0,5 °C de moins</strong> — à confirmer en rectal si le chiffre est limite.</p>
+            <p>Pas juste après un bain, un repas ou s&apos;il était très couvert : attendez une vingtaine de minutes.</p>
+            <p>Plage habituelle : <strong>36 à 37,5 °C</strong>. Fièvre à partir de <strong>38 °C</strong>.</p>
+          </NoteAide>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
           <ModalFooter onCancel={closeModal} onSave={handleSaveEvent} saving={savingEvent}
             disabled={!tempForm.trim()} label={editingEvent ? 'Enregistrer' : 'Ajouter'} />
