@@ -229,11 +229,27 @@ const DEFAUTS_FALLBACK: Required<BebeDefauts> = {
 /** Journée par défaut quand elle n'a pas été réglée pour ce bébé */
 const JOURNEE_FALLBACK: BebeJournee = { debut: '07:00', fin: '20:00' }
 
-/** Soins courants du nourrisson — repères de saisie, la liste reste libre */
+/** Suggestions pour « Autre récurrence » — repères de saisie, la liste reste libre */
 const SOINS_SUGGESTIONS = [
-  'Soin de la peau', 'Crème hydratante', 'Cordon ombilical', 'Nez (sérum physiologique)',
-  'Yeux', 'Ongles', 'Massage', 'Change de pansement',
+  'Bain', 'Température', 'Soin de la peau', 'Crème hydratante', 'Cordon ombilical',
+  'Nez (sérum physiologique)', 'Yeux', 'Ongles', 'Massage', 'Change de pansement',
 ]
+
+/**
+ * « Autre récurrence » : on tape ce qu'il y a à faire, et le type d'événement
+ * écrit dans l'historique se déduit de l'intitulé.
+ *
+ * 🔑 Le but est qu'un bain reste un BAIN (il compte dans les bains de
+ * l'historique et des stats) et qu'une température reste une TEMPÉRATURE (cocher
+ * ouvre la saisie de la valeur), sans imposer un menu de types à qui veut juste
+ * écrire « soin de la peau ». Tout le reste est un soin.
+ */
+function typeDepuisIntitule(nom: string): 'bath' | 'temp' | 'soin' {
+  const n = nom.trim().toLowerCase()
+  if (/\bbain|baignade/.test(n)) return 'bath'
+  if (/temp[ée]rature|fi[èe]vre/.test(n)) return 'temp'
+  return 'soin'
+}
 
 /** Unités de prise — au SINGULIER : l'accord se fait à l'affichage (`formatDose`) */
 const UNITES_MEDS = ['goutte', 'ml', 'mg', 'comprimé', 'sachet', 'dosette', 'suppositoire', 'pulvérisation']
@@ -806,7 +822,7 @@ export default function BebePage() {
   const [traitDelete,    setTraitDelete]    = useState<string | null>(null)
   const [savingTrait,    setSavingTrait]    = useState(false)
   const [traitForm,      setTraitForm]      = useState<{
-    nom: string; type: 'meds' | 'bath' | 'soin' | 'temp'; quantite: string; unite: string
+    nom: string; type: 'meds' | 'autre'; quantite: string; unite: string
     tousLes: string; heures: string[]; jusquAu: string
   }>({ nom: '', type: 'meds', quantite: '', unite: '', tousLes: '1', heures: ['08:00'], jusquAu: '' })
 
@@ -814,7 +830,8 @@ export default function BebePage() {
     setTraitEditId(t?.id ?? null)
     setTraitForm({
       nom: t?.nom ?? '',
-      type: t?.type ?? 'meds',
+      // Une routine sans type est une fiche d'avant les routines : c'était un médicament
+      type: (t?.type ?? 'meds') === 'meds' ? 'meds' : 'autre',
       quantite: t?.quantite != null ? String(t.quantite).replace('.', ',') : '',
       unite: t?.unite ?? '',
       tousLes: String(t?.tousLesNJours ?? 1),
@@ -836,7 +853,8 @@ export default function BebePage() {
       const t: BebeRoutine = {
         id: traitEditId ?? `t${Date.now().toString(36)}`,
         nom: traitForm.nom.trim(),
-        type: traitForm.type,
+        // « Autre récurrence » : le type réel se lit dans l'intitulé
+        type: traitForm.type === 'meds' ? 'meds' : typeDepuisIntitule(traitForm.nom),
         tousLesNJours: n,
         // Au-delà du quotidien, une seule heure sert de repère
         heures: n > 1 ? (heures.length ? [heures[0]] : []) : (heures.length ? heures : ['08:00']),
@@ -2790,26 +2808,17 @@ export default function BebePage() {
           {/* Le type choisi décide de l'événement écrit dans l'historique quand on coche */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {([
-                { k: 'meds', l: 'Médicament' },
-                { k: 'bath', l: 'Bain' },
-                { k: 'soin', l: 'Soin' },
-                { k: 'temp', l: 'Température' },
+                { k: 'meds',  l: 'Médicament', i: EVENT_ICONS.meds },
+                { k: 'autre', l: 'Autre récurrence', i: EVENT_ICONS.soin },
               ] as const).map(o => {
-                const Icone = EVENT_ICONS[o.k]
+                const Icone = o.i
                 const actif = traitForm.type === o.k
                 return (
                   <button key={o.k} type="button"
                     onClick={() => setTraitForm(f => ({
                       ...f, type: o.k,
-                      // Bain et température n'ont qu'un intitulé sensé : on le pose.
-                      // Pour les deux autres, on efface celui qui avait été posé
-                      // automatiquement — sinon un « Bain » reste collé après un
-                      // changement de type — mais on garde ce qui a été tapé à la main.
-                      nom: o.k === 'bath' ? 'Bain'
-                        : o.k === 'temp' ? 'Température'
-                        : (f.nom === 'Bain' || f.nom === 'Température') ? '' : f.nom,
                       // La dose n'a de sens que pour un médicament
                       ...(o.k === 'meds' ? {} : { quantite: '', unite: '' }),
                     }))}
@@ -2825,7 +2834,7 @@ export default function BebePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Intitulé</label>
             <input type="text"
-              placeholder={traitForm.type === 'meds' ? 'Vitamine D (Adrigyl)' : traitForm.type === 'bath' ? 'Bain' : traitForm.type === 'temp' ? 'Température' : 'Soin de la peau'}
+              placeholder={traitForm.type === 'meds' ? 'Vitamine D (Adrigyl)' : 'Bain, soin de la peau, température…'}
               value={traitForm.nom}
               onChange={e => setTraitForm(f => ({ ...f, nom: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -2841,7 +2850,7 @@ export default function BebePage() {
                 ))}
               </div>
             )}
-            {traitForm.type === 'soin' && (
+            {traitForm.type === 'autre' && (
               <div className="flex gap-1.5 flex-wrap mt-2">
                 {SOINS_SUGGESTIONS.map(x => (
                   <button key={x} type="button" onClick={() => setTraitForm(f => ({ ...f, nom: x }))}
@@ -2850,6 +2859,16 @@ export default function BebePage() {
                   </button>
                 ))}
               </div>
+            )}
+            {/* On dit ce que l'intitulé a déclenché : rien de magique en douce */}
+            {traitForm.type === 'autre' && traitForm.nom.trim() && (
+              <p className="text-xs text-gray-400 mt-1.5">
+                {typeDepuisIntitule(traitForm.nom) === 'bath'
+                  ? 'Compté comme un bain dans l\u2019historique et les statistiques.'
+                  : typeDepuisIntitule(traitForm.nom) === 'temp'
+                    ? 'Compté comme une prise de température : cocher la ligne ouvrira la saisie de la valeur.'
+                    : 'Compté comme un soin dans l\u2019historique.'}
+              </p>
             )}
           </div>
           {/* Périodicité : au-delà du quotidien, l'échéance se recale sur la dernière fois faite */}
@@ -2872,11 +2891,6 @@ export default function BebePage() {
                 onChange={e => setTraitForm(f => ({ ...f, tousLes: e.target.value.replace(/\D/g, '') }))}
                 className="w-14 px-2 py-1.5 border border-gray-300 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            {traitForm.type === 'temp' && (
-              <p className="text-xs text-gray-400 mt-1.5">
-                Une température se saisit : cocher la ligne ouvrira la fenêtre de saisie.
-              </p>
-            )}
             {Number(traitForm.tousLes) > 1 && (
               <p className="text-xs text-gray-400 mt-1.5">
                 L&apos;échéance se recale sur la dernière fois où ça a été fait : si le jour prévu est sauté,
@@ -3033,14 +3047,9 @@ export default function BebePage() {
         <div className="space-y-4">
           <WhenField date={whenForm.date} time={whenForm.time}
             onDate={v => setWhenForm(f => ({ ...f, date: v }))} onTime={v => setWhenForm(f => ({ ...f, time: v }))} />
-          <NoteAide titre="Les repères du bain" ouvert>
-            <p>Eau à <strong>37 °C</strong> — vérifiez au thermomètre de bain, ou avec le coude ou l&apos;intérieur du poignet, jamais avec la main.</p>
-            <p>Pièce à <strong>22 à 24 °C</strong>, sans courant d&apos;air, et tout préparé à portée de main avant de commencer.</p>
-            <p><strong>Ne le laissez jamais seul</strong>, même une seconde et même avec très peu d&apos;eau : on emmène le bébé avec soi.</p>
-            <p>Un bain <strong>court</strong> suffit, 5 à 10 minutes ; <strong>2 à 3 fois par semaine</strong> chez un nourrisson.</p>
-            <p>Remplissez avant de le mettre dedans (froide puis chaude), et séchez bien <strong>les plis</strong> : cou, aisselles, aine, derrière les oreilles.</p>
-            <p>Tant que le cordon n&apos;est pas tombé, on le sèche soigneusement après le bain.</p>
-          </NoteAide>
+          <div className="bg-cyan-50 border border-cyan-100 rounded-xl px-4 py-2.5">
+            <p className="text-sm font-medium text-cyan-800">Eau à 37 °C</p>
+          </div>
           <p className="text-sm text-gray-500">
             Ajoutez une observation si besoin (eau trop chaude, a pleuré, premier bain…).
           </p>
