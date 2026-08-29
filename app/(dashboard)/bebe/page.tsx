@@ -813,6 +813,9 @@ export default function BebePage() {
     await updateBebe(selectedBabyId, { activeSleep: null })
   }
 
+  /** Ligne de « À faire aujourd'hui » en attente de confirmation (clé de la ligne) */
+  const [confirmPrise, setConfirmPrise] = useState<string | null>(null)
+
   /** Routine en attente de saisie (température) : rattache l'événement à venir */
   const [routineEnCours, setRoutineEnCours] = useState<{ id: string; prise: string } | null>(null)
 
@@ -1803,10 +1806,20 @@ export default function BebePage() {
                             l.depuis === null ? 'jamais fait' : `dernier il y a ${l.depuis} j`,
                           ].join(' · ')
                         : (l.heure ? `vers ${l.heure}` : 'dans la journée')
+                    const enConfirmation = confirmPrise === l.cle
+                    // Une température se valide déjà dans sa fenêtre de saisie : pas de
+                    // confirmation en plus pour la cocher. Décocher efface, donc toujours.
+                    const aConfirmer = fait || (l.routine.type ?? 'meds') !== 'temp'
+                    const demander = () => (aConfirmer ? setConfirmPrise(l.cle) : noterPrise(l))
+                    const confirmer = async () => {
+                      setConfirmPrise(null)
+                      if (fait) await deleteEvent(l.event!.id)
+                      else await noterPrise(l)
+                    }
                     return (
                       <div key={l.cle} className="flex items-center gap-3">
                         <button
-                          onClick={() => (fait ? deleteEvent(l.event!.id) : noterPrise(l))}
+                          onClick={() => (enConfirmation ? setConfirmPrise(null) : demander())}
                           title={fait ? 'Annuler' : 'Noter comme fait'}
                           className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
                             fait ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
@@ -1815,21 +1828,42 @@ export default function BebePage() {
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${fait ? 'bg-gray-100' : coul.bg}`}>
                           <Icone size={15} className={fait ? 'text-gray-400' : coul.text} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
-                            {[l.routine.nom, dose].filter(Boolean).join(' · ')}
-                          </p>
-                          <p className={`text-xs ${!fait && l.retard > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
-                            {!fait && l.retard > 0
-                              ? `en retard de ${l.retard} j · ${sousTitre}`
-                              : sousTitre}
-                          </p>
-                        </div>
-                        {!fait && (
-                          <button onClick={() => noterPrise(l)}
-                            className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
-                            Fait
-                          </button>
+                        {enConfirmation ? (
+                          // Confirmation EN LIGNE, sur la ligne concernée : pas de fenêtre
+                          // par-dessus l'accueil pour un geste aussi courant.
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
+                            <p className="flex-1 min-w-0 text-xs text-gray-600 truncate">
+                              {fait ? `Annuler « ${l.routine.nom} » ?` : `Noter « ${l.routine.nom} » ?`}
+                            </p>
+                            <button onClick={() => setConfirmPrise(null)}
+                              className="shrink-0 text-xs text-gray-400 hover:text-gray-600 px-2 py-1 transition">
+                              Non
+                            </button>
+                            <button onClick={confirmer}
+                              className={`shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition ${
+                                fait ? 'bg-gray-500 hover:bg-gray-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                              {fait ? 'Oui, annuler' : 'Oui, fait'}
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
+                                {[l.routine.nom, dose].filter(Boolean).join(' · ')}
+                              </p>
+                              <p className={`text-xs ${!fait && l.retard > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
+                                {!fait && l.retard > 0
+                                  ? `en retard de ${l.retard} j · ${sousTitre}`
+                                  : sousTitre}
+                              </p>
+                            </div>
+                            {!fait && (
+                              <button onClick={demander}
+                                className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
+                                Fait
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     )
