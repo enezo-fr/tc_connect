@@ -419,7 +419,7 @@ function eventDescription(type: BebeEventType, data: Record<string, any>, journe
       return [
         mesure,
         data.kind ? k[data.kind] ?? data.kind : null,
-        data.wasted ? `dont ${data.wasted} ml jeté` : null,
+        data.wasted ? `+ ${data.wasted} ml jeté` : null,
       ].filter(Boolean).join(' · ') || 'Repas'
     }
     case 'diaper': {
@@ -1028,7 +1028,8 @@ export default function BebePage() {
           : {
               kind: bottleForm.kind,
               amount: Number(bottleForm.amount) || 0,
-              // « dont jeté » : uniquement pour un biberon de lait maternel, et seulement s'il y a un reste
+              // « jeté » : uniquement pour un biberon de lait maternel, et seulement s'il y a un reste.
+              // ⚠️ C'est un décrément EN PLUS de `amount` (= ce qui a été bu), pas une part de celui-ci.
               ...(bottleForm.kind === 'tire_lait' && Number(bottleForm.wasted) > 0
                 ? { wasted: Number(bottleForm.wasted) } : {}),
             }
@@ -2602,7 +2603,7 @@ export default function BebePage() {
           {/* Reste jeté — seulement pour un biberon de lait maternel (sort de la réserve) */}
           {bottleForm.kind === 'tire_lait' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dont jeté (ml)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Jeté (ml)</label>
               <input type="number" min={0} step={5} value={bottleForm.wasted}
                 onChange={e => setBottleForm(f => ({ ...f, wasted: e.target.value }))}
                 placeholder="0"
@@ -2616,8 +2617,17 @@ export default function BebePage() {
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                Reste non bu, retiré de la réserve de lait maternel. Laissez vide si tout a été bu.
+                Ce qui restait dans le biberon et qui part à l&apos;évier — <strong>en plus</strong> de
+                la quantité bue, jamais compris dedans. Laissez vide si tout a été bu.
               </p>
+              {/* Le total sorti du frigo, dit noir sur blanc : c'est là que le doute naissait */}
+              {Number(bottleForm.wasted) > 0 && (
+                <div className="bg-sky-50 border border-sky-100 rounded-xl px-3 py-2 mt-2">
+                  <p className="text-xs text-sky-800">
+                    {`${Number(bottleForm.amount) || 0} ml bus + ${Number(bottleForm.wasted)} ml jetés = ${(Number(bottleForm.amount) || 0) + Number(bottleForm.wasted)} ml sortis de la réserve.`}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -3033,7 +3043,7 @@ export default function BebePage() {
           </div>
           <p className="text-xs text-gray-400">
             Lait maternel jeté sans avoir été bu (périmé, reste d&apos;un biberon…). Il est retiré
-            de la réserve. Pour le reste d&apos;un biberon donné, utilisez plutôt le champ « dont jeté »
+            de la réserve. Pour le fond d&apos;un biberon donné, utilisez plutôt le champ « jeté »
             du repas.
           </p>
           <NoteField value={noteForm} onChange={setNoteForm} type={modalType ?? 'bottle'} />
