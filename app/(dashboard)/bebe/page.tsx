@@ -229,11 +229,18 @@ const DEFAUTS_FALLBACK: Required<BebeDefauts> = {
 /** Journée par défaut quand elle n'a pas été réglée pour ce bébé */
 const JOURNEE_FALLBACK: BebeJournee = { debut: '07:00', fin: '20:00' }
 
-/** Suggestions pour « Autre récurrence » — repères de saisie, la liste reste libre */
+/** Soins courants du nourrisson — la saisie reste libre */
 const SOINS_SUGGESTIONS = [
-  'Bain', 'Température', 'Soin de la peau', 'Crème hydratante', 'Cordon ombilical',
-  'Nez (sérum physiologique)', 'Yeux', 'Ongles', 'Massage', 'Change de pansement',
+  'Soin de la peau', 'Crème hydratante', 'Cordon ombilical', 'Nez (sérum physiologique)',
+  'Yeux', 'Ongles', 'Massage', 'Change de pansement',
 ]
+
+/**
+ * Suggestions de la modale « Autre récurrence » UNIQUEMENT : là, un seul champ
+ * couvre les trois familles, donc le bain et la température ont leur place.
+ * ⚠️ Surtout pas dans la modale Soin, où ils ont déjà leur propre tuile.
+ */
+const RECURRENCES_SUGGESTIONS = ['Bain', 'Température', ...SOINS_SUGGESTIONS]
 
 /**
  * « Autre récurrence » : on tape ce qu'il y a à faire, et le type d'événement
@@ -2896,7 +2903,7 @@ export default function BebePage() {
             )}
             {traitForm.type === 'autre' && (
               <div className="flex gap-1.5 flex-wrap mt-2">
-                {SOINS_SUGGESTIONS.map(x => (
+                {RECURRENCES_SUGGESTIONS.map(x => (
                   <button key={x} type="button" onClick={() => setTraitForm(f => ({ ...f, nom: x }))}
                     className={`px-2.5 py-1 text-xs rounded-lg border transition ${traitForm.nom === x ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}>
                     {x}
