@@ -2130,13 +2130,14 @@ export default function BebePage() {
               const ml     = somme(e => (e.type === 'bottle' ? ((e.data?.amount as number) ?? 0) : 0))
               const repas  = somme(e => (e.type === 'bottle' ? 1 : 0))
               const dodo   = somme(e => (e.type === 'sleep' ? ((e.data?.durationMin as number) ?? 0) : 0))
+              const tire   = somme(e => (e.type === 'pump' ? ((e.data?.amount as number) ?? 0) : 0))
               const moy = (v: number) => Math.round(v / jours)
               return (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                     Moyennes par jour
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center shrink-0">
                         <Milk size={14} className="text-sky-600" />
@@ -2164,6 +2165,18 @@ export default function BebePage() {
                         <p className="text-[11px] text-gray-400">de sommeil</p>
                       </div>
                     </div>
+                    {/* Le tirage n'apparaît que si le foyer en fait, comme la réserve de lait */}
+                    {tire > 0 && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center shrink-0">
+                          <Droplet size={14} className="text-pink-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800">{`${moy(tire)} ml`}</p>
+                          <p className="text-[11px] text-gray-400">tirés</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <p className="text-[11px] text-gray-400 mt-2">
                     {`Sur ${jours} jour${jours > 1 ? 's' : ''} où quelque chose a été noté — les jours vides ne comptent pas.`}
@@ -2193,7 +2206,9 @@ export default function BebePage() {
                   const diapers = dayEvts.filter(e => e.type === 'diaper')
                   const sleeps  = dayEvts.filter(e => e.type === 'sleep')
                   const meds    = dayEvts.filter(e => e.type === 'meds')
+                  const pumps   = dayEvts.filter(e => e.type === 'pump')
                   const totalMl  = bottles.reduce((n, e) => n + ((e.data?.amount as number) ?? 0), 0)
+                  const tireMl   = pumps.reduce((n, e) => n + ((e.data?.amount as number) ?? 0), 0)
                   const sleepMin = sleeps.reduce((n, e) => n + ((e.data?.durationMin as number) ?? 0), 0)
                   const sleepSiesteMin = sleeps
                     .filter(e => { const d = dateRattachement(e); return d && !estNuit(d, journee) })
@@ -2238,6 +2253,17 @@ export default function BebePage() {
                               <p className="text-[11px] text-gray-400">
                                 {formatDuration(sleepSiesteMin)} sieste · {formatDuration(sleepMin - sleepSiesteMin)} nuit
                               </p>
+                            </div>
+                          </div>
+                        )}
+                        {pumps.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center shrink-0">
+                              <Droplet size={14} className="text-pink-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Tirages</p>
+                              <p className="text-sm font-semibold text-gray-800">{`${pumps.length} · ${tireMl} ml`}</p>
                             </div>
                           </div>
                         )}
