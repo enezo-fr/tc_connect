@@ -829,6 +829,9 @@ export default function BebePage() {
     await updateBebe(selectedBabyId, { activeSleep: null })
   }
 
+  /** Replier/déplier les lignes déjà faites du jour (masquées par défaut) */
+  const [voirFaits, setVoirFaits] = useState(false)
+
   /** Ligne de « À faire aujourd'hui » en attente de confirmation (clé de la ligne) */
   const [confirmPrise, setConfirmPrise] = useState<string | null>(null)
 
@@ -1488,6 +1491,15 @@ export default function BebePage() {
     return lignes.sort((a, b) => (a.heure || '99:99').localeCompare(b.heure || '99:99'))
   }, [selectedBaby, events])
 
+  /**
+   * Une ligne quitte « À faire aujourd'hui » dès qu'elle est faite — et seulement
+   * une fois l'événement réellement enregistré : `l.event` vient de l'écoute
+   * Firestore, jamais d'un état local posé au moment du clic. Rien ne disparaît
+   * donc sur une écriture qui échouerait.
+   */
+  const prisesAFaire = prisesDuJour.filter(l => !l.event)
+  const prisesFaites = prisesDuJour.filter(l => l.event)
+
   /** Cocher une ligne écrit un VRAI événement du type de la routine (médicament, bain, soin) */
   const noterPrise = async (ligne: { routine: BebeRoutine; heure: string }) => {
     if (!currentUser) return
@@ -1842,8 +1854,16 @@ export default function BebePage() {
                     </button>
                   </div>
                 </div>
+                {prisesAFaire.length === 0 && !voirFaits && (
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Check size={14} className="text-emerald-600" />
+                    </div>
+                    <p className="text-sm text-gray-500">Tout est fait pour aujourd&apos;hui.</p>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  {prisesDuJour.map(l => {
+                  {(voirFaits ? [...prisesAFaire, ...prisesFaites] : prisesAFaire).map(l => {
                     const fait = !!l.event
                     const Icone = EVENT_ICONS[l.routine.type ?? 'meds']
                     const coul  = EVENT_COLORS[l.routine.type ?? 'meds']
@@ -1919,6 +1939,14 @@ export default function BebePage() {
                     )
                   })}
                 </div>
+                {prisesFaites.length > 0 && (
+                  <button onClick={() => setVoirFaits(v => !v)}
+                    className="text-xs font-medium text-gray-400 hover:text-gray-600 transition mt-2">
+                    {voirFaits
+                      ? 'Masquer ce qui est fait'
+                      : `Voir ce qui est fait (${prisesFaites.length})`}
+                  </button>
+                )}
               </div>
             )}
 
