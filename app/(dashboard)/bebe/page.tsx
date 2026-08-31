@@ -845,8 +845,8 @@ export default function BebePage() {
   const [savingTrait,    setSavingTrait]    = useState(false)
   const [traitForm,      setTraitForm]      = useState<{
     nom: string; type: 'meds' | 'autre'; quantite: string; unite: string
-    tousLes: string; heures: string[]; jusquAu: string
-  }>({ nom: '', type: 'meds', quantite: '', unite: '', tousLes: '1', heures: ['08:00'], jusquAu: '' })
+    tousLes: string; heures: string[]; jusquAu: string; note: string
+  }>({ nom: '', type: 'meds', quantite: '', unite: '', tousLes: '1', heures: ['08:00'], jusquAu: '', note: '' })
 
   const openTraitModal = (t?: BebeRoutine) => {
     setTraitEditId(t?.id ?? null)
@@ -859,6 +859,7 @@ export default function BebePage() {
       tousLes: String(t?.tousLesNJours ?? 1),
       heures: t?.heures?.length ? [...t.heures] : ['08:00'],
       jusquAu: t?.jusquAu?.toDate ? dateInputStr(t.jusquAu.toDate()) : '',
+      note: t?.note ?? '',
     })
     setShowTraitModal(true)
   }
@@ -882,6 +883,7 @@ export default function BebePage() {
         heures: n > 1 ? (heures.length ? [heures[0]] : []) : (heures.length ? heures : ['08:00']),
         ...(traitForm.type === 'meds' && Number.isFinite(q) && traitForm.quantite.trim() ? { quantite: q } : {}),
         ...(traitForm.type === 'meds' && traitForm.unite.trim() ? { unite: traitForm.unite.trim() } : {}),
+        ...(traitForm.note.trim() ? { note: traitForm.note.trim() } : {}),
         ...(traitForm.jusquAu ? { jusquAu: Timestamp.fromDate(dateFromInput(traitForm.jusquAu)) } : {}),
       }
       if (traitForm.type === 'meds') {
@@ -1926,6 +1928,10 @@ export default function BebePage() {
                                   ? `en retard de ${l.retard} j · ${sousTitre}`
                                   : sousTitre}
                               </p>
+                              {/* La note dit COMMENT faire : elle a sa place au moment de le faire */}
+                              {!fait && l.routine.note && (
+                                <p className="text-xs text-gray-500 italic truncate">{l.routine.note}</p>
+                              )}
                             </div>
                             {!fait && (
                               <button onClick={demander}
@@ -2604,6 +2610,9 @@ export default function BebePage() {
                               fin ? `${termine ? 'terminé le' : 'jusqu\u2019au'} ${fin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}` : null,
                             ].filter(Boolean).join(' · ')}
                           </p>
+                          {t.note && (
+                            <p className="text-xs text-gray-500 italic mt-0.5 break-words">{t.note}</p>
+                          )}
                         </div>
                         {traitDelete === t.id ? (
                           <div className="flex items-center gap-1 shrink-0">
@@ -3176,6 +3185,16 @@ export default function BebePage() {
                 )}
               </div>
             )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+            <AutoTextarea value={traitForm.note} onChange={v => setTraitForm(f => ({ ...f, note: v }))} minRows={2}
+              placeholder="Facultatif — dans le biberon du matin, après le bain, ordonnance du 12/08…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="text-xs text-gray-400 mt-1">
+              Elle reste attachée à la routine — elle décrit comment faire, elle n&apos;est pas recopiée
+              sur chaque prise notée.
+            </p>
           </div>
           <ModalFooter onCancel={() => setShowTraitModal(false)} onSave={saveTraitement} saving={savingTrait}
             disabled={!traitForm.nom.trim()} label={traitEditId ? 'Enregistrer' : 'Ajouter'} />

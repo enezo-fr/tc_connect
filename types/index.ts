@@ -1459,6 +1459,8 @@ export interface BebeRoutine {
   /** Moments de la journée, « HH:MM ». Une entrée par prise quotidienne ;
    *  au-delà d'un jour sur deux, seule la première sert de repère horaire. */
   heures: string[]
+  /** Note libre : comment la faire, où, avec quoi… (jamais recopiée sur les événements) */
+  note?: string
   /** Dernier jour, INCLUS (ex. les 18 mois du bébé) ; absent = sans fin */
   jusquAu?: Timestamp
 }
