@@ -1878,20 +1878,14 @@ export default function BebePage() {
                             l.depuis === null ? 'jamais fait' : `dernier il y a ${l.depuis} j`,
                           ].join(' · ')
                         : (l.heure ? `vers ${l.heure}` : 'dans la journée')
-                    const enConfirmation = confirmPrise === l.cle
                     // Une température se valide déjà dans sa fenêtre de saisie : pas de
                     // confirmation en plus pour la cocher. Décocher efface, donc toujours.
                     const aConfirmer = fait || (l.routine.type ?? 'meds') !== 'temp'
                     const demander = () => (aConfirmer ? setConfirmPrise(l.cle) : noterPrise(l))
-                    const confirmer = async () => {
-                      setConfirmPrise(null)
-                      if (fait) await deleteEvent(l.event!.id)
-                      else await noterPrise(l)
-                    }
                     return (
                       <div key={l.cle} className="flex items-center gap-3">
                         <button
-                          onClick={() => (enConfirmation ? setConfirmPrise(null) : demander())}
+                          onClick={demander}
                           title={fait ? 'Annuler' : 'Noter comme fait'}
                           className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
                             fait ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent hover:border-emerald-400'}`}>
@@ -1900,46 +1894,25 @@ export default function BebePage() {
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${fait ? 'bg-gray-100' : coul.bg}`}>
                           <Icone size={15} className={fait ? 'text-gray-400' : coul.text} />
                         </div>
-                        {enConfirmation ? (
-                          // Confirmation EN LIGNE, sur la ligne concernée : pas de fenêtre
-                          // par-dessus l'accueil pour un geste aussi courant.
-                          <div className="flex-1 min-w-0 flex items-center gap-2">
-                            <p className="flex-1 min-w-0 text-xs text-gray-600 truncate">
-                              {fait ? `Annuler « ${l.routine.nom} » ?` : `Noter « ${l.routine.nom} » ?`}
-                            </p>
-                            <button onClick={() => setConfirmPrise(null)}
-                              className="shrink-0 text-xs text-gray-400 hover:text-gray-600 px-2 py-1 transition">
-                              Non
-                            </button>
-                            <button onClick={confirmer}
-                              className={`shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition ${
-                                fait ? 'bg-gray-500 hover:bg-gray-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
-                              {fait ? 'Oui, annuler' : 'Oui, fait'}
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
-                                {[l.routine.nom, dose].filter(Boolean).join(' · ')}
-                              </p>
-                              <p className={`text-xs ${!fait && l.retard > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
-                                {!fait && l.retard > 0
-                                  ? `en retard de ${l.retard} j · ${sousTitre}`
-                                  : sousTitre}
-                              </p>
-                              {/* La note dit COMMENT faire : elle a sa place au moment de le faire */}
-                              {!fait && l.routine.note && (
-                                <p className="text-xs text-gray-500 italic truncate">{l.routine.note}</p>
-                              )}
-                            </div>
-                            {!fait && (
-                              <button onClick={demander}
-                                className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
-                                Fait
-                              </button>
-                            )}
-                          </>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm truncate ${fait ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>
+                            {[l.routine.nom, dose].filter(Boolean).join(' · ')}
+                          </p>
+                          <p className={`text-xs ${!fait && l.retard > 0 ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
+                            {!fait && l.retard > 0
+                              ? `en retard de ${l.retard} j · ${sousTitre}`
+                              : sousTitre}
+                          </p>
+                          {/* La note dit COMMENT faire : elle a sa place au moment de le faire */}
+                          {!fait && l.routine.note && (
+                            <p className="text-xs text-gray-500 italic truncate">{l.routine.note}</p>
+                          )}
+                        </div>
+                        {!fait && (
+                          <button onClick={demander}
+                            className="shrink-0 text-xs font-semibold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg transition">
+                            Fait
+                          </button>
                         )}
                       </div>
                     )
@@ -3597,6 +3570,63 @@ export default function BebePage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Confirmer une ligne de « À faire aujourd'hui » ──────────────────── */}
+      {/* Une vraie fenêtre plutôt qu'une confirmation posée sur la ligne : celle-ci
+          passait inaperçue, alors que le geste écrit — ou efface — un événement. */}
+      {(() => {
+        const l = prisesDuJour.find(x => x.cle === confirmPrise) ?? null
+        const fait = !!l?.event
+        return (
+          <Modal isOpen={!!l} onClose={() => setConfirmPrise(null)}
+            title={fait ? 'Annuler cette ligne' : 'Noter comme fait'} size="sm">
+            {l && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const Icone = EVENT_ICONS[l.routine.type ?? 'meds']
+                    const coul  = EVENT_COLORS[l.routine.type ?? 'meds']
+                    return (
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${coul.bg}`}>
+                        <Icone size={18} className={coul.text} />
+                      </div>
+                    )
+                  })()}
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 break-words">
+                      {[l.routine.nom, formatDose(l.routine.quantite, l.routine.unite)].filter(Boolean).join(' · ')}
+                    </p>
+                    {l.routine.note && (
+                      <p className="text-xs text-gray-500 italic break-words">{l.routine.note}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {fait
+                    ? `Cette ligne repassera « à faire », et la prise notée à ${formatTime(l.event!.timestamp)} sera supprimée de l'historique.`
+                    : "C'est noté tout de suite dans l'historique, à l'heure actuelle."}
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmPrise(null)}
+                    className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                    Annuler
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setConfirmPrise(null)
+                      if (fait) await deleteEvent(l.event!.id)
+                      else await noterPrise(l)
+                    }}
+                    className={`flex-1 text-white py-2.5 rounded-xl text-sm font-medium transition ${
+                      fait ? 'bg-gray-500 hover:bg-gray-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                    {fait ? 'Oui, annuler' : "Oui, c'est fait"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        )
+      })()}
 
       {/* ── Partage avec l'autre parent ─────────────────────────────────────── */}
       {selectedBaby && (
