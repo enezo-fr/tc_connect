@@ -7,7 +7,7 @@ import { useBebeEvents, EVENTS_LIMIT_ALL } from '@/hooks/useBebeEvents'
 import { StoreGate } from '@/components/ui/StoreGate'
 import Modal from '@/components/ui/Modal'
 import { Trash2, Pencil, Plus, Star, Moon, CalendarDays, LayoutList, Camera, Play, Gift, Users, TrendingUp, Droplets, Droplet, Thermometer, Syringe, HeartPulse, BarChart3 } from 'lucide-react'
-import { Milk, Pill, Baby, Hourglass, Check, Sparkles } from 'lucide-react'
+import { Milk, Pill, Baby, Hourglass, Check, Sparkles, Search, X } from 'lucide-react'
 import AutoTextarea from '@/components/ui/AutoTextarea'
 import { NoteAide } from '@/components/ui/NoteAide'
 import { GrowthChart, type GrowthPoint } from '@/components/bebe/GrowthChart'
@@ -484,6 +484,11 @@ function kgToGrams(s: string): number | undefined {
   return Number.isFinite(v) && v > 0 ? Math.round(v * 1000) : undefined
 }
 
+/** Minuscules sans accents : « Température » trouve « temperature » et inversement */
+function normaliser(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 /** « HH:MM » → minutes depuis minuit */
 function hhmmToMin(s: string): number {
   const [h, m] = s.split(':').map(Number)
@@ -676,6 +681,10 @@ export default function BebePage() {
 
   // ── Vue ───────────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'dashboard' | 'planning' | 'stats' | 'growth' | 'arrival'>('dashboard')
+
+  // Filtres du planning — liste de types VIDE = tout afficher
+  const [planningTypes,  setPlanningTypes]  = useState<BebeEventType[]>([])
+  const [planningSearch, setPlanningSearch] = useState('')
 
   // ── Timer sommeil actif ───────────────────────────────────────────────────
   const [tick, setTick] = useState(0)
@@ -1373,6 +1382,40 @@ export default function BebePage() {
     return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [events, planningRange])
 
+  /**
+   * Le planning filtré : par type et par texte libre.
+   *
+   * La recherche porte sur tout ce qui est LISIBLE de l'événement — son type, sa
+   * description telle qu'elle s'affiche, son intitulé et son observation — pour
+   * que « doliprane », « caca » ou « régurgité » tombent juste sans rien connaître
+   * de la structure des données. Un jour qui ne garde aucun événement disparaît.
+   *
+   * ⚠️ Volontairement séparé de `planningDays` : les moyennes par jour restent
+   * calculées sur TOUS les événements de la période, sinon filtrer sur « Couche »
+   * afficherait 0 ml de lait par jour.
+   */
+  const planningDaysFiltres = useMemo(() => {
+    const q = normaliser(planningSearch.trim())
+    if (!planningTypes.length && !q) return planningDays
+    const correspond = (e: BebeEvent) => {
+      if (planningTypes.length && !planningTypes.includes(e.type)) return false
+      if (!q) return true
+      const texte = normaliser([
+        EVENT_LABELS[e.type],
+        eventDescription(e.type, e.data ?? {}, journee),
+        e.data?.name,
+        e.data?.note,
+      ].filter(Boolean).join(' '))
+      return texte.includes(q)
+    }
+    return planningDays
+      .map(j => ({ ...j, events: j.events.filter(correspond) }))
+      .filter(j => j.events.length > 0)
+  }, [planningDays, planningTypes, planningSearch, journee])
+
+  const planningFiltreActif = planningTypes.length > 0 || planningSearch.trim().length > 0
+  const planningNbTrouves = planningDaysFiltres.reduce((n, j) => n + j.events.length, 0)
+
   /** Libellé de périodicité, partagé par la carte d'accueil et la liste de l'onglet Santé */
   const libelleRecurrence = (r: BebeRoutine) => {
     const n = Math.max(1, r.tousLesNJours ?? 1)
@@ -2030,6 +2073,55 @@ export default function BebePage() {
               )}
             </div>
 
+            {/* Recherche et filtres */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 space-y-2.5">
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                <input
+                  type="text"
+                  value={planningSearch}
+                  onChange={e => setPlanningSearch(e.target.value)}
+                  placeholder="Rechercher (doliprane, caca, régurgité…)"
+                  className="w-full pl-9 pr-9 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {planningSearch && (
+                  <button onClick={() => setPlanningSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-gray-500 transition">
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {(['bottle', 'diaper', 'sleep', 'meds', 'bath', 'soin', 'temp', 'growth', 'vaccine', 'pump', 'waste'] as BebeEventType[]).map(t => {
+                  const Icone = EVENT_ICONS[t]
+                  const c = EVENT_COLORS[t]
+                  const actif = planningTypes.includes(t)
+                  return (
+                    <button key={t}
+                      onClick={() => setPlanningTypes(l => (actif ? l.filter(x => x !== t) : [...l, t]))}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition ${
+                        actif ? `${c.bg} ${c.text} border-transparent` : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                      <Icone size={13} />
+                      {EVENT_LABELS[t]}
+                    </button>
+                  )
+                })}
+              </div>
+              {planningFiltreActif && (
+                <div className="flex items-center justify-between gap-3 pt-0.5">
+                  <p className="text-xs text-gray-400">
+                    {planningNbTrouves === 0
+                      ? 'Aucun événement trouvé'
+                      : `${planningNbTrouves} événement${planningNbTrouves > 1 ? 's' : ''} sur ${planningDaysFiltres.length} jour${planningDaysFiltres.length > 1 ? 's' : ''}`}
+                  </p>
+                  <button onClick={() => { setPlanningTypes([]); setPlanningSearch('') }}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700 transition shrink-0">
+                    Tout afficher
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Moyennes de la période affichée — la dose de lait par jour d'abord */}
             {planningDays.length > 0 && (() => {
               const jours = planningDays.length
@@ -2075,19 +2167,28 @@ export default function BebePage() {
                   </div>
                   <p className="text-[11px] text-gray-400 mt-2">
                     {`Sur ${jours} jour${jours > 1 ? 's' : ''} où quelque chose a été noté — les jours vides ne comptent pas.`}
+                    {planningFiltreActif ? ' Moyennes calculées sur toute la période, sans tenir compte du filtre.' : ''}
                   </p>
                 </div>
               )
             })()}
 
-            {planningDays.length === 0 ? (
+            {planningDaysFiltres.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
                 <CalendarDays size={32} className="text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">Aucune donnée sur cette période</p>
+                <p className="text-sm text-gray-400">
+                  {planningFiltreActif ? 'Aucun événement ne correspond' : 'Aucune donnée sur cette période'}
+                </p>
+                {planningFiltreActif && (
+                  <button onClick={() => { setPlanningTypes([]); setPlanningSearch('') }}
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700 transition mt-2">
+                    Tout afficher
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
-                {planningDays.map(({ label: dl, events: dayEvts }) => {
+                {planningDaysFiltres.map(({ label: dl, events: dayEvts }) => {
                   const bottles = dayEvts.filter(e => e.type === 'bottle')
                   const diapers = dayEvts.filter(e => e.type === 'diaper')
                   const sleeps  = dayEvts.filter(e => e.type === 'sleep')
