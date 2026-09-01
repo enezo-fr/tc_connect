@@ -2216,6 +2216,8 @@ export default function BebePage() {
                   const pumps   = dayEvts.filter(e => e.type === 'pump')
                   const totalMl  = bottles.reduce((n, e) => n + ((e.data?.amount as number) ?? 0), 0)
                   const tireMl   = pumps.reduce((n, e) => n + ((e.data?.amount as number) ?? 0), 0)
+                  // Le jeté ne fait PAS partie du total bu : il est affiché à part
+                  const jeteMl   = bottles.reduce((n, e) => n + ((e.data?.wasted as number) ?? 0), 0)
                   const sleepMin = sleeps.reduce((n, e) => n + ((e.data?.durationMin as number) ?? 0), 0)
                   const sleepSiesteMin = sleeps
                     .filter(e => { const d = dateRattachement(e); return d && !estNuit(d, journee) })
@@ -2235,6 +2237,9 @@ export default function BebePage() {
                             <div>
                               <p className="text-xs text-gray-500">Biberons</p>
                               <p className="text-sm font-semibold text-gray-800">{bottles.length} · {totalMl} ml</p>
+                              {jeteMl > 0 && (
+                                <p className="text-[11px] text-gray-400">{`bus · + ${jeteMl} ml jetés`}</p>
+                              )}
                             </div>
                           </div>
                         )}
